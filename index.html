@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Desire Group — Shaping the Future</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal: #0b6b6b;
+      --teal-light: #0e8080;
+      --gold: #b8a55a;
+      --gold-light: #cfc07e;
+      --dark: #111111;
+      --gray: #555;
+      --bg: #f8f8f6;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--dark);
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 5%;
+      height: 70px;
+      background: rgba(255,255,255,0.97);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 1px 12px rgba(0,0,0,0.08);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-logo img {
+      height: 38px;
+      width: auto;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--dark);
+      letter-spacing: 0.02em;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--teal); }
+
+    /* ── HERO ── */
+    #hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 100px 5% 60px;
+      background: linear-gradient(135deg, #ffffff 0%, #e8f4f4 40%, #f5f0e8 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-blob-teal {
+      position: absolute;
+      top: -120px; right: -120px;
+      width: 420px; height: 420px;
+      border-radius: 50%;
+      background: var(--teal);
+      opacity: 0.07;
+    }
+
+    .hero-blob-gold {
+      position: absolute;
+      bottom: -80px; left: -80px;
+      width: 320px; height: 320px;
+      border-radius: 50%;
+      background: var(--gold);
+      opacity: 0.1;
+    }
+
+    .hero-content { position: relative; z-index: 1; }
+
+    .hero-content img {
+      width: min(340px, 70vw);
+      margin-bottom: 24px;
+      filter: drop-shadow(0 8px 24px rgba(0,0,0,0.1));
+    }
+
+    .hero-content h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      color: var(--teal);
+      letter-spacing: -0.01em;
+      line-height: 1.15;
+    }
+
+    .hero-tagline {
+      margin-top: 12px;
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      color: var(--gold);
+      letter-spacing: 0.25em;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .hero-desc {
+      margin-top: 20px;
+      font-size: 1.05rem;
+      color: var(--gray);
+      max-width: 560px;
+      line-height: 1.7;
+    }
+
+    .hero-cta {
+      display: inline-block;
+      margin-top: 36px;
+      padding: 14px 38px;
+      background: var(--teal);
+      color: #fff;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      letter-spacing: 0.04em;
+      transition: background 0.2s, transform 0.15s;
+    }
+
+    .hero-cta:hover { background: var(--teal-light); transform: translateY(-1px); }
+
+    /* ── SECTION BASE ── */
+    section { padding: 90px 5%; }
+
+    .section-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      color: var(--teal);
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+
+    .section-body {
+      font-size: 1.02rem;
+      color: var(--gray);
+      line-height: 1.8;
+      max-width: 680px;
+    }
+
+    .divider {
+      width: 56px; height: 3px;
+      background: var(--gold);
+      margin: 18px 0 32px;
+    }
+
+    /* ── ABOUT ── */
+    #about {
+      background: #fff;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    .about-image img {
+      width: 100%;
+      border-radius: 6px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+    }
+
+    .about-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 36px;
+    }
+
+    .stat-card {
+      background: var(--bg);
+      border-left: 3px solid var(--teal);
+      padding: 18px 20px;
+      border-radius: 4px;
+    }
+
+    .stat-card .number {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--teal);
+      line-height: 1;
+    }
+
+    .stat-card .label {
+      font-size: 0.82rem;
+      color: var(--gray);
+      margin-top: 4px;
+    }
+
+    /* ── BRANDS ── */
+    #brands { background: var(--bg); }
+
+    .brands-header { text-align: center; margin-bottom: 56px; }
+    .brands-header .section-body { margin: 0 auto; }
+
+    .brands-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 28px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .brand-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 36px 28px;
+      text-align: center;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+      transition: transform 0.2s, box-shadow 0.2s;
+      border-bottom: 3px solid transparent;
+    }
+
+    .brand-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+      border-bottom-color: var(--teal);
+    }
+
+    .brand-card .logo-wrap {
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .brand-card .logo-wrap img {
+      max-height: 90px;
+      max-width: 180px;
+      object-fit: contain;
+    }
+
+    .brand-card h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--teal);
+      margin-bottom: 6px;
+    }
+
+    .brand-card .brand-type {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--gold);
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .brand-card p {
+      font-size: 0.9rem;
+      color: var(--gray);
+      line-height: 1.65;
+    }
+
+    /* ── CONTACT ── */
+    #contact {
+      background: var(--teal);
+      color: #fff;
+      text-align: center;
+    }
+
+    #contact .section-label { color: var(--gold-light); }
+    #contact .section-title { color: #fff; margin: 0 auto 10px; }
+    #contact .divider { background: var(--gold-light); margin: 18px auto 32px; }
+
+    .contact-grid {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      flex-wrap: wrap;
+      margin-top: 40px;
+    }
+
+    .contact-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .contact-icon {
+      width: 50px; height: 50px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+    }
+
+    .contact-item span {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    .contact-item a {
+      color: var(--gold-light);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: opacity 0.2s;
+    }
+
+    .contact-item a:hover { opacity: 0.8; }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--dark);
+      color: rgba(255,255,255,0.5);
+      text-align: center;
+      padding: 24px 5%;
+      font-size: 0.82rem;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      #about {
+        grid-template-columns: 1fr;
+      }
+
+      .about-image { order: -1; }
+
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a href="#hero" class="nav-logo">
+      <img src="logo/desire-group-all-brands.png" alt="Desire Group" style="height:40px;object-fit:contain;" />
+    </a>
+    <ul class="nav-links">
+      <li><a href="#about">About</a></li>
+      <li><a href="#brands">Our Brands</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section id="hero">
+    <div class="hero-blob-teal"></div>
+    <div class="hero-blob-gold"></div>
+    <div class="hero-content">
+      <img src="logo/desire-group-all-brands.png" alt="Desire Group" />
+      <h1>Desire Group</h1>
+      <p class="hero-tagline">Shaping the Future</p>
+      <p class="hero-desc">
+        A diversified group of businesses committed to delivering excellence across
+        food, wellness, and lifestyle — built on a foundation of quality and trust.
+      </p>
+      <a href="#brands" class="hero-cta">Explore Our Brands</a>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about">
+    <div class="about-image">
+      <img src="logo/desire-group-all-brands.png" alt="Desire Group Brands" />
+    </div>
+    <div class="about-text">
+      <p class="section-label">Who We Are</p>
+      <h2 class="section-title">A Vision Built<br>Across Industries</h2>
+      <div class="divider"></div>
+      <p class="section-body">
+        Desire Group is a UAE-based conglomerate with a portfolio spanning restaurants,
+        cafeterias, pharmacy, and lifestyle services. Every brand under our umbrella
+        shares the same commitment — delivering the highest standards to every customer,
+        every day.
+      </p>
+      <div class="about-stats">
+        <div class="stat-card">
+          <div class="number">5+</div>
+          <div class="label">Brands Under One Roof</div>
+        </div>
+        <div class="stat-card">
+          <div class="number">UAE</div>
+          <div class="label">Headquartered & Operating</div>
+        </div>
+        <div class="stat-card">
+          <div class="number">F&B</div>
+          <div class="label">Food & Beverage</div>
+        </div>
+        <div class="stat-card">
+          <div class="number">360°</div>
+          <div class="label">Lifestyle Services</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BRANDS -->
+  <section id="brands">
+    <div class="brands-header">
+      <p class="section-label">Our Portfolio</p>
+      <h2 class="section-title">Our Brands</h2>
+      <div class="divider" style="margin:18px auto 20px;"></div>
+      <p class="section-body">
+        Five unique brands, one shared standard of excellence.
+        From great food to essential healthcare and grooming services —
+        the Desire Group is wherever you need us.
+      </p>
+    </div>
+
+    <div class="brands-grid">
+
+      <div class="brand-card">
+        <div class="logo-wrap">
+          <img src="logo/crescent-logo.png" alt="Crescent Cafeteria" />
+        </div>
+        <p class="brand-type">Cafeteria</p>
+        <h3>Crescent Cafeteria</h3>
+        <p>Feel the best taste. A welcoming cafeteria experience with quality food and a warm atmosphere for every visitor.</p>
+      </div>
+
+      <div class="brand-card">
+        <div class="logo-wrap">
+          <img src="logo/food-mahal-logo.png" alt="Food Mahal Restaurant" />
+        </div>
+        <p class="brand-type">Restaurant</p>
+        <h3>Food Mahal</h3>
+        <p>Original Taste. An authentic dining destination offering rich flavours and a memorable culinary experience.</p>
+      </div>
+
+      <div class="brand-card">
+        <div class="logo-wrap">
+          <img src="logo/tasty-world-logo.jpeg" alt="Tasty World Restaurant" />
+        </div>
+        <p class="brand-type">Restaurant</p>
+        <h3>Tasty World</h3>
+        <p>A world of flavour on every plate. Tasty World Restaurant brings diverse and satisfying meals to every table.</p>
+      </div>
+
+      <div class="brand-card">
+        <div class="logo-wrap">
+          <img src="logo/medwell-logo.jpeg" alt="Medwell Pharmacy" />
+        </div>
+        <p class="brand-type">Pharmacy</p>
+        <h3>Medwell Pharmacy</h3>
+        <p>Delivering the Best Care. Your trusted community pharmacy providing quality medicines and expert health guidance.</p>
+      </div>
+
+      <div class="brand-card">
+        <div class="logo-wrap">
+          <img src="logo/groomers.png" alt="Groomers Mens Saloon" />
+        </div>
+        <p class="brand-type">Men's Saloon</p>
+        <h3>Groomers</h3>
+        <p>Premium men's grooming services in a professional setting. Look sharp, feel confident — every visit.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section id="contact">
+    <p class="section-label">Get In Touch</p>
+    <h2 class="section-title">Contact Us</h2>
+    <div class="divider"></div>
+    <p style="color:rgba(255,255,255,0.75); max-width:480px; margin:0 auto; font-size:1rem; line-height:1.7;">
+      Have a question or want to connect with us? We'd love to hear from you.
+    </p>
+    <div class="contact-grid">
+      <div class="contact-item">
+        <div class="contact-icon">🌐</div>
+        <span>Website</span>
+        <a href="https://www.desiregroup.ae" target="_blank">www.desiregroup.ae</a>
+      </div>
+      <div class="contact-item">
+        <div class="contact-icon">✉️</div>
+        <span>Email</span>
+        <a href="mailto:info@desiregroup.ae">info@desiregroup.ae</a>
+      </div>
+      <div class="contact-item">
+        <div class="contact-icon">📍</div>
+        <span>Location</span>
+        <a href="#">United Arab Emirates</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>&copy; 2025 Desire Group. All rights reserved. &nbsp;|&nbsp; Shaping the Future</p>
+  </footer>
+
+</body>
+</html>
