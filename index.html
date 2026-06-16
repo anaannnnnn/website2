@@ -4,18 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Desire Group — Shaping the Future</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --teal: #0b6b6b;
-      --teal-light: #0e8080;
-      --gold: #b8a55a;
-      --gold-light: #cfc07e;
-      --dark: #111111;
-      --gray: #555;
-      --bg: #f8f8f6;
+      --bg: #eeede9;
+      --bg-card: #f7f6f3;
+      --white: #ffffff;
+      --black: #111111;
+      --green: #7a9a62;
+      --green-dark: #5e7a4a;
+      --gray: #888884;
+      --border: #ddddd8;
+      --text-sm: 0.8rem;
     }
 
     html { scroll-behavior: smooth; }
@@ -23,7 +25,8 @@
     body {
       font-family: 'Inter', sans-serif;
       background: var(--bg);
-      color: var(--dark);
+      color: var(--black);
+      -webkit-font-smoothing: antialiased;
     }
 
     /* ── NAV ── */
@@ -34,332 +37,615 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 5%;
-      height: 70px;
-      background: rgba(255,255,255,0.97);
-      backdrop-filter: blur(8px);
-      box-shadow: 0 1px 12px rgba(0,0,0,0.08);
+      padding: 0 48px;
+      height: 64px;
+      background: rgba(238,237,233,0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
     }
 
-    .nav-logo {
+    .nav-brand {
       display: flex;
       align-items: center;
       gap: 10px;
       text-decoration: none;
     }
 
-    .nav-logo img {
-      height: 38px;
-      width: auto;
+    .nav-brand-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .nav-brand span {
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--black);
     }
 
     .nav-links {
       display: flex;
-      gap: 32px;
+      gap: 36px;
       list-style: none;
     }
 
     .nav-links a {
       text-decoration: none;
-      font-size: 0.9rem;
+      font-size: var(--text-sm);
       font-weight: 500;
-      color: var(--dark);
-      letter-spacing: 0.02em;
+      color: var(--gray);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       transition: color 0.2s;
     }
 
-    .nav-links a:hover { color: var(--teal); }
+    .nav-links a:hover { color: var(--black); }
+
+    .nav-tag {
+      font-size: var(--text-sm);
+      color: var(--gray);
+      letter-spacing: 0.04em;
+    }
 
     /* ── HERO ── */
     #hero {
       min-height: 100vh;
-      display: flex;
+      padding: 160px 48px 100px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 100px 5% 60px;
-      background: linear-gradient(135deg, #ffffff 0%, #e8f4f4 40%, #f5f0e8 100%);
-      position: relative;
-      overflow: hidden;
+      gap: 60px;
     }
 
-    .hero-blob-teal {
-      position: absolute;
-      top: -120px; right: -120px;
-      width: 420px; height: 420px;
-      border-radius: 50%;
-      background: var(--teal);
-      opacity: 0.07;
-    }
+    .hero-left {}
 
-    .hero-blob-gold {
-      position: absolute;
-      bottom: -80px; left: -80px;
-      width: 320px; height: 320px;
-      border-radius: 50%;
-      background: var(--gold);
-      opacity: 0.1;
-    }
-
-    .hero-content { position: relative; z-index: 1; }
-
-    .hero-content img {
-      width: min(340px, 70vw);
-      margin-bottom: 24px;
-      filter: drop-shadow(0 8px 24px rgba(0,0,0,0.1));
-    }
-
-    .hero-content h1 {
-      font-family: 'Playfair Display', serif;
-      font-size: clamp(2.2rem, 5vw, 3.8rem);
-      color: var(--teal);
-      letter-spacing: -0.01em;
-      line-height: 1.15;
-    }
-
-    .hero-tagline {
-      margin-top: 12px;
-      font-size: clamp(1rem, 2vw, 1.25rem);
-      color: var(--gold);
-      letter-spacing: 0.25em;
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 6px 14px;
+      font-size: 0.72rem;
       font-weight: 600;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
+      color: var(--green-dark);
+      margin-bottom: 40px;
     }
+
+    .hero-eyebrow::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .hero-h1 {
+      font-size: clamp(3rem, 6vw, 5.5rem);
+      font-weight: 900;
+      line-height: 1.0;
+      letter-spacing: -0.03em;
+      color: var(--black);
+    }
+
+    .hero-h1 .accent { color: var(--green); }
 
     .hero-desc {
-      margin-top: 20px;
-      font-size: 1.05rem;
+      margin-top: 28px;
+      font-size: 1rem;
       color: var(--gray);
-      max-width: 560px;
-      line-height: 1.7;
+      line-height: 1.75;
+      max-width: 420px;
     }
 
-    .hero-cta {
+    .hero-actions {
+      display: flex;
+      gap: 14px;
+      margin-top: 44px;
+      align-items: center;
+    }
+
+    .btn-primary {
       display: inline-block;
-      margin-top: 36px;
-      padding: 14px 38px;
-      background: var(--teal);
-      color: #fff;
+      padding: 13px 30px;
+      background: var(--black);
+      color: var(--white);
       text-decoration: none;
-      border-radius: 4px;
+      border-radius: 3px;
+      font-size: 0.82rem;
       font-weight: 600;
-      font-size: 0.95rem;
-      letter-spacing: 0.04em;
-      transition: background 0.2s, transform 0.15s;
-    }
-
-    .hero-cta:hover { background: var(--teal-light); transform: translateY(-1px); }
-
-    /* ── SECTION BASE ── */
-    section { padding: 90px 5%; }
-
-    .section-label {
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.2em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 10px;
+      transition: background 0.2s;
     }
 
-    .section-title {
-      font-family: 'Playfair Display', serif;
-      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
-      color: var(--teal);
-      line-height: 1.2;
-      margin-bottom: 16px;
+    .btn-primary:hover { background: var(--green-dark); }
+
+    .btn-ghost {
+      display: inline-block;
+      padding: 13px 24px;
+      border: 1px solid var(--border);
+      color: var(--gray);
+      text-decoration: none;
+      border-radius: 3px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      transition: border-color 0.2s, color 0.2s;
     }
 
-    .section-body {
-      font-size: 1.02rem;
+    .btn-ghost:hover { border-color: var(--black); color: var(--black); }
+
+    .hero-right {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    .hero-logo-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 48px;
+      width: 380px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .hero-logo-card img {
+      width: 100%;
+      max-width: 280px;
+      object-fit: contain;
+    }
+
+    .hero-logo-card .card-meta {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid var(--border);
+      padding-top: 18px;
+      font-size: 0.72rem;
+      color: var(--gray);
+      letter-spacing: 0.06em;
+    }
+
+    /* ── MARQUEE ── */
+    .marquee-wrap {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: var(--black);
+      overflow: hidden;
+      padding: 16px 0;
+    }
+
+    .marquee-track {
+      display: flex;
+      gap: 48px;
+      animation: marquee 20s linear infinite;
+      width: max-content;
+    }
+
+    .marquee-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+      white-space: nowrap;
+    }
+
+    .marquee-item .dot {
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    @keyframes marquee {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+
+    /* ── SECTION SHARED ── */
+    .section-wrap { padding: 100px 48px; }
+
+    .section-num {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 12px;
+    }
+
+    .section-h {
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: var(--black);
+      line-height: 1.1;
+    }
+
+    .section-p {
+      font-size: 0.97rem;
       color: var(--gray);
       line-height: 1.8;
-      max-width: 680px;
-    }
-
-    .divider {
-      width: 56px; height: 3px;
-      background: var(--gold);
-      margin: 18px 0 32px;
+      max-width: 560px;
+      margin-top: 16px;
     }
 
     /* ── ABOUT ── */
     #about {
-      background: #fff;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 60px;
-      align-items: center;
+      background: var(--white);
     }
 
-    .about-image img {
-      width: 100%;
-      border-radius: 6px;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+    .about-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: start;
     }
 
     .about-stats {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      margin-top: 36px;
+      gap: 2px;
+      margin-top: 48px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
     }
 
-    .stat-card {
-      background: var(--bg);
-      border-left: 3px solid var(--teal);
-      padding: 18px 20px;
-      border-radius: 4px;
+    .stat-item {
+      background: var(--bg-card);
+      padding: 28px 24px;
     }
 
-    .stat-card .number {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--teal);
+    .stat-item .n {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--black);
+      letter-spacing: -0.03em;
       line-height: 1;
     }
 
-    .stat-card .label {
-      font-size: 0.82rem;
+    .stat-item .n span { color: var(--green); }
+
+    .stat-item .l {
+      font-size: 0.75rem;
       color: var(--gray);
-      margin-top: 4px;
+      margin-top: 6px;
+      letter-spacing: 0.04em;
+    }
+
+    .about-right {
+      padding-top: 10px;
+    }
+
+    .about-img-wrap {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      padding: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .about-img-wrap img {
+      width: 100%;
+      max-width: 320px;
+      object-fit: contain;
+    }
+
+    .about-features {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .feature-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 14px 18px;
+      font-size: 0.83rem;
+    }
+
+    .feature-row .f-name { font-weight: 600; color: var(--black); }
+    .feature-row .f-tag {
+      font-size: 0.7rem;
+      background: var(--green);
+      color: #fff;
+      padding: 3px 9px;
+      border-radius: 100px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
     }
 
     /* ── BRANDS ── */
     #brands { background: var(--bg); }
 
-    .brands-header { text-align: center; margin-bottom: 56px; }
-    .brands-header .section-body { margin: 0 auto; }
+    .brands-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 56px;
+    }
+
+    .brands-count {
+      font-size: 0.78rem;
+      color: var(--gray);
+      letter-spacing: 0.06em;
+    }
 
     .brands-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 28px;
-      max-width: 1200px;
-      margin: 0 auto;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
     }
 
     .brand-card {
-      background: #fff;
-      border-radius: 8px;
-      padding: 36px 28px;
-      text-align: center;
-      box-shadow: 0 2px 16px rgba(0,0,0,0.06);
-      transition: transform 0.2s, box-shadow 0.2s;
-      border-bottom: 3px solid transparent;
+      background: var(--white);
+      border-radius: 0;
+      padding: 40px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      transition: background 0.2s;
+      position: relative;
+      overflow: hidden;
     }
 
-    .brand-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 32px rgba(0,0,0,0.1);
-      border-bottom-color: var(--teal);
+    .brand-card:hover { background: var(--bg-card); }
+
+    .brand-card:hover .brand-arrow { opacity: 1; transform: translate(0, 0); }
+
+    .brand-card-num {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: var(--gray);
     }
 
-    .brand-card .logo-wrap {
-      height: 100px;
+    .brand-logo-wrap {
+      height: 80px;
       display: flex;
       align-items: center;
-      justify-content: center;
-      margin-bottom: 20px;
     }
 
-    .brand-card .logo-wrap img {
-      max-height: 90px;
-      max-width: 180px;
+    .brand-logo-wrap img {
+      max-height: 72px;
+      max-width: 160px;
       object-fit: contain;
     }
 
-    .brand-card h3 {
-      font-size: 1.05rem;
+    .brand-name {
+      font-size: 1.1rem;
       font-weight: 700;
-      color: var(--teal);
-      margin-bottom: 6px;
+      color: var(--black);
+      letter-spacing: -0.01em;
     }
 
-    .brand-card .brand-type {
-      font-size: 0.78rem;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--gold);
+    .brand-type-tag {
+      display: inline-block;
+      font-size: 0.68rem;
       font-weight: 600;
-      margin-bottom: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--green-dark);
+      background: rgba(122, 154, 98, 0.1);
+      padding: 4px 10px;
+      border-radius: 100px;
+      width: fit-content;
     }
 
-    .brand-card p {
-      font-size: 0.9rem;
+    .brand-desc {
+      font-size: 0.85rem;
       color: var(--gray);
       line-height: 1.65;
     }
 
-    /* ── CONTACT ── */
-    #contact {
-      background: var(--teal);
-      color: #fff;
-      text-align: center;
+    .brand-tagline {
+      font-size: 0.75rem;
+      font-style: italic;
+      color: var(--green-dark);
+      font-weight: 500;
     }
 
-    #contact .section-label { color: var(--gold-light); }
-    #contact .section-title { color: #fff; margin: 0 auto 10px; }
-    #contact .divider { background: var(--gold-light); margin: 18px auto 32px; }
-
-    .contact-grid {
-      display: flex;
-      justify-content: center;
-      gap: 48px;
-      flex-wrap: wrap;
-      margin-top: 40px;
+    .brand-arrow {
+      position: absolute;
+      top: 24px; right: 24px;
+      font-size: 1.1rem;
+      opacity: 0;
+      transform: translate(-4px, 4px);
+      transition: opacity 0.2s, transform 0.2s;
     }
 
-    .contact-item {
+    /* last row: 2 cards centered */
+    .brand-card-wide {
+      grid-column: span 1;
+    }
+
+    /* ── PROCESS ── */
+    #process {
+      background: var(--white);
+    }
+
+    .process-inner {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 80px;
+      align-items: start;
+    }
+
+    .process-steps {
       display: flex;
       flex-direction: column;
+      gap: 2px;
+      margin-top: 48px;
+    }
+
+    .process-step {
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 20px;
+      align-items: start;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 22px 20px;
+    }
+
+    .step-num {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--green);
+      letter-spacing: 0.06em;
+      padding-top: 2px;
+    }
+
+    .step-body h4 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--black);
+      margin-bottom: 4px;
+    }
+
+    .step-body p {
+      font-size: 0.8rem;
+      color: var(--gray);
+      line-height: 1.6;
+    }
+
+    /* ── CONTACT ── */
+    #contact { background: var(--black); }
+
+    .contact-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+
+    .contact-left .section-num { color: var(--green); }
+    .contact-left .section-h { color: var(--white); }
+    .contact-left .section-p { color: rgba(255,255,255,0.45); }
+
+    .contact-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .contact-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 4px;
+      padding: 22px 24px;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .contact-card:hover { background: rgba(255,255,255,0.09); }
+
+    .contact-card-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .contact-card-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+    }
+
+    .contact-card-value {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--white);
+    }
+
+    .contact-card-arrow {
+      font-size: 1rem;
+      color: var(--green);
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--black);
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding: 28px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    footer .f-brand {
+      display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .contact-icon {
-      width: 50px; height: 50px;
+    footer .f-brand-dot {
+      width: 6px; height: 6px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.12);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.3rem;
+      background: var(--green);
     }
 
-    .contact-item span {
-      font-size: 0.9rem;
-      opacity: 0.8;
+    footer .f-brand span {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
     }
 
-    .contact-item a {
-      color: var(--gold-light);
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 1rem;
-      transition: opacity 0.2s;
-    }
-
-    .contact-item a:hover { opacity: 0.8; }
-
-    /* ── FOOTER ── */
-    footer {
-      background: var(--dark);
-      color: rgba(255,255,255,0.5);
-      text-align: center;
-      padding: 24px 5%;
-      font-size: 0.82rem;
+    footer .f-copy {
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.25);
+      letter-spacing: 0.04em;
     }
 
     /* ── RESPONSIVE ── */
-    @media (max-width: 768px) {
-      #about {
-        grid-template-columns: 1fr;
-      }
-
-      .about-image { order: -1; }
-
+    @media (max-width: 900px) {
+      nav { padding: 0 24px; }
       .nav-links { display: none; }
+      .nav-tag { display: none; }
+
+      #hero { grid-template-columns: 1fr; padding: 120px 24px 60px; gap: 40px; }
+      .hero-right { justify-content: center; }
+      .hero-logo-card { width: 100%; max-width: 360px; }
+
+      .section-wrap { padding: 72px 24px; }
+
+      .about-inner { grid-template-columns: 1fr; gap: 40px; }
+      .brands-grid { grid-template-columns: 1fr; }
+      .brands-top { flex-direction: column; align-items: flex-start; gap: 12px; }
+      .process-inner { grid-template-columns: 1fr; gap: 40px; }
+      .contact-inner { grid-template-columns: 1fr; gap: 48px; }
+
+      footer { flex-direction: column; gap: 12px; padding: 24px; }
     }
   </style>
 </head>
@@ -367,63 +653,117 @@
 
   <!-- NAV -->
   <nav>
-    <a href="#hero" class="nav-logo">
-      <img src="logo/desire-group-all-brands.png" alt="Desire Group" style="height:40px;object-fit:contain;" />
+    <a href="#hero" class="nav-brand">
+      <div class="nav-brand-dot"></div>
+      <span>Desire Group</span>
     </a>
     <ul class="nav-links">
       <li><a href="#about">About</a></li>
-      <li><a href="#brands">Our Brands</a></li>
+      <li><a href="#brands">Brands</a></li>
+      <li><a href="#process">Overview</a></li>
       <li><a href="#contact">Contact</a></li>
     </ul>
+    <span class="nav-tag">www.desiregroup.ae</span>
   </nav>
 
   <!-- HERO -->
   <section id="hero">
-    <div class="hero-blob-teal"></div>
-    <div class="hero-blob-gold"></div>
-    <div class="hero-content">
-      <img src="logo/desire-group-all-brands.png" alt="Desire Group" />
-      <h1>Desire Group</h1>
-      <p class="hero-tagline">Shaping the Future</p>
+    <div class="hero-left">
+      <div class="hero-eyebrow">UAE Based Conglomerate</div>
+      <h1 class="hero-h1">
+        SHAPING<br>
+        THE <span class="accent">FUTURE</span>
+      </h1>
       <p class="hero-desc">
-        A diversified group of businesses committed to delivering excellence across
-        food, wellness, and lifestyle — built on a foundation of quality and trust.
+        A diversified group of businesses delivering excellence across food,
+        healthcare, and lifestyle — built on quality and trust across the UAE.
       </p>
-      <a href="#brands" class="hero-cta">Explore Our Brands</a>
+      <div class="hero-actions">
+        <a href="#brands" class="btn-primary">Our Brands</a>
+        <a href="#contact" class="btn-ghost">Get In Touch</a>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="hero-logo-card">
+        <img src="logo/desire-group-all-brands.png" alt="Desire Group" />
+        <div class="card-meta">
+          <span>EST. UAE</span>
+          <span>5 Brands</span>
+          <span>Desire Group</span>
+        </div>
+      </div>
     </div>
   </section>
 
+  <!-- MARQUEE -->
+  <div class="marquee-wrap">
+    <div class="marquee-track">
+      <div class="marquee-item"><span class="dot"></span>Crescent Cafeteria</div>
+      <div class="marquee-item"><span class="dot"></span>Food Mahal Restaurant</div>
+      <div class="marquee-item"><span class="dot"></span>Tasty World Restaurant</div>
+      <div class="marquee-item"><span class="dot"></span>Medwell Pharmacy</div>
+      <div class="marquee-item"><span class="dot"></span>Groomers Mens Saloon</div>
+      <div class="marquee-item"><span class="dot"></span>Desire Group</div>
+      <!-- duplicate for seamless loop -->
+      <div class="marquee-item"><span class="dot"></span>Crescent Cafeteria</div>
+      <div class="marquee-item"><span class="dot"></span>Food Mahal Restaurant</div>
+      <div class="marquee-item"><span class="dot"></span>Tasty World Restaurant</div>
+      <div class="marquee-item"><span class="dot"></span>Medwell Pharmacy</div>
+      <div class="marquee-item"><span class="dot"></span>Groomers Mens Saloon</div>
+      <div class="marquee-item"><span class="dot"></span>Desire Group</div>
+    </div>
+  </div>
+
   <!-- ABOUT -->
   <section id="about">
-    <div class="about-image">
-      <img src="logo/desire-group-all-brands.png" alt="Desire Group Brands" />
-    </div>
-    <div class="about-text">
-      <p class="section-label">Who We Are</p>
-      <h2 class="section-title">A Vision Built<br>Across Industries</h2>
-      <div class="divider"></div>
-      <p class="section-body">
-        Desire Group is a UAE-based conglomerate with a portfolio spanning restaurants,
-        cafeterias, pharmacy, and lifestyle services. Every brand under our umbrella
-        shares the same commitment — delivering the highest standards to every customer,
-        every day.
-      </p>
-      <div class="about-stats">
-        <div class="stat-card">
-          <div class="number">5+</div>
-          <div class="label">Brands Under One Roof</div>
+    <div class="section-wrap">
+      <div class="about-inner">
+        <div class="about-left">
+          <p class="section-num">01 — About</p>
+          <h2 class="section-h">A Vision Built<br>Across Industries</h2>
+          <p class="section-p">
+            Desire Group is a UAE-based conglomerate with a portfolio spanning restaurants,
+            cafeterias, pharmacy, and lifestyle services. Every brand under our umbrella
+            shares the same commitment — delivering the highest standards to every customer,
+            every day.
+          </p>
+          <div class="about-stats">
+            <div class="stat-item">
+              <div class="n">5<span>+</span></div>
+              <div class="l">Brands Portfolio</div>
+            </div>
+            <div class="stat-item">
+              <div class="n" style="font-size:1.6rem;">UAE</div>
+              <div class="l">Headquartered</div>
+            </div>
+            <div class="stat-item">
+              <div class="n">F<span>&</span>B</div>
+              <div class="l">Food & Beverage</div>
+            </div>
+            <div class="stat-item">
+              <div class="n">360<span>°</span></div>
+              <div class="l">Lifestyle Services</div>
+            </div>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="number">UAE</div>
-          <div class="label">Headquartered & Operating</div>
-        </div>
-        <div class="stat-card">
-          <div class="number">F&B</div>
-          <div class="label">Food & Beverage</div>
-        </div>
-        <div class="stat-card">
-          <div class="number">360°</div>
-          <div class="label">Lifestyle Services</div>
+        <div class="about-right">
+          <div class="about-img-wrap">
+            <img src="logo/desire-group-all-brands.png" alt="Desire Group All Brands" />
+          </div>
+          <div class="about-features">
+            <div class="feature-row">
+              <span class="f-name">Food & Beverage</span>
+              <span class="f-tag">3 Brands</span>
+            </div>
+            <div class="feature-row">
+              <span class="f-name">Healthcare & Pharmacy</span>
+              <span class="f-tag">1 Brand</span>
+            </div>
+            <div class="feature-row">
+              <span class="f-name">Lifestyle & Grooming</span>
+              <span class="f-tag">1 Brand</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -431,97 +771,187 @@
 
   <!-- BRANDS -->
   <section id="brands">
-    <div class="brands-header">
-      <p class="section-label">Our Portfolio</p>
-      <h2 class="section-title">Our Brands</h2>
-      <div class="divider" style="margin:18px auto 20px;"></div>
-      <p class="section-body">
-        Five unique brands, one shared standard of excellence.
-        From great food to essential healthcare and grooming services —
-        the Desire Group is wherever you need us.
-      </p>
+    <div class="section-wrap">
+      <div class="brands-top">
+        <div>
+          <p class="section-num">02 — Our Portfolio</p>
+          <h2 class="section-h">Our Brands</h2>
+        </div>
+        <span class="brands-count">05 Brands Total</span>
+      </div>
+
+      <div class="brands-grid">
+
+        <div class="brand-card">
+          <span class="brand-arrow">↗</span>
+          <span class="brand-card-num">01</span>
+          <div class="brand-logo-wrap">
+            <img src="logo/crescent-logo.png" alt="Crescent Cafeteria" />
+          </div>
+          <div>
+            <span class="brand-type-tag">Cafeteria</span>
+          </div>
+          <div class="brand-name">Crescent Cafeteria</div>
+          <p class="brand-tagline">"Feel the best taste"</p>
+          <p class="brand-desc">A welcoming cafeteria experience with quality food and a warm atmosphere for every visitor.</p>
+        </div>
+
+        <div class="brand-card">
+          <span class="brand-arrow">↗</span>
+          <span class="brand-card-num">02</span>
+          <div class="brand-logo-wrap">
+            <img src="logo/food-mahal-logo.png" alt="Food Mahal" />
+          </div>
+          <div>
+            <span class="brand-type-tag">Restaurant</span>
+          </div>
+          <div class="brand-name">Food Mahal</div>
+          <p class="brand-tagline">"Original Taste"</p>
+          <p class="brand-desc">An authentic dining destination offering rich flavours and a memorable culinary experience.</p>
+        </div>
+
+        <div class="brand-card">
+          <span class="brand-arrow">↗</span>
+          <span class="brand-card-num">03</span>
+          <div class="brand-logo-wrap">
+            <img src="logo/tasty-world-logo.jpeg" alt="Tasty World" />
+          </div>
+          <div>
+            <span class="brand-type-tag">Restaurant</span>
+          </div>
+          <div class="brand-name">Tasty World</div>
+          <p class="brand-tagline">"A world of flavour"</p>
+          <p class="brand-desc">Diverse and satisfying meals from around the world, served fresh every day.</p>
+        </div>
+
+        <div class="brand-card">
+          <span class="brand-arrow">↗</span>
+          <span class="brand-card-num">04</span>
+          <div class="brand-logo-wrap">
+            <img src="logo/medwell-logo.jpeg" alt="Medwell Pharmacy" />
+          </div>
+          <div>
+            <span class="brand-type-tag">Pharmacy</span>
+          </div>
+          <div class="brand-name">Medwell Pharmacy</div>
+          <p class="brand-tagline">"Delivering the best care"</p>
+          <p class="brand-desc">Your trusted community pharmacy providing quality medicines and expert health guidance.</p>
+        </div>
+
+        <div class="brand-card">
+          <span class="brand-arrow">↗</span>
+          <span class="brand-card-num">05</span>
+          <div class="brand-logo-wrap">
+            <img src="logo/groomers.png" alt="Groomers Mens Saloon" />
+          </div>
+          <div>
+            <span class="brand-type-tag">Men's Saloon</span>
+          </div>
+          <div class="brand-name">Groomers</div>
+          <p class="brand-tagline">"Look sharp, feel confident"</p>
+          <p class="brand-desc">Premium men's grooming services in a professional setting — every single visit.</p>
+        </div>
+
+        <div class="brand-card" style="background:rgba(122,154,98,0.06); justify-content:center; align-items:center; text-align:center; min-height:280px;">
+          <div class="brand-card-num" style="font-size:2rem; color:var(--green); font-weight:800;">+</div>
+          <div class="brand-name" style="font-size:0.9rem; color:var(--gray);">More coming soon</div>
+        </div>
+
+      </div>
     </div>
+  </section>
 
-    <div class="brands-grid">
-
-      <div class="brand-card">
-        <div class="logo-wrap">
-          <img src="logo/crescent-logo.png" alt="Crescent Cafeteria" />
+  <!-- OVERVIEW / PROCESS -->
+  <section id="process">
+    <div class="section-wrap">
+      <div class="process-inner">
+        <div>
+          <p class="section-num">03 — What We Do</p>
+          <h2 class="section-h">Built on<br>Excellence</h2>
+          <p class="section-p">
+            Every brand in the Desire Group portfolio follows the same core principles
+            that have shaped our reputation across the UAE.
+          </p>
         </div>
-        <p class="brand-type">Cafeteria</p>
-        <h3>Crescent Cafeteria</h3>
-        <p>Feel the best taste. A welcoming cafeteria experience with quality food and a warm atmosphere for every visitor.</p>
-      </div>
-
-      <div class="brand-card">
-        <div class="logo-wrap">
-          <img src="logo/food-mahal-logo.png" alt="Food Mahal Restaurant" />
+        <div class="process-steps">
+          <div class="process-step">
+            <span class="step-num">01</span>
+            <div class="step-body">
+              <h4>Quality First</h4>
+              <p>Every product and service across our brands meets a rigorous standard — from ingredients to customer experience.</p>
+            </div>
+          </div>
+          <div class="process-step">
+            <span class="step-num">02</span>
+            <div class="step-body">
+              <h4>Community Focused</h4>
+              <p>We serve the communities around us — through food, health, and lifestyle businesses that make everyday life better.</p>
+            </div>
+          </div>
+          <div class="process-step">
+            <span class="step-num">03</span>
+            <div class="step-body">
+              <h4>Consistent Growth</h4>
+              <p>Desire Group continues to expand its portfolio, bringing new brands and services to customers across the UAE.</p>
+            </div>
+          </div>
+          <div class="process-step">
+            <span class="step-num">04</span>
+            <div class="step-body">
+              <h4>One Vision</h4>
+              <p>All our brands share the Desire Group philosophy — shaping the future through business done right.</p>
+            </div>
+          </div>
         </div>
-        <p class="brand-type">Restaurant</p>
-        <h3>Food Mahal</h3>
-        <p>Original Taste. An authentic dining destination offering rich flavours and a memorable culinary experience.</p>
       </div>
-
-      <div class="brand-card">
-        <div class="logo-wrap">
-          <img src="logo/tasty-world-logo.jpeg" alt="Tasty World Restaurant" />
-        </div>
-        <p class="brand-type">Restaurant</p>
-        <h3>Tasty World</h3>
-        <p>A world of flavour on every plate. Tasty World Restaurant brings diverse and satisfying meals to every table.</p>
-      </div>
-
-      <div class="brand-card">
-        <div class="logo-wrap">
-          <img src="logo/medwell-logo.jpeg" alt="Medwell Pharmacy" />
-        </div>
-        <p class="brand-type">Pharmacy</p>
-        <h3>Medwell Pharmacy</h3>
-        <p>Delivering the Best Care. Your trusted community pharmacy providing quality medicines and expert health guidance.</p>
-      </div>
-
-      <div class="brand-card">
-        <div class="logo-wrap">
-          <img src="logo/groomers.png" alt="Groomers Mens Saloon" />
-        </div>
-        <p class="brand-type">Men's Saloon</p>
-        <h3>Groomers</h3>
-        <p>Premium men's grooming services in a professional setting. Look sharp, feel confident — every visit.</p>
-      </div>
-
     </div>
   </section>
 
   <!-- CONTACT -->
   <section id="contact">
-    <p class="section-label">Get In Touch</p>
-    <h2 class="section-title">Contact Us</h2>
-    <div class="divider"></div>
-    <p style="color:rgba(255,255,255,0.75); max-width:480px; margin:0 auto; font-size:1rem; line-height:1.7;">
-      Have a question or want to connect with us? We'd love to hear from you.
-    </p>
-    <div class="contact-grid">
-      <div class="contact-item">
-        <div class="contact-icon">🌐</div>
-        <span>Website</span>
-        <a href="https://www.desiregroup.ae" target="_blank">www.desiregroup.ae</a>
-      </div>
-      <div class="contact-item">
-        <div class="contact-icon">✉️</div>
-        <span>Email</span>
-        <a href="mailto:info@desiregroup.ae">info@desiregroup.ae</a>
-      </div>
-      <div class="contact-item">
-        <div class="contact-icon">📍</div>
-        <span>Location</span>
-        <a href="#">United Arab Emirates</a>
+    <div class="section-wrap">
+      <div class="contact-inner">
+        <div class="contact-left">
+          <p class="section-num">04 — Contact</p>
+          <h2 class="section-h">Let's Connect</h2>
+          <p class="section-p">
+            Whether you're a customer, partner, or just want to learn more — we'd love to hear from you.
+          </p>
+        </div>
+        <div class="contact-cards">
+          <a href="https://www.desiregroup.ae" target="_blank" class="contact-card">
+            <div class="contact-card-left">
+              <span class="contact-card-label">Website</span>
+              <span class="contact-card-value">www.desiregroup.ae</span>
+            </div>
+            <span class="contact-card-arrow">↗</span>
+          </a>
+          <a href="mailto:info@desiregroup.ae" class="contact-card">
+            <div class="contact-card-left">
+              <span class="contact-card-label">Email</span>
+              <span class="contact-card-value">info@desiregroup.ae</span>
+            </div>
+            <span class="contact-card-arrow">↗</span>
+          </a>
+          <div class="contact-card">
+            <div class="contact-card-left">
+              <span class="contact-card-label">Location</span>
+              <span class="contact-card-value">United Arab Emirates</span>
+            </div>
+            <span class="contact-card-arrow">📍</span>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- FOOTER -->
   <footer>
-    <p>&copy; 2025 Desire Group. All rights reserved. &nbsp;|&nbsp; Shaping the Future</p>
+    <div class="f-brand">
+      <div class="f-brand-dot"></div>
+      <span>Desire Group</span>
+    </div>
+    <span class="f-copy">&copy; 2025 Desire Group — Shaping the Future</span>
   </footer>
 
 </body>
