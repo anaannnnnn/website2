@@ -480,8 +480,11 @@ var REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
 var HAS_GSAP = typeof window.gsap !== 'undefined';
 
 /* ─────────────────────────────────────────────────────────
-   HERO CONSTELLATION — palette-driven micro-shape drift
-   (triangles / circles / diamonds / squares) behind the veil.
+   HERO 3D CONSTELLATION
+   A rotating Fibonacci point-cloud sphere of micro geometric
+   primitives (triangles / circles / diamonds / squares) drawn
+   from the brand palette, with depth shading, pointer parallax,
+   ambient drift, and scroll-linked spin + scale. Pure canvas 2D.
    ───────────────────────────────────────────────────────── */
 (function initHero() {
   var c = document.getElementById('hero-canvas');
@@ -490,22 +493,47 @@ var HAS_GSAP = typeof window.gsap !== 'undefined';
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var PAL = ['#8052ff', '#ffb829', '#15846e', '#ffffff'];
   var WT  = [0.34, 0.18, 0.16, 0.32];
-  var w, h, parts = [], mx = 0.5, my = 0.5, tx = 0.5, ty = 0.5;
+  var w, h, cx, cy, radius;
+  var pts = [], drift = [];
+  var rot = 0, rx = 0, ry = 0, trx = 0, try_ = 0;
+  var mx = 0.5, my = 0.5, tx = 0.5, ty = 0.5;
+  var scrollY = 0;
 
   function pick() { var r = Math.random(), a = 0; for (var i = 0; i < PAL.length; i++) { a += WT[i]; if (r <= a) return PAL[i]; } return PAL[0]; }
-  function spawn() {
-    var n = Math.min(190, Math.floor(w * h / 8800));
-    parts = [];
-    for (var i = 0; i < n; i++) parts.push({
+
+  function build() {
+    var N = (window.innerWidth < 760 ? 520 : 1050);
+    var gold = Math.PI * (3 - Math.sqrt(5));
+    pts = [];
+    for (var i = 0; i < N; i++) {
+      var y = 1 - (i / (N - 1)) * 2;
+      var r = Math.sqrt(1 - y * y);
+      var th = gold * i;
+      pts.push({
+        x: Math.cos(th) * r, y: y, z: Math.sin(th) * r,
+        s: 1.4 + Math.random() * 3.2, t: (Math.random() * 4) | 0,
+        c: pick(), tw: Math.random() * 6.283
+      });
+    }
+  }
+  function spawnDrift() {
+    var n = (window.innerWidth < 760 ? 36 : 70);
+    drift = [];
+    for (var i = 0; i < n; i++) drift.push({
       x: Math.random() * w, y: Math.random() * h,
-      s: 1 + Math.random() * 3.4, t: (Math.random() * 4) | 0, c: pick(),
-      vx: (Math.random() - 0.5) * 0.12, vy: -0.04 - Math.random() * 0.16,
-      base: 0.08 + Math.random() * 0.34, tw: Math.random() * 6.283, dep: 0.3 + Math.random() * 0.7
+      s: 1 + Math.random() * 2.6, t: (Math.random() * 4) | 0, c: pick(),
+      vy: -0.04 - Math.random() * 0.14, base: 0.06 + Math.random() * 0.22,
+      tw: Math.random() * 6.283, dep: 0.3 + Math.random() * 0.7
     });
   }
   function resize() {
     var r = c.getBoundingClientRect(); w = r.width; h = r.height;
-    c.width = w * dpr; c.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); spawn();
+    c.width = w * dpr; c.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // sphere sits upper-right on wide screens, centred on narrow
+    cx = w < 760 ? w * 0.5 : w * 0.66;
+    cy = w < 760 ? h * 0.40 : h * 0.46;
+    radius = Math.min(w, h) * (w < 760 ? 0.42 : 0.40);
+    spawnDrift();
   }
   function shape(t, x, y, s, col, a) {
     ctx.globalAlpha = a; ctx.fillStyle = col; ctx.strokeStyle = col;
@@ -516,20 +544,54 @@ var HAS_GSAP = typeof window.gsap !== 'undefined';
     ctx.globalAlpha = 1;
   }
   window.addEventListener('mousemove', function (e) { tx = e.clientX / window.innerWidth; ty = e.clientY / window.innerHeight; }, { passive: true });
-  window.addEventListener('resize', resize);
+  window.addEventListener('scroll', function () { scrollY = window.pageYOffset || 0; }, { passive: true });
+  window.addEventListener('resize', function () { resize(); });
+
   function frame(tm) {
     ctx.clearRect(0, 0, w, h);
+
+    // progress through hero (0 → 1) drives spin + gentle scale-down on scroll
+    var prog = h ? Math.min(scrollY / h, 1) : 0;
+
+    // ambient drift behind the sphere
     mx += (tx - mx) * 0.04; my += (ty - my) * 0.04;
-    var ox = (mx - 0.5) * 44, oy = (my - 0.5) * 44;
-    for (var i = 0; i < parts.length; i++) {
-      var p = parts[i];
-      if (!REDUCE) { p.x += p.vx; p.y += p.vy; if (p.y < -8) { p.y = h + 8; p.x = Math.random() * w; } if (p.x < -8) p.x = w + 8; if (p.x > w + 8) p.x = -8; }
-      var tw = REDUCE ? 1 : 0.6 + 0.4 * Math.sin(tm * 0.0015 + p.tw);
-      shape(p.t, p.x + ox * p.dep, p.y + oy * p.dep, p.s, p.c, p.base * tw);
+    var ox = (mx - 0.5) * 40, oy = (my - 0.5) * 40;
+    for (var d = 0; d < drift.length; d++) {
+      var q = drift[d];
+      if (!REDUCE) { q.y += q.vy; if (q.y < -8) { q.y = h + 8; q.x = Math.random() * w; } }
+      var qt = REDUCE ? 1 : 0.6 + 0.4 * Math.sin(tm * 0.0015 + q.tw);
+      shape(q.t, q.x + ox * q.dep, q.y + oy * q.dep, q.s, q.c, q.base * qt);
+    }
+
+    // rotating sphere
+    if (!REDUCE) rot += 0.0016;
+    trx = (my - 0.5) * 0.6; try_ = (mx - 0.5) * 0.9;
+    rx += (trx - rx) * 0.05; ry += (try_ - ry) * 0.05;
+    var spin = rot + ry + prog * 1.2;             // scroll adds extra rotation
+    var tilt = rx + prog * 0.25;
+    var scl = 1 - prog * 0.18;                     // subtle shrink as you scroll
+    var cosY = Math.cos(spin), sinY = Math.sin(spin);
+    var cosX = Math.cos(tilt), sinX = Math.sin(tilt);
+    var R = radius * scl;
+
+    for (var i = 0; i < pts.length; i++) {
+      var p = pts[i];
+      var x1 = p.x * cosY - p.z * sinY;
+      var z1 = p.x * sinY + p.z * cosY;
+      var y1 = p.y * cosX - z1 * sinX;
+      z1 = p.y * sinX + z1 * cosX;
+      var persp = 1 / (1.8 - z1);
+      var sx = cx + x1 * R * persp;
+      var sy = cy + y1 * R * persp;
+      var depth = (z1 + 1) / 2;
+      var tw = REDUCE ? 1 : 0.65 + 0.35 * Math.sin(tm * 0.002 + p.tw);
+      var alpha = (0.16 + depth * 0.72) * tw;
+      var size = p.s * (0.5 + depth * 0.95);
+      shape(p.t, sx, sy, size, p.c, Math.min(alpha, 0.96));
     }
     requestAnimationFrame(frame);
   }
-  resize(); requestAnimationFrame(frame);
+  build(); resize(); requestAnimationFrame(frame);
 })();
 
 /* ─────────────────────────────────────────────────────────
@@ -548,13 +610,63 @@ var HAS_GSAP = typeof window.gsap !== 'undefined';
 })();
 
 /* ─────────────────────────────────────────────────────────
-   MOTION SYSTEM — GSAP + ScrollTrigger + Lenis
+   MOTION SYSTEM — GSAP + ScrollTrigger + Lenis (resilient)
+   The preloader is driven by plain JS and ALWAYS dismisses — even
+   if a CDN file is slow or fails to load — so the page can never
+   get trapped on the loading screen (the cause of mobile hangs).
    ───────────────────────────────────────────────────────── */
-if (HAS_GSAP) {
+var HAS_ST    = HAS_GSAP && typeof window.ScrollTrigger !== 'undefined';
+var HAS_LENIS = typeof window.Lenis !== 'undefined';
+var _started  = false;
+
+function hidePreloader(done) {
+  var pl = document.getElementById('preloader');
+  if (!pl || pl.dataset.hidden) { if (done) done(); return; }
+  pl.dataset.hidden = '1';
+  pl.style.transition = 'opacity .5s ease';
+  pl.style.opacity = '0';
+  setTimeout(function () { pl.style.display = 'none'; if (done) done(); }, 520);
+}
+
+/* Static fallback — reveal everything when GSAP/ScrollTrigger are absent */
+function revealStatic() {
+  document.querySelectorAll('.hero-label,.hero-bot,.about-body,.s-lbl,.s-box,.br-row,.mv-card,.mvc-div,.mvc-body,.c-item')
+    .forEach(function (el) { el.style.opacity = 1; el.style.transform = 'none'; });
+  document.querySelectorAll('.hero-h .ln span,.stmt-h .ln span,.c-big .ln span,.mvc-title span')
+    .forEach(function (el) { el.style.transform = 'none'; });
+  var s1 = document.getElementById('st1'), s3 = document.getElementById('st3');
+  if (s1) s1.textContent = '7'; if (s3) s3.textContent = '5';
+  var nav = document.getElementById('nav');
+  if (nav) window.addEventListener('scroll', function () { nav.classList.toggle('glass', window.pageYOffset > 60); }, { passive: true });
+}
+
+function startMotion() {
+  if (_started) return; _started = true;
+  if (HAS_GSAP && HAS_ST) { try { boot(); return; } catch (e) { revealStatic(); return; } }
+  revealStatic();
+}
+
+/* Preloader — plain JS, no library dependency */
+(function () {
+  var logo = document.querySelector('.pre-logo'); if (logo) logo.style.opacity = '1';
+  var bar = document.getElementById('pre-bar'), pct = document.getElementById('pre-pct'), p = 0;
+  if (REDUCE) { hidePreloader(startMotion); return; }
+  var t = setInterval(function () {
+    p = Math.min(p + Math.random() * 24, 100);
+    if (bar) bar.style.width = p + '%';
+    if (pct) pct.textContent = Math.round(p) + '%';
+    if (p >= 100) { clearInterval(t); setTimeout(function () { hidePreloader(startMotion); }, 240); }
+  }, 55);
+})();
+
+/* Hard failsafe — a slow/blocked CDN can never trap the page */
+setTimeout(function () { hidePreloader(startMotion); }, 4500);
+
+function boot() {
   gsap.registerPlugin(ScrollTrigger);
 
   /* Lenis smooth scroll */
-  if (typeof Lenis !== 'undefined' && !REDUCE) {
+  if (HAS_LENIS && !REDUCE) {
     var lenis = new Lenis({ duration: 1.2, easing: function (t) { return Math.min(1, 1.001 - Math.pow(2, -10 * t)); }, smoothWheel: true });
     lenis.on('scroll', ScrollTrigger.update);
     gsap.ticker.add(function (t) { lenis.raf(t * 1000); });
@@ -564,23 +676,6 @@ if (HAS_GSAP) {
   /* Nav glass */
   ScrollTrigger.create({ start: 'top -60', onUpdate: function (s) { document.getElementById('nav').classList.toggle('glass', s.progress > 0); } });
 
-  /* Preloader → boot */
-  (function () {
-    var bar = document.getElementById('pre-bar'), pct = document.getElementById('pre-pct'), p = 0;
-    gsap.to('.pre-logo', { opacity: 1, duration: 0.5, delay: 0.1, ease: 'power3.out' });
-    var t = setInterval(function () {
-      p = Math.min(p + Math.random() * 20, 100);
-      bar.style.width = p + '%'; pct.textContent = Math.round(p) + '%';
-      if (p >= 100) {
-        clearInterval(t);
-        setTimeout(function () {
-          gsap.to('#preloader', { opacity: 0, duration: 0.55, ease: 'power2.in', onComplete: function () { document.getElementById('preloader').style.display = 'none'; boot(); } });
-        }, 260);
-      }
-    }, 55);
-  })();
-
-  function boot() {
     /* HERO */
     gsap.to('.hero-label', { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' });
     gsap.to('.hero-h .ln span', { y: '0%', duration: 1.1, stagger: 0.13, ease: 'power4.out', delay: 0.15 });
@@ -663,17 +758,6 @@ if (HAS_GSAP) {
 
     ScrollTrigger.refresh();
   }
-} else {
-  /* ── Fallback when GSAP is unavailable: reveal everything ── */
-  (function () {
-    var pl = document.getElementById('preloader'); if (pl) pl.style.display = 'none';
-    document.querySelectorAll('.hero-label,.hero-bot,.about-body,.s-lbl,.s-box,.br-row,.mv-card,.mvc-div,.mvc-body,.c-item').forEach(function (el) { el.style.opacity = 1; el.style.transform = 'none'; });
-    document.querySelectorAll('.hero-h .ln span,.stmt-h .ln span,.c-big .ln span,.mvc-title span').forEach(function (el) { el.style.transform = 'none'; });
-    var st1 = document.getElementById('st1'), st3 = document.getElementById('st3');
-    if (st1) st1.textContent = '7'; if (st3) st3.textContent = '5';
-    window.addEventListener('scroll', function () { document.getElementById('nav').classList.toggle('glass', window.scrollY > 60); });
-  })();
-}
 </script>
 </body>
 </html>
