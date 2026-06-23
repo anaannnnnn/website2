@@ -1,2040 +1,431 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Desire Group — Shaping the Future</title>
-  <meta name="description" content="Desire Group is a diversified business conglomerate shaping the future through excellence across hospitality, healthcare, retail, and creative services in the UAE.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,300&display=swap" rel="stylesheet">
+  <meta name="description" content="Desire Group is a diversified UAE business conglomerate shaping the future through excellence across hospitality, healthcare, retail, grooming and creative media — a family of brands built on trust, innovation and value." />
+  <meta name="theme-color" content="#000000" />
 
-  <style>
-    /* ─── VARIABLES ─────────────────────────────── */
-    :root {
-      --teal:        #0D7377;
-      --teal-dark:   #0A5C5F;
-      --teal-deeper: #074547;
-      --teal-light:  #1A8E92;
-      --gold:        #B8A369;
-      --gold-light:  #CEB97C;
-      --gold-pale:   #F0E9D2;
-      --white:       #FFFFFF;
-      --off-white:   #F7F7F5;
-      --gray-50:     #FAFAF9;
-      --gray-100:    #F4F4F1;
-      --gray-200:    #E5E5E1;
-      --gray-400:    #9CA3AF;
-      --gray-600:    #525252;
-      --dark:        #0A1A1A;
-      --nav-h:       72px;
-      --radius:      16px;
-      --radius-lg:   24px;
-      --shadow-sm:   0 2px 12px rgba(13,115,119,0.08);
-      --shadow-md:   0 8px 32px rgba(13,115,119,0.12);
-      --shadow-lg:   0 20px 60px rgba(13,115,119,0.16);
-      --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
-    }
+  <!-- Open Graph -->
+  <meta property="og:title" content="Desire Group — Shaping the Future" />
+  <meta property="og:description" content="A diversified UAE conglomerate. A family of brands built on trust, innovation and value." />
+  <meta property="og:type" content="website" />
 
-    /* ─── RESET ─────────────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; font-size: 16px; }
-    body {
-      font-family: 'DM Sans', system-ui, sans-serif;
-      background: var(--white);
-      color: var(--dark);
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      overflow-x: hidden;
-    }
-    img { max-width: 100%; display: block; }
-    a { text-decoration: none; color: inherit; }
-    button { cursor: pointer; font-family: inherit; border: none; background: none; }
-    ul { list-style: none; }
+  <!-- Fonts: Inter as the Acronym substitute (weights 200/400/600/700) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;500;600;700&display=swap" rel="stylesheet" />
 
-    /* ─── SCROLL ANIMATION BASE ──────────────────── */
-    .reveal {
-      opacity: 0;
-      transform: translateY(40px);
-      transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
-    }
-    .reveal.visible { opacity: 1; transform: translateY(0); }
-    .reveal-left {
-      opacity: 0;
-      transform: translateX(-50px);
-      transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
-    }
-    .reveal-left.visible { opacity: 1; transform: translateX(0); }
-    .reveal-right {
-      opacity: 0;
-      transform: translateX(50px);
-      transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
-    }
-    .reveal-right.visible { opacity: 1; transform: translateX(0); }
-    .reveal-scale {
-      opacity: 0;
-      transform: scale(0.88);
-      transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
-    }
-    .reveal-scale.visible { opacity: 1; transform: scale(1); }
-    .delay-1 { transition-delay: 0.1s; }
-    .delay-2 { transition-delay: 0.2s; }
-    .delay-3 { transition-delay: 0.3s; }
-    .delay-4 { transition-delay: 0.4s; }
-    .delay-5 { transition-delay: 0.5s; }
-    .delay-6 { transition-delay: 0.6s; }
-
-    /* ─── TYPOGRAPHY ────────────────────────────── */
-    .section-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--gold);
-    }
-    .section-label::before {
-      content: '';
-      display: block;
-      width: 24px;
-      height: 2px;
-      background: var(--gold);
-      border-radius: 2px;
-    }
-    h1, h2, h3, h4 { line-height: 1.1; letter-spacing: -0.02em; }
-    .display { font-size: clamp(3rem, 6vw, 5.5rem); font-weight: 800; }
-    .heading-xl { font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 800; }
-    .heading-lg { font-size: clamp(1.5rem, 3vw, 2.5rem); font-weight: 700; }
-    .heading-md { font-size: clamp(1.2rem, 2vw, 1.6rem); font-weight: 700; }
-    .body-lg { font-size: 1.1rem; line-height: 1.7; color: var(--gray-600); }
-    .body-md { font-size: 0.95rem; line-height: 1.65; color: var(--gray-600); }
-
-    /* ─── LAYOUT ─────────────────────────────────── */
-    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
-    .section { padding: 100px 0; }
-    .section-sm { padding: 70px 0; }
-
-    /* ─── NAVBAR ─────────────────────────────────── */
-    #navbar {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 1000;
-      height: var(--nav-h);
-      display: flex;
-      align-items: center;
-      transition: background 0.4s ease, box-shadow 0.4s ease, backdrop-filter 0.4s ease;
-    }
-    #navbar.scrolled {
-      background: rgba(255,255,255,0.95);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      box-shadow: 0 1px 0 rgba(0,0,0,0.06), 0 4px 20px rgba(0,0,0,0.06);
-    }
-    .nav-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 24px;
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .nav-logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .nav-logo-text {
-      display: flex;
-      flex-direction: column;
-      line-height: 1;
-    }
-    .nav-logo-text .brand-name {
-      font-size: 1rem;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-      color: var(--teal-dark);
-    }
-    .nav-logo-text .brand-tagline {
-      font-size: 0.6rem;
-      font-weight: 500;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-top: 1px;
-    }
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 36px;
-    }
-    .nav-links a {
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: var(--dark);
-      opacity: 0.75;
-      transition: opacity 0.2s, color 0.2s;
-    }
-    .nav-links a:hover { opacity: 1; color: var(--teal); }
-    .nav-cta {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 22px;
-      background: var(--teal);
-      color: white;
-      font-size: 0.875rem;
-      font-weight: 600;
-      border-radius: 50px;
-      transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
-      cursor: pointer;
-    }
-    .nav-cta:hover {
-      background: var(--teal-dark);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 16px rgba(13,115,119,0.3);
-    }
-    .hamburger {
-      display: none;
-      flex-direction: column;
-      gap: 5px;
-      cursor: pointer;
-      padding: 6px;
-    }
-    .hamburger span {
-      display: block;
-      width: 24px;
-      height: 2px;
-      background: var(--dark);
-      border-radius: 2px;
-      transition: transform 0.3s, opacity 0.3s;
-    }
-    .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
-    .hamburger.open span:nth-child(2) { opacity: 0; }
-    .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
-    .mobile-menu {
-      display: none;
-      position: fixed;
-      top: var(--nav-h);
-      left: 0; right: 0;
-      background: white;
-      padding: 24px;
-      border-bottom: 1px solid var(--gray-200);
-      box-shadow: 0 12px 40px rgba(0,0,0,0.1);
-      z-index: 999;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .mobile-menu.open { display: flex; }
-    .mobile-menu a {
-      padding: 14px 16px;
-      font-size: 1rem;
-      font-weight: 500;
-      color: var(--dark);
-      border-radius: 10px;
-      transition: background 0.2s;
-    }
-    .mobile-menu a:hover { background: var(--gray-100); color: var(--teal); }
-    .mobile-menu .nav-cta { margin-top: 8px; justify-content: center; }
-
-    /* ─── HERO ───────────────────────────────────── */
-    #hero {
-      position: relative;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      overflow: hidden;
-      background: var(--white);
-      padding-top: var(--nav-h);
-    }
-    #hero-canvas {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-    }
-    .hero-inner {
-      position: relative;
-      z-index: 2;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 80px 24px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 60px;
-      align-items: center;
-    }
-    .hero-content { max-width: 580px; }
-    .hero-eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--gold-pale);
-      color: var(--teal-dark);
-      font-size: 0.78rem;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      padding: 6px 14px;
-      border-radius: 50px;
-      margin-bottom: 28px;
-      border: 1px solid rgba(184,163,105,0.3);
-    }
-    .hero-eyebrow span.dot {
-      width: 6px; height: 6px;
-      background: var(--gold);
-      border-radius: 50%;
-      display: inline-block;
-      animation: pulse 2s ease infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.4); opacity: 0.7; }
-    }
-    .hero-title {
-      font-size: clamp(2.8rem, 5.5vw, 5rem);
-      font-weight: 800;
-      line-height: 1.05;
-      letter-spacing: -0.03em;
-      color: var(--dark);
-      margin-bottom: 24px;
-    }
-    .hero-title .teal { color: var(--teal); }
-    .hero-title .gold { color: var(--gold); }
-    .hero-desc {
-      font-size: 1.1rem;
-      line-height: 1.7;
-      color: var(--gray-600);
-      margin-bottom: 40px;
-      max-width: 480px;
-    }
-    .hero-actions {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .btn-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 15px 32px;
-      background: var(--teal);
-      color: white;
-      font-size: 0.95rem;
-      font-weight: 600;
-      border-radius: 50px;
-      transition: background 0.25s, transform 0.25s, box-shadow 0.25s;
-      cursor: pointer;
-    }
-    .btn-primary:hover {
-      background: var(--teal-dark);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 28px rgba(13,115,119,0.35);
-    }
-    .btn-secondary {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 14px 28px;
-      color: var(--dark);
-      font-size: 0.95rem;
-      font-weight: 600;
-      border-radius: 50px;
-      border: 2px solid var(--gray-200);
-      transition: border-color 0.25s, color 0.25s, transform 0.25s;
-      cursor: pointer;
-    }
-    .btn-secondary:hover {
-      border-color: var(--teal);
-      color: var(--teal);
-      transform: translateY(-2px);
-    }
-    .hero-stats {
-      display: flex;
-      gap: 32px;
-      margin-top: 52px;
-      padding-top: 40px;
-      border-top: 1px solid var(--gray-200);
-    }
-    .stat-item { text-align: left; }
-    .stat-number {
-      font-size: 2.2rem;
-      font-weight: 800;
-      color: var(--teal);
-      line-height: 1;
-      letter-spacing: -0.03em;
-    }
-    .stat-label {
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--gray-600);
-      margin-top: 4px;
-      letter-spacing: 0.02em;
-    }
-
-    /* 3D HERO VISUAL */
-    .hero-visual {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 520px;
-    }
-    .hex-scene {
-      position: relative;
-      width: 380px;
-      height: 380px;
-      perspective: 900px;
-    }
-    .hex-3d {
-      width: 100%;
-      height: 100%;
-      transform-style: preserve-3d;
-      animation: hexRotate 18s linear infinite;
-      position: relative;
-    }
-    @keyframes hexRotate {
-      0%   { transform: rotateY(0deg) rotateX(8deg); }
-      100% { transform: rotateY(360deg) rotateX(8deg); }
-    }
-    .hex-face {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .hex-svg {
-      width: 100%;
-      height: 100%;
-      filter: drop-shadow(0 24px 48px rgba(13,115,119,0.25));
-    }
-    /* Orbiting rings */
-    .orbit-ring {
-      position: absolute;
-      border-radius: 50%;
-      border: 1.5px solid rgba(184,163,105,0.35);
-      animation: orbitSpin linear infinite;
-    }
-    .orbit-1 { width: 440px; height: 440px; top: -30px; left: -30px; animation-duration: 28s; }
-    .orbit-2 { width: 340px; height: 340px; top: 20px; left: 20px; animation-duration: 20s; animation-direction: reverse; border-color: rgba(13,115,119,0.2); }
-    @keyframes orbitSpin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-    /* Floating brand dots */
-    .brand-dot {
-      position: absolute;
-      width: 52px;
-      height: 52px;
-      background: white;
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
-      font-size: 0.6rem;
-      font-weight: 700;
-      color: var(--teal);
-      letter-spacing: 0.04em;
-      text-align: center;
-      line-height: 1.2;
-      animation: floatDot ease-in-out infinite;
-      border: 1px solid var(--gray-200);
-    }
-    .brand-dot:nth-child(1) { top: 10px;  left: 20px;  animation-duration: 4.2s; animation-delay: 0s; }
-    .brand-dot:nth-child(2) { top: 40px;  right: 10px; animation-duration: 3.8s; animation-delay: 0.6s; }
-    .brand-dot:nth-child(3) { bottom: 60px; left: -10px; animation-duration: 4.5s; animation-delay: 1.1s; }
-    .brand-dot:nth-child(4) { bottom: 30px; right: 20px; animation-duration: 3.6s; animation-delay: 1.8s; }
-    .brand-dot:nth-child(5) { top: 50%; left: -30px; transform: translateY(-50%); animation-duration: 5s; animation-delay: 0.3s; }
-    @keyframes floatDot {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-12px); }
-    }
-    .brand-dot:nth-child(5) {
-      animation: floatDot5 5s ease-in-out infinite 0.3s;
-    }
-    @keyframes floatDot5 {
-      0%, 100% { transform: translateY(-50%); }
-      50% { transform: translateY(calc(-50% - 12px)); }
-    }
-    .hero-bg-shape {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.12;
-      pointer-events: none;
-    }
-    .hero-bg-shape-1 {
-      width: 600px; height: 600px;
-      background: var(--teal);
-      top: -100px; right: -150px;
-    }
-    .hero-bg-shape-2 {
-      width: 400px; height: 400px;
-      background: var(--gold);
-      bottom: -50px; left: 40%;
-    }
-    .scroll-indicator {
-      position: absolute;
-      bottom: 36px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      opacity: 0.5;
-      animation: scrollBounce 2s ease infinite;
-    }
-    @keyframes scrollBounce {
-      0%, 100% { transform: translateX(-50%) translateY(0); opacity: 0.5; }
-      50% { transform: translateX(-50%) translateY(6px); opacity: 0.8; }
-    }
-    .scroll-indicator span {
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--gray-600);
-    }
-
-    /* ─── TICKER STRIP ───────────────────────────── */
-    .ticker-strip {
-      background: var(--teal-deeper);
-      overflow: hidden;
-      padding: 14px 0;
-    }
-    .ticker-track {
-      display: flex;
-      gap: 0;
-      animation: tickerScroll 30s linear infinite;
-      width: max-content;
-    }
-    .ticker-item {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-      padding: 0 40px;
-      white-space: nowrap;
-      font-size: 0.78rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.7);
-    }
-    .ticker-item .dot {
-      width: 4px; height: 4px;
-      background: var(--gold);
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    @keyframes tickerScroll {
-      from { transform: translateX(0); }
-      to { transform: translateX(-50%); }
-    }
-
-    /* ─── ABOUT ──────────────────────────────────── */
-    #about {
-      background: var(--off-white);
-    }
-    .about-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 80px;
-      align-items: center;
-    }
-    .about-visual {
-      position: relative;
-    }
-    .about-card-main {
-      background: var(--teal-deeper);
-      border-radius: var(--radius-lg);
-      padding: 48px 44px;
-      color: white;
-      position: relative;
-      overflow: hidden;
-    }
-    .about-card-main::before {
-      content: '';
-      position: absolute;
-      top: -40px; right: -40px;
-      width: 200px; height: 200px;
-      background: rgba(255,255,255,0.04);
-      border-radius: 50%;
-    }
-    .about-card-main::after {
-      content: '';
-      position: absolute;
-      bottom: -60px; left: -30px;
-      width: 160px; height: 160px;
-      background: rgba(184,163,105,0.12);
-      border-radius: 50%;
-    }
-    .about-big-text {
-      font-size: 5rem;
-      font-weight: 900;
-      color: rgba(255,255,255,0.06);
-      letter-spacing: -0.05em;
-      line-height: 1;
-      margin-bottom: -20px;
-    }
-    .about-card-main h3 {
-      font-size: 1.8rem;
-      font-weight: 800;
-      margin-bottom: 16px;
-      position: relative;
-      z-index: 1;
-    }
-    .about-card-main p {
-      font-size: 0.95rem;
-      line-height: 1.7;
-      color: rgba(255,255,255,0.8);
-      position: relative;
-      z-index: 1;
-    }
-    .about-floating-stat {
-      position: absolute;
-      bottom: -24px;
-      right: -24px;
-      background: white;
-      border-radius: 16px;
-      padding: 20px 24px;
-      box-shadow: var(--shadow-lg);
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    .about-floating-stat .icon {
-      width: 44px; height: 44px;
-      background: var(--gold-pale);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .about-floating-stat .num {
-      font-size: 1.5rem;
-      font-weight: 800;
-      color: var(--teal);
-      line-height: 1;
-    }
-    .about-floating-stat .lbl {
-      font-size: 0.75rem;
-      color: var(--gray-600);
-      margin-top: 2px;
-    }
-    .about-content { }
-    .about-text { margin: 24px 0 36px; }
-    .about-text p + p { margin-top: 16px; }
-    .about-pillars {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    .pillar {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 14px 16px;
-      background: white;
-      border-radius: 12px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--dark);
-      border: 1px solid var(--gray-200);
-      transition: border-color 0.2s, box-shadow 0.2s;
-      cursor: default;
-    }
-    .pillar:hover {
-      border-color: var(--teal);
-      box-shadow: var(--shadow-sm);
-    }
-    .pillar .pillar-icon {
-      width: 32px; height: 32px;
-      background: var(--gold-pale);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    /* ─── WHY CHOOSE US ──────────────────────────── */
-    #why {
-      background: white;
-    }
-    .why-header { text-align: center; max-width: 580px; margin: 0 auto 64px; }
-    .why-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-    }
-    .why-card {
-      background: var(--gray-50);
-      border-radius: var(--radius);
-      padding: 36px 32px;
-      border: 1px solid var(--gray-200);
-      transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out), border-color 0.3s;
-      cursor: default;
-      position: relative;
-      overflow: hidden;
-    }
-    .why-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, var(--teal), var(--gold));
-      transform: scaleX(0);
-      transform-origin: left;
-      transition: transform 0.35s var(--ease-out);
-    }
-    .why-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-md); border-color: transparent; }
-    .why-card:hover::before { transform: scaleX(1); }
-    .why-icon {
-      width: 52px; height: 52px;
-      background: var(--teal);
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 24px;
-      transition: transform 0.3s;
-    }
-    .why-card:hover .why-icon { transform: scale(1.08) rotate(-3deg); }
-    .why-card h3 {
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--dark);
-      margin-bottom: 12px;
-    }
-    .why-card p {
-      font-size: 0.88rem;
-      line-height: 1.65;
-      color: var(--gray-600);
-    }
-    .why-number {
-      position: absolute;
-      top: 20px; right: 24px;
-      font-size: 3.5rem;
-      font-weight: 900;
-      color: rgba(0,0,0,0.04);
-      letter-spacing: -0.04em;
-      line-height: 1;
-      pointer-events: none;
-    }
-
-    /* ─── MISSION VISION VALUES ──────────────────── */
-    #mvv {
-      background: var(--teal-deeper);
-      position: relative;
-      overflow: hidden;
-    }
-    #mvv::before {
-      content: '';
-      position: absolute;
-      top: -200px; left: -200px;
-      width: 500px; height: 500px;
-      background: rgba(184,163,105,0.07);
-      border-radius: 50%;
-      pointer-events: none;
-    }
-    #mvv::after {
-      content: '';
-      position: absolute;
-      bottom: -150px; right: -100px;
-      width: 400px; height: 400px;
-      background: rgba(255,255,255,0.03);
-      border-radius: 50%;
-      pointer-events: none;
-    }
-    .mvv-header { text-align: center; margin-bottom: 64px; }
-    .mvv-header h2 { color: white; }
-    .mvv-header .section-label { color: var(--gold-light); }
-    .mvv-header .section-label::before { background: var(--gold-light); }
-    .mvv-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 2px;
-      background: rgba(255,255,255,0.06);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-    }
-    .mvv-card {
-      background: rgba(255,255,255,0.03);
-      padding: 48px 40px;
-      text-align: center;
-      transition: background 0.3s;
-      position: relative;
-    }
-    .mvv-card:hover { background: rgba(255,255,255,0.07); }
-    .mvv-icon-wrap {
-      width: 72px; height: 72px;
-      border: 2px solid rgba(184,163,105,0.35);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 28px;
-      transition: border-color 0.3s;
-    }
-    .mvv-card:hover .mvv-icon-wrap { border-color: var(--gold); }
-    .mvv-card .mvv-label {
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 8px;
-    }
-    .mvv-card h3 {
-      font-size: 1.4rem;
-      font-weight: 800;
-      color: white;
-      margin-bottom: 20px;
-    }
-    .mvv-card p {
-      font-size: 0.9rem;
-      line-height: 1.7;
-      color: rgba(255,255,255,0.65);
-    }
-
-    /* ─── BRANDS PORTFOLIO ───────────────────────── */
-    #brands {
-      background: var(--off-white);
-    }
-    .brands-header { text-align: center; max-width: 600px; margin: 0 auto 64px; }
-    .brands-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-    }
-    .brand-card {
-      background: white;
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      border: 1px solid var(--gray-200);
-      transition: transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out);
-      cursor: default;
-      display: flex;
-      flex-direction: column;
-    }
-    .brand-card:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 24px 56px rgba(13,115,119,0.14);
-    }
-    .brand-card-img {
-      height: 180px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 32px;
-      background: var(--gray-50);
-      border-bottom: 1px solid var(--gray-200);
-      position: relative;
-      overflow: hidden;
-    }
-    .brand-card-img::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, transparent 60%, rgba(13,115,119,0.04));
-    }
-    .brand-card-img img {
-      max-height: 80px;
-      max-width: 180px;
-      object-fit: contain;
-      filter: saturate(0.9);
-      transition: transform 0.3s, filter 0.3s;
-    }
-    .brand-card:hover .brand-card-img img {
-      transform: scale(1.05);
-      filter: saturate(1.1);
-    }
-    .brand-logo-text {
-      font-size: 1.3rem;
-      font-weight: 800;
-      color: var(--teal);
-      letter-spacing: -0.02em;
-    }
-    .brand-card-body {
-      padding: 28px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-    .brand-tag {
-      display: inline-block;
-      padding: 3px 10px;
-      background: var(--gold-pale);
-      color: var(--teal-dark);
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      border-radius: 50px;
-      margin-bottom: 12px;
-    }
-    .brand-card-body h3 {
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--dark);
-      margin-bottom: 10px;
-    }
-    .brand-card-body p {
-      font-size: 0.83rem;
-      line-height: 1.6;
-      color: var(--gray-600);
-      flex: 1;
-    }
-    .brand-locations {
-      margin-top: 16px;
-      display: flex;
-      align-items: flex-start;
-      gap: 6px;
-      font-size: 0.75rem;
-      color: var(--gray-400);
-    }
-    .brand-locations svg { flex-shrink: 0; margin-top: 1px; }
-    .brand-card-wide {
-      grid-column: span 1;
-    }
-
-    /* ─── CONTACT ────────────────────────────────── */
-    #contact {
-      background: white;
-    }
-    .contact-grid {
-      display: grid;
-      grid-template-columns: 5fr 7fr;
-      gap: 60px;
-      align-items: start;
-    }
-    .contact-info { }
-    .contact-info h2 { margin: 16px 0 20px; }
-    .contact-info .body-lg { margin-bottom: 40px; }
-    .contact-items { display: flex; flex-direction: column; gap: 20px; }
-    .contact-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
-    }
-    .contact-item .ci-icon {
-      width: 44px; height: 44px;
-      background: var(--gold-pale);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    .contact-item .ci-text .ci-label {
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 3px;
-    }
-    .contact-item .ci-text .ci-value {
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: var(--dark);
-    }
-    .contact-form-wrap {
-      background: var(--gray-50);
-      border: 1px solid var(--gray-200);
-      border-radius: var(--radius-lg);
-      padding: 44px 40px;
-    }
-    .contact-form-wrap h3 {
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: var(--dark);
-      margin-bottom: 8px;
-    }
-    .contact-form-wrap .sub {
-      font-size: 0.88rem;
-      color: var(--gray-600);
-      margin-bottom: 32px;
-    }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
-    .form-group label {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--dark);
-      letter-spacing: 0.02em;
-    }
-    .form-group input,
-    .form-group select,
-    .form-group textarea {
-      padding: 12px 16px;
-      border: 1.5px solid var(--gray-200);
-      border-radius: 10px;
-      font-size: 0.9rem;
-      font-family: inherit;
-      color: var(--dark);
-      background: white;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      outline: none;
-      -webkit-appearance: none;
-    }
-    .form-group input:focus,
-    .form-group select:focus,
-    .form-group textarea:focus {
-      border-color: var(--teal);
-      box-shadow: 0 0 0 3px rgba(13,115,119,0.1);
-    }
-    .form-group textarea { resize: vertical; min-height: 110px; }
-    .btn-submit {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      width: 100%;
-      padding: 15px 32px;
-      background: var(--teal);
-      color: white;
-      font-size: 0.95rem;
-      font-weight: 600;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: background 0.25s, transform 0.25s, box-shadow 0.25s;
-      margin-top: 8px;
-    }
-    .btn-submit:hover {
-      background: var(--teal-dark);
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(13,115,119,0.3);
-    }
-    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-    .form-success {
-      display: none;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 12px;
-      padding: 32px;
-      text-align: center;
-    }
-    .form-success.show { display: flex; }
-
-    /* ─── FOOTER ─────────────────────────────────── */
-    footer {
-      background: var(--teal-deeper);
-      color: white;
-      padding: 64px 0 32px;
-    }
-    .footer-grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr 1.5fr;
-      gap: 48px;
-      padding-bottom: 48px;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      margin-bottom: 32px;
-    }
-    .footer-brand p {
-      font-size: 0.88rem;
-      line-height: 1.7;
-      color: rgba(255,255,255,0.55);
-      margin: 16px 0 24px;
-      max-width: 280px;
-    }
-    .footer-social { display: flex; gap: 10px; }
-    .social-btn {
-      width: 36px; height: 36px;
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s, border-color 0.2s;
-      cursor: pointer;
-    }
-    .social-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
-    .footer-col h4 {
-      font-size: 0.8rem;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 20px;
-    }
-    .footer-col ul li + li { margin-top: 10px; }
-    .footer-col ul li a {
-      font-size: 0.88rem;
-      color: rgba(255,255,255,0.55);
-      transition: color 0.2s;
-    }
-    .footer-col ul li a:hover { color: white; }
-    .footer-newsletter p {
-      font-size: 0.85rem;
-      color: rgba(255,255,255,0.55);
-      line-height: 1.6;
-      margin-bottom: 16px;
-    }
-    .newsletter-form {
-      display: flex;
-      gap: 8px;
-    }
-    .newsletter-form input {
-      flex: 1;
-      padding: 10px 14px;
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px;
-      color: white;
-      font-size: 0.85rem;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .newsletter-form input::placeholder { color: rgba(255,255,255,0.35); }
-    .newsletter-form input:focus { border-color: var(--gold); }
-    .newsletter-form button {
-      padding: 10px 16px;
-      background: var(--gold);
-      color: var(--teal-deeper);
-      font-size: 0.85rem;
-      font-weight: 700;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.2s;
-      white-space: nowrap;
-    }
-    .newsletter-form button:hover { background: var(--gold-light); }
-    .footer-bottom {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .footer-bottom p {
-      font-size: 0.8rem;
-      color: rgba(255,255,255,0.35);
-    }
-    .footer-bottom-links {
-      display: flex;
-      gap: 24px;
-    }
-    .footer-bottom-links a {
-      font-size: 0.8rem;
-      color: rgba(255,255,255,0.35);
-      transition: color 0.2s;
-    }
-    .footer-bottom-links a:hover { color: rgba(255,255,255,0.7); }
-
-    /* ─── GOLD DIVIDER ───────────────────────────── */
-    .gold-divider {
-      width: 60px; height: 3px;
-      background: linear-gradient(90deg, var(--gold), var(--gold-light));
-      border-radius: 2px;
-      margin: 16px 0 24px;
-    }
-
-    /* ─── BACK TO TOP ────────────────────────────── */
-    #back-top {
-      position: fixed;
-      bottom: 32px; right: 32px;
-      width: 44px; height: 44px;
-      background: var(--teal);
-      color: white;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 20px rgba(13,115,119,0.4);
-      cursor: pointer;
-      opacity: 0;
-      transform: translateY(16px);
-      transition: opacity 0.3s, transform 0.3s;
-      z-index: 500;
-    }
-    #back-top.show { opacity: 1; transform: translateY(0); }
-    #back-top:hover { background: var(--teal-dark); }
-
-    /* ─── REDUCED MOTION ─────────────────────────── */
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-      .reveal, .reveal-left, .reveal-right, .reveal-scale { opacity: 1; transform: none; }
-    }
-
-    /* ─── RESPONSIVE ─────────────────────────────── */
-    @media (max-width: 1024px) {
-      .hero-inner { grid-template-columns: 1fr; gap: 48px; }
-      .hero-content { max-width: 100%; }
-      .hero-visual { height: 360px; }
-      .hex-scene { width: 300px; height: 300px; }
-      .orbit-1 { width: 360px; height: 360px; top: -30px; left: -30px; }
-      .orbit-2 { width: 270px; height: 270px; top: 15px; left: 15px; }
-      .about-grid { grid-template-columns: 1fr; gap: 48px; }
-      .why-grid { grid-template-columns: repeat(2, 1fr); }
-      .mvv-grid { grid-template-columns: 1fr; }
-      .mvv-card { padding: 36px 28px; }
-      .brands-grid { grid-template-columns: repeat(2, 1fr); }
-      .contact-grid { grid-template-columns: 1fr; gap: 48px; }
-      .footer-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
-    }
-    .tasty-wide { grid-column: span 3; }
-    .tasty-inner { display: grid; grid-template-columns: 320px 1fr; min-height: 200px; }
-
-    @media (max-width: 1024px) {
-      .tasty-wide { grid-column: span 2; }
-      .tasty-inner { grid-template-columns: 240px 1fr; }
-    }
-
-    @media (max-width: 768px) {
-      .nav-links { display: none; }
-      .nav-cta.desktop { display: none; }
-      .hamburger { display: flex; }
-      .section { padding: 70px 0; }
-      .hero-inner { padding: 60px 20px; }
-      .hero-visual { display: none; }
-      .why-grid { grid-template-columns: 1fr; }
-      .brands-grid { grid-template-columns: 1fr; }
-      .tasty-wide { grid-column: span 1; }
-      .tasty-inner { grid-template-columns: 1fr; }
-      .tasty-inner .brand-card-img { height: 160px; border-right: none; border-bottom: 1px solid var(--gray-200); border-radius: 0; }
-      .form-row { grid-template-columns: 1fr; }
-      .footer-grid { grid-template-columns: 1fr; }
-      .footer-bottom { flex-direction: column; gap: 16px; text-align: center; }
-      .contact-form-wrap { padding: 28px 24px; }
-      .hero-stats { gap: 20px; }
-      .stat-number { font-size: 1.8rem; }
-    }
-  </style>
+  <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
 <body>
 
-  <!-- ─── NAVBAR ─── -->
-  <nav id="navbar">
-    <div class="nav-inner">
-      <a href="#hero" class="nav-logo" aria-label="Desire Group Home">
-        <!-- Logo SVG -->
-        <svg width="40" height="40" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M40 6 L68 22 L68 54 L40 70 L12 54 L12 22 Z" fill="#0A5C5F" rx="6"/>
-          <path d="M40 10 L64 24.5 L64 51.5 L40 66 L16 51.5 L16 24.5 Z" fill="#0D7377"/>
-          <!-- notch arc creating D shape -->
-          <path d="M40 10 L16 24.5 Q12 20 16 14 L40 6 Z" fill="#0A5C5F"/>
-          <circle cx="40" cy="38" r="16" fill="none" stroke="white" stroke-width="5"/>
-          <circle cx="40" cy="38" r="6" fill="white"/>
-        </svg>
-        <div class="nav-logo-text">
-          <span class="brand-name">DESIRE GROUP</span>
-          <span class="brand-tagline">Shaping the Future</span>
-        </div>
-      </a>
+  <!-- Ambient constellation drift — fixed behind everything -->
+  <canvas id="bg-constellation" aria-hidden="true"></canvas>
 
-      <ul class="nav-links" role="list">
-        <li><a href="#about">Who We Are</a></li>
-        <li><a href="#why">Why Us</a></li>
-        <li><a href="#mvv">Mission</a></li>
-        <li><a href="#brands">Our Brands</a></li>
-        <li><a href="#contact">Contact</a></li>
-      </ul>
+  <!-- ───────────────────────────── NAV ───────────────────────────── -->
+  <nav class="nav" aria-label="Primary">
+    <a href="#top" class="brandmark" aria-label="Desire Group home">
+      <svg class="brandmark__icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path d="M16 2.7 27.5 9v14L16 29.3 4.5 23V9L16 2.7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M19.5 9.5v9.2a5.3 5.3 0 1 1-2.4-4.45" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="14.4" cy="16.2" r="2.5" fill="currentColor"/>
+      </svg>
+      <span class="brandmark__name">DESIRE GROUP</span>
+    </a>
 
-      <a href="#contact" class="nav-cta desktop" aria-label="Get in touch with Desire Group">Get In Touch</a>
+    <ul class="nav__links" id="nav-links">
+      <li><a class="nav__link" href="#about">About</a></li>
+      <li><a class="nav__link" href="#purpose">Purpose</a></li>
+      <li><a class="nav__link" href="#brands">Brands</a></li>
+      <li><a class="nav__link" href="#contact">Contact</a></li>
+      <li><a class="btn btn--ghost nav__cta-mobile" href="#contact">Get in touch</a></li>
+    </ul>
 
-      <button class="hamburger" id="hamburger" aria-label="Open navigation menu" aria-expanded="false">
-        <span></span><span></span><span></span>
-      </button>
-    </div>
+    <a href="#contact" class="btn btn--primary nav__cta-desktop">Get in touch</a>
+
+    <button class="nav__toggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="nav-links">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </button>
   </nav>
 
-  <!-- Mobile Menu -->
-  <div class="mobile-menu" id="mobile-menu" role="navigation" aria-label="Mobile navigation">
-    <a href="#about" class="mobile-link">Who We Are</a>
-    <a href="#why" class="mobile-link">Why Choose Us</a>
-    <a href="#mvv" class="mobile-link">Mission & Vision</a>
-    <a href="#brands" class="mobile-link">Our Brands</a>
-    <a href="#contact" class="mobile-link">Contact</a>
-    <a href="#contact" class="nav-cta">Get In Touch</a>
-  </div>
+  <main class="page" id="top">
 
-  <!-- ─── HERO ─── -->
-  <section id="hero">
-    <canvas id="hero-canvas" aria-hidden="true"></canvas>
-    <div class="hero-bg-shape hero-bg-shape-1" aria-hidden="true"></div>
-    <div class="hero-bg-shape hero-bg-shape-2" aria-hidden="true"></div>
+    <!-- ───────────────────────────── HERO ───────────────────────────── -->
+    <header class="hero" id="hero">
+      <div class="hero__visual" aria-hidden="true">
+        <canvas id="hero-canvas"></canvas>
+      </div>
 
-    <div class="hero-inner">
-      <div class="hero-content">
-        <div class="hero-eyebrow">
-          <span class="dot" aria-hidden="true"></span>
-          UAE's Multi-Sector Conglomerate
-        </div>
-        <h1 class="hero-title">
-          Shaping the<br>
-          <span class="teal">Future,</span> One<br>
-          <span class="gold">Brand</span> at a Time
-        </h1>
-        <p class="hero-desc">
-          A diversified business conglomerate driving excellence across hospitality, healthcare, retail, creative media, and grooming services across the UAE.
-        </p>
-        <div class="hero-actions">
-          <a href="#brands" class="btn-primary">
-            Explore Our Brands
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
-          </a>
-          <a href="#contact" class="btn-secondary">
-            Get In Touch
-          </a>
-        </div>
-        <div class="hero-stats">
-          <div class="stat-item">
-            <div class="stat-number" data-count="7">0</div>
-            <div class="stat-label">Active Brands</div>
+      <div class="wrap">
+        <div class="hero__copy">
+          <p class="eyebrow eyebrow--plum hero__eyebrow" data-hero>Diversified business conglomerate · UAE</p>
+          <h1 class="display hero__title">
+            <span class="line" data-hero><span>Shaping</span></span>
+            <span class="line" data-hero><span>the <em>future.</em></span></span>
+          </h1>
+          <p class="body subheading measure hero__lead body--bone" data-hero>
+            Founded to innovate, inspire and impact — Desire Group is a family of
+            brands across hospitality, healthcare, retail, grooming and creative
+            media, all driven by a single purpose: to deliver quality experiences
+            that enrich everyday life.
+          </p>
+          <div class="hero__actions" data-hero>
+            <a href="#brands" class="btn btn--primary btn--lg">Explore our brands</a>
+            <a href="#about" class="btn btn--ghost btn--lg">Our story</a>
           </div>
-          <div class="stat-item">
-            <div class="stat-number" data-count="10">0</div>
-            <div class="stat-label">+ Locations</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-number" data-count="5">0</div>
-            <div class="stat-label">Industries</div>
+
+          <div class="hero__stats" data-hero>
+            <div class="stat">
+              <div class="stat__num"><span data-count="7">0</span></div>
+              <div class="stat__label">Brands</div>
+            </div>
+            <div class="stat">
+              <div class="stat__num"><span data-count="5">0</span></div>
+              <div class="stat__label">Industries</div>
+            </div>
+            <div class="stat">
+              <div class="stat__num"><em><span data-count="14" data-suffix="+">0</span></em></div>
+              <div class="stat__label">Locations</div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- 3D Visual -->
-      <div class="hero-visual" aria-hidden="true">
-        <div class="orbit-ring orbit-1"></div>
-        <div class="orbit-ring orbit-2"></div>
+      <div class="scroll-hint" aria-hidden="true">
+        <span class="scroll-hint__line"></span> Scroll
+      </div>
+    </header>
 
-        <!-- Floating brand labels -->
-        <div class="brand-dot">FULL<br>DAY</div>
-        <div class="brand-dot">FOOD<br>MAHAL</div>
-        <div class="brand-dot">MED<br>WELL</div>
-        <div class="brand-dot">PICS-L<br>STUDIO</div>
-        <div class="brand-dot">GROO<br>MERS</div>
+    <!-- ───────────────────────────── ABOUT ───────────────────────────── -->
+    <section class="section-pad" id="about">
+      <div class="wrap">
+        <div class="section-head" data-reveal>
+          <p class="eyebrow eyebrow--amber">About our group</p>
+          <h2 class="heading-lg">A single purpose,<br/>many ventures.</h2>
+        </div>
 
-        <div class="hex-scene">
-          <div class="hex-3d">
-            <div class="hex-face">
-              <svg class="hex-svg" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="hexGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#0D7377"/>
-                    <stop offset="100%" stop-color="#0A5C5F"/>
-                  </linearGradient>
-                  <linearGradient id="hexGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#B8A369" stop-opacity="0.6"/>
-                    <stop offset="100%" stop-color="#CEB97C" stop-opacity="0.2"/>
-                  </linearGradient>
-                  <filter id="glow">
-                    <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
-                    <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                  </filter>
-                </defs>
-                <!-- Outer hexagon -->
-                <path d="M150 20 L262 82.5 L262 207.5 L150 270 L38 207.5 L38 82.5 Z" fill="url(#hexGrad)" filter="url(#glow)"/>
-                <!-- Gold accent ring -->
-                <path d="M150 20 L262 82.5 L262 207.5 L150 270 L38 207.5 L38 82.5 Z" fill="none" stroke="url(#hexGrad2)" stroke-width="2" transform="scale(1.08) translate(-11,-11)"/>
-                <!-- Notch cutout (D shape) -->
-                <path d="M150 30 L38 91 Q20 80 30 60 L90 24 Z" fill="#0A5C5F"/>
-                <!-- Inner ring -->
-                <circle cx="150" cy="148" r="62" fill="none" stroke="white" stroke-width="12" stroke-opacity="0.9"/>
-                <!-- Center dot -->
-                <circle cx="150" cy="148" r="22" fill="white"/>
-                <!-- Small gold accents -->
-                <circle cx="150" cy="148" r="90" fill="none" stroke="rgba(184,163,105,0.2)" stroke-width="1" stroke-dasharray="4 8"/>
-              </svg>
-            </div>
+        <div class="about__grid">
+          <div class="about__body measure" data-reveal>
+            <p class="body subheading body--bone">
+              With a strong presence across multiple industries, Desire Group is a
+              diversified conglomerate shaping the future through excellence — in
+              hospitality, healthcare, creative media and grooming services.
+            </p>
+            <p class="body">
+              Our journey began with a simple idea: to create brands that stand for
+              trust, innovation and value. Today, Desire Group proudly operates a
+              portfolio of successful ventures that have earned the confidence of
+              our customers and partners alike — each one built to enrich everyday life.
+            </p>
           </div>
+
+          <aside class="about__aside" data-reveal data-delay="0.1">
+            <h3 class="heading-sm">Where we operate</h3>
+            <div class="tags">
+              <span class="tag">Hospitality</span>
+              <span class="tag">Healthcare</span>
+              <span class="tag">Retail &amp; Grocery</span>
+              <span class="tag">Grooming</span>
+              <span class="tag">Creative media</span>
+            </div>
+          </aside>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Scroll indicator -->
-    <div class="scroll-indicator" aria-hidden="true">
-      <span>Scroll</span>
-      <svg width="16" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 16 20">
-        <rect x="2" y="1" width="12" height="17" rx="6" stroke-opacity="0.5"/>
-        <circle cx="8" cy="6" r="2" fill="currentColor" opacity="0.5">
-          <animate attributeName="cy" values="6;12;6" dur="1.6s" repeatCount="indefinite"/>
-          <animate attributeName="opacity" values="0.5;0.1;0.5" dur="1.6s" repeatCount="indefinite"/>
-        </circle>
-      </svg>
-    </div>
-  </section>
-
-  <!-- ─── TICKER ─── -->
-  <div class="ticker-strip" aria-hidden="true">
-    <div class="ticker-track">
-      <!-- Duplicated for seamless loop -->
-      <div class="ticker-item"><span class="dot"></span>FullDay Supermarket</div>
-      <div class="ticker-item"><span class="dot"></span>Food Mahal Restaurant</div>
-      <div class="ticker-item"><span class="dot"></span>Crescent Cafeteria</div>
-      <div class="ticker-item"><span class="dot"></span>Groomers Men's Saloon</div>
-      <div class="ticker-item"><span class="dot"></span>Medwell Pharmacy</div>
-      <div class="ticker-item"><span class="dot"></span>PICS-L Studio</div>
-      <div class="ticker-item"><span class="dot"></span>Tasty World Restaurant</div>
-      <div class="ticker-item"><span class="dot"></span>Shaping the Future</div>
-      <div class="ticker-item"><span class="dot"></span>FullDay Supermarket</div>
-      <div class="ticker-item"><span class="dot"></span>Food Mahal Restaurant</div>
-      <div class="ticker-item"><span class="dot"></span>Crescent Cafeteria</div>
-      <div class="ticker-item"><span class="dot"></span>Groomers Men's Saloon</div>
-      <div class="ticker-item"><span class="dot"></span>Medwell Pharmacy</div>
-      <div class="ticker-item"><span class="dot"></span>PICS-L Studio</div>
-      <div class="ticker-item"><span class="dot"></span>Tasty World Restaurant</div>
-      <div class="ticker-item"><span class="dot"></span>Shaping the Future</div>
-    </div>
-  </div>
-
-  <!-- ─── WHO WE ARE ─── -->
-  <section id="about" class="section">
-    <div class="container">
-      <div class="about-grid">
-        <!-- Visual side -->
-        <div class="about-visual reveal-left">
-          <div class="about-card-main">
-            <div class="about-big-text">DG</div>
-            <h3>A Conglomerate Built on Purpose</h3>
-            <p>Every brand under Desire Group is crafted with intentionality — to serve real needs, build genuine trust, and make an impact in people's everyday lives.</p>
-          </div>
-          <div class="about-floating-stat">
-            <div class="icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B8A369" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            </div>
-            <div>
-              <div class="num">UAE</div>
-              <div class="lbl">Multi-City Presence</div>
-            </div>
-          </div>
+    <!-- ───────────────────── MISSION / VISION / VALUES ───────────────── -->
+    <section class="section-pad" id="purpose">
+      <div class="wrap">
+        <div class="section-head" data-reveal>
+          <p class="eyebrow eyebrow--plum">What drives us</p>
+          <h2 class="heading-lg">Mission. Vision.<br/>Values.</h2>
         </div>
 
-        <!-- Content side -->
-        <div class="about-content reveal-right">
-          <span class="section-label">Who We Are</span>
-          <h2 class="heading-xl" style="margin: 16px 0 0;">About<br>Desire Group</h2>
-          <div class="gold-divider"></div>
-          <div class="about-text">
-            <p class="body-lg">Founded with a vision to innovate, inspire, and impact, Desire Group is a diversified business conglomerate shaping the future through excellence across multiple industries.</p>
-            <p class="body-md" style="margin-top:16px;">With a strong presence in hospitality, healthcare, creative media, and grooming services, we are driven by a single purpose — to deliver quality experiences that enrich everyday life.</p>
-            <p class="body-md" style="margin-top:16px;">Our journey began with a simple idea: to create brands that stand for trust, innovation, and value. Today, Desire Group proudly operates a portfolio of successful ventures that have earned the confidence of our customers and partners alike.</p>
-          </div>
-          <div class="about-pillars">
-            <div class="pillar reveal delay-1">
-              <div class="pillar-icon">
-                <svg width="16" height="16" fill="none" stroke="#B8A369" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
-              </div>
-              Hospitality
-            </div>
-            <div class="pillar reveal delay-2">
-              <div class="pillar-icon">
-                <svg width="16" height="16" fill="none" stroke="#B8A369" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18"/></svg>
-              </div>
-              Healthcare
-            </div>
-            <div class="pillar reveal delay-3">
-              <div class="pillar-icon">
-                <svg width="16" height="16" fill="none" stroke="#B8A369" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path stroke-linecap="round" d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.73l1.38-9H6"/></svg>
-              </div>
-              Retail
-            </div>
-            <div class="pillar reveal delay-4">
-              <div class="pillar-icon">
-                <svg width="16" height="16" fill="none" stroke="#B8A369" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-              </div>
-              Creative Media
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── WHY CHOOSE US ─── -->
-  <section id="why" class="section">
-    <div class="container">
-      <div class="why-header reveal">
-        <span class="section-label">Why Choose Us</span>
-        <h2 class="heading-xl" style="margin: 16px 0 16px;">What Sets Us Apart</h2>
-        <p class="body-lg">Built on a foundation of trust, quality, and continuous innovation — here's why businesses and communities choose Desire Group.</p>
-      </div>
-      <div class="why-grid">
-        <div class="why-card reveal delay-1">
-          <span class="why-number" aria-hidden="true">01</span>
-          <div class="why-icon" aria-hidden="true">
-            <svg width="24" height="24" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
-          </div>
-          <h3>Multi-Industry Excellence</h3>
-          <p>Our expertise spans hospitality, healthcare, retail, creative media, and grooming — allowing us to understand diverse markets and deliver exceptional results across sectors.</p>
-        </div>
-        <div class="why-card reveal delay-2">
-          <span class="why-number" aria-hidden="true">02</span>
-          <div class="why-icon" aria-hidden="true">
-            <svg width="24" height="24" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-          </div>
-          <h3>Customer-First Approach</h3>
-          <p>Every decision we make centers around enriching the customer experience. We listen, adapt, and consistently deliver value that exceeds expectations.</p>
-        </div>
-        <div class="why-card reveal delay-3">
-          <span class="why-number" aria-hidden="true">03</span>
-          <div class="why-icon" aria-hidden="true">
-            <svg width="24" height="24" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          </div>
-          <h3>Trusted & Proven Brands</h3>
-          <p>Our portfolio of 7 brands across the UAE reflects a track record of consistent quality, customer loyalty, and community trust built over years of dedicated service.</p>
-        </div>
-        <div class="why-card reveal delay-1">
-          <span class="why-number" aria-hidden="true">04</span>
-          <div class="why-icon" aria-hidden="true">
-            <svg width="24" height="24" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-          </div>
-          <h3>Innovation at Our Core</h3>
-          <p>We embrace change and continually invest in new ideas, technologies, and service models to ensure our brands remain relevant, modern, and ahead of the curve.</p>
-        </div>
-        <div class="why-card reveal delay-2">
-          <span class="why-number" aria-hidden="true">05</span>
-          <div class="why-icon" aria-hidden="true">
-            <svg width="24" height="24" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-          </div>
-          <h3>Community-Centered Growth</h3>
-          <p>Our brands are woven into the communities they serve. We believe in growing together — creating employment, nurturing talent, and contributing to sustainable local development.</p>
-        </div>
-        <div class="why-card reveal delay-3">
-          <span class="why-number" aria-hidden="true">06</span>
-          <div class="why-icon" aria-hidden="true">
-            <svg width="24" height="24" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
-          </div>
-          <h3>Uncompromising Quality</h3>
-          <p>From sourcing to service, quality is the cornerstone of everything we do. We maintain the highest standards across all our brands so our customers always get the best.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── MISSION VISION VALUES ─── -->
-  <section id="mvv" class="section">
-    <div class="container">
-      <div class="mvv-header reveal">
-        <span class="section-label" style="color:var(--gold-light);--gold:var(--gold-light);">Our Foundation</span>
-        <h2 class="heading-xl" style="color:white; margin-top:16px;">Mission, Vision & Values</h2>
-      </div>
-      <div class="mvv-grid">
-        <div class="mvv-card reveal delay-1">
-          <div class="mvv-icon-wrap">
-            <svg width="32" height="32" fill="none" stroke="#B8A369" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="#B8A369"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
-          </div>
-          <div class="mvv-label">Our Mission</div>
-          <h3>Purpose-Driven Excellence</h3>
-          <p>To create sustainable business ventures that enhance lifestyles, promote well-being, and empower creativity — while maintaining the highest standards of service and integrity.</p>
-        </div>
-        <div class="mvv-card reveal delay-2">
-          <div class="mvv-icon-wrap">
-            <svg width="32" height="32" fill="none" stroke="#B8A369" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-          </div>
-          <div class="mvv-label">Our Vision</div>
-          <h3>A Leading Multi-Sector Enterprise</h3>
-          <p>To be a leading multi-sector enterprise recognized for excellence, innovation, and commitment to shaping a better future for our communities across the region and beyond.</p>
-        </div>
-        <div class="mvv-card reveal delay-3">
-          <div class="mvv-icon-wrap">
-            <svg width="32" height="32" fill="none" stroke="#B8A369" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"/></svg>
-          </div>
-          <div class="mvv-label">Our Values</div>
-          <h3>Integrity, Innovation & Excellence</h3>
-          <p>We stand for integrity, innovation, and excellence. We value our customers, believe in sustainable growth, and remain committed to delivering quality and trust across every brand we create.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── OUR BRANDS ─── -->
-  <section id="brands" class="section">
-    <div class="container">
-      <div class="brands-header reveal">
-        <span class="section-label">Our Portfolio</span>
-        <h2 class="heading-xl" style="margin: 16px 0 16px;">A Family of Brands<br>Shaping the Future</h2>
-        <p class="body-lg">Each brand under Desire Group is a distinct identity built with purpose — serving real communities, real needs, and real moments.</p>
-      </div>
-      <div class="brands-grid">
-
-        <!-- FullDay -->
-        <div class="brand-card reveal delay-1">
-          <div class="brand-card-img">
-            <img src="logo/desire-group-all-brands.png" alt="FullDay Supermarket logo" style="max-height:100px; max-width:220px; object-fit:cover; object-position:left center;">
-          </div>
-          <div class="brand-card-body">
-            <span class="brand-tag">Retail</span>
-            <h3>FullDay</h3>
-            <p>A growing lifestyle retail brand bringing quality supermarket, mini mart, and grocery services closer to every neighbourhood. Because every day deserves the best.</p>
-            <div class="brand-locations">
-              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-              KBT Building, Jabal Ali Ind Area 3
-            </div>
-          </div>
-        </div>
-
-        <!-- Food Mahal -->
-        <div class="brand-card reveal delay-2">
-          <div class="brand-card-img">
-            <img src="logo/food-mahal-logo.png" alt="Food Mahal Restaurant logo">
-          </div>
-          <div class="brand-card-body">
-            <span class="brand-tag">Hospitality</span>
-            <h3>Food Mahal Restaurant</h3>
-            <p>A destination for authentic flavors — serving Indian, Pakistani, Malabar, Chinese, and Filipino cuisines. Fresh, flavorful, and made with care for every budget.</p>
-            <div class="brand-locations">
-              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-              KBT Building, Jabal Ali Ind Area 3
-            </div>
-          </div>
-        </div>
-
-        <!-- Crescent Cafeteria -->
-        <div class="brand-card reveal delay-3">
-          <div class="brand-card-img">
-            <img src="logo/crescent-logo.png" alt="Crescent Cafeteria logo">
-          </div>
-          <div class="brand-card-body">
-            <span class="brand-tag">Hospitality</span>
-            <h3>Crescent Cafeteria</h3>
-            <p>A modern, energetic dining spot built for today's fast-moving crowd. Quick service, vibrant atmosphere, and freshly made food — from aromatic coffees to crispy snacks.</p>
-            <div class="brand-locations">
-              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-              Dip 1, Dip 2, Al Quoz Mall
-            </div>
-          </div>
-        </div>
-
-        <!-- Groomers -->
-        <div class="brand-card reveal delay-1">
-          <div class="brand-card-img">
-            <img src="logo/groomers.png" alt="Groomers Men's Saloon logo">
-          </div>
-          <div class="brand-card-body">
-            <span class="brand-tag">Grooming</span>
-            <h3>Groomers Men's Saloon</h3>
-            <p>Redefining modern men's grooming with style, sophistication, and precision. From classic haircuts to advanced treatments — it's more than grooming, it's a statement.</p>
-            <div class="brand-locations">
-              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-              Al Jazeera Al Hamra Freezone & Industrial Area
-            </div>
-          </div>
-        </div>
-
-        <!-- Medwell Pharmacy -->
-        <div class="brand-card reveal delay-2">
-          <div class="brand-card-img">
-            <img src="logo/medwell-logo.jpeg" alt="Medwell Pharmacy logo">
-          </div>
-          <div class="brand-card-body">
-            <span class="brand-tag">Healthcare</span>
-            <h3>Medwell Pharmacy</h3>
-            <p>Committed to improving health and well-being through trusted, accessible healthcare services. Quality medicines, wellness products, and personalized pharmacist support.</p>
-            <div class="brand-locations">
-              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-              Dubai, Dubai Investments Park, RAK
-            </div>
-          </div>
-        </div>
-
-        <!-- PICS-L Studio -->
-        <div class="brand-card reveal delay-3">
-          <div class="brand-card-img" style="background: var(--teal-deeper);">
-            <div class="brand-logo-text" style="color:white; font-size:1.6rem;">
-              <span style="color:var(--gold);">PICS-L</span> STUDIO
-            </div>
-          </div>
-          <div class="brand-card-body">
-            <span class="brand-tag">Creative Media</span>
-            <h3>PICS-L Studio</h3>
-            <p>Where creativity meets precision. Professional photography and videography for portraits, events, corporate campaigns, and commercial productions — visual stories that connect and endure.</p>
-            <div class="brand-locations">
-              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-              Dip-1, Jabal Ali, Al Jazeera Al Hamra RAK
-            </div>
-          </div>
-        </div>
-
-        <!-- Tasty World - spans wider -->
-        <div class="brand-card reveal delay-1 tasty-wide">
-          <div class="tasty-inner">
-            <div class="brand-card-img" style="height:100%; border-right:1px solid var(--gray-200); border-bottom:none; border-radius:0;">
-              <img src="logo/tasty-world-logo.jpeg" alt="Tasty World Restaurant logo" style="max-height:100px;">
-            </div>
-            <div class="brand-card-body" style="padding: 32px 36px;">
-              <span class="brand-tag">Hospitality</span>
-              <h3>Tasty World Restaurant</h3>
-              <p>A long-standing culinary destination known for diverse menu and commitment to exceptional hospitality. Offering Indian, Pakistani, Arabic, Filipino, and International cuisines — from wholesome breakfast options to grills, biryanis, and signature chef-crafted plates. Professional catering for events and gatherings too.</p>
-              <div class="brand-locations">
-                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                Caliber Plaza, Dubai Production City
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── CONTACT ─── -->
-  <section id="contact" class="section" style="background: var(--off-white);">
-    <div class="container">
-      <div class="contact-grid">
-        <div class="contact-info reveal-left">
-          <span class="section-label">Contact Us</span>
-          <h2 class="heading-xl" style="margin: 16px 0 0;">Let's Start a Conversation</h2>
-          <div class="gold-divider"></div>
-          <p class="body-lg">Whether you're a partner, investor, or customer — we'd love to hear from you. Reach out and let's explore what we can build together.</p>
-
-          <div class="contact-items">
-            <div class="contact-item">
-              <div class="ci-icon">
-                <svg width="20" height="20" fill="none" stroke="#B8A369" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-              </div>
-              <div class="ci-text">
-                <div class="ci-label">Email</div>
-                <a href="mailto:info@desiregroup.ae" class="ci-value" style="transition: color 0.2s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color=''">info@desiregroup.ae</a>
-              </div>
-            </div>
-            <div class="contact-item">
-              <div class="ci-icon">
-                <svg width="20" height="20" fill="none" stroke="#B8A369" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
-              </div>
-              <div class="ci-text">
-                <div class="ci-label">Website</div>
-                <a href="https://www.desiregroup.ae" class="ci-value" target="_blank" rel="noopener" style="transition: color 0.2s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color=''">www.desiregroup.ae</a>
-              </div>
-            </div>
-            <div class="contact-item">
-              <div class="ci-icon">
-                <svg width="20" height="20" fill="none" stroke="#B8A369" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-              </div>
-              <div class="ci-text">
-                <div class="ci-label">Headquarters</div>
-                <div class="ci-value">United Arab Emirates</div>
-              </div>
-            </div>
-            <div class="contact-item">
-              <div class="ci-icon">
-                <svg width="20" height="20" fill="none" stroke="#B8A369" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-              </div>
-              <div class="ci-text">
-                <div class="ci-label">Operations</div>
-                <div class="ci-value">Dubai · RAK · Al Jazeera Al Hamra</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="contact-form-wrap reveal-right">
-          <h3>Send Us a Message</h3>
-          <p class="sub">We'll get back to you within 24 hours.</p>
-          <form id="contact-form" novalidate>
-            <div class="form-row">
-              <div class="form-group">
-                <label for="fname">First Name</label>
-                <input type="text" id="fname" name="fname" placeholder="John" required autocomplete="given-name">
-              </div>
-              <div class="form-group">
-                <label for="lname">Last Name</label>
-                <input type="text" id="lname" name="lname" placeholder="Doe" required autocomplete="family-name">
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="email">Email Address</label>
-              <input type="email" id="email" name="email" placeholder="john@example.com" required autocomplete="email">
-            </div>
-            <div class="form-group">
-              <label for="subject">Subject</label>
-              <select id="subject" name="subject">
-                <option value="">Select a topic...</option>
-                <option>Business Partnership</option>
-                <option>Investment Enquiry</option>
-                <option>Brand Collaboration</option>
-                <option>Customer Support</option>
-                <option>Media &amp; Press</option>
-                <option>Other</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="message">Message</label>
-              <textarea id="message" name="message" placeholder="Tell us how we can help..." required></textarea>
-            </div>
-            <button type="submit" class="btn-submit" id="submit-btn">
-              Send Message
-              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
-            </button>
-          </form>
-          <div class="form-success" id="form-success">
-            <svg width="48" height="48" fill="none" stroke="#0D7377" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <h3 style="color:var(--teal); font-size:1.2rem;">Message Sent!</h3>
-            <p style="font-size:0.9rem; color:var(--gray-600); text-align:center;">Thank you for reaching out. Our team will get back to you within 24 hours.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── FOOTER ─── -->
-  <footer>
-    <div class="container">
-      <div class="footer-grid">
-        <div class="footer-brand">
-          <div class="nav-logo" style="margin-bottom: 0;">
-            <svg width="36" height="36" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M40 6 L68 22 L68 54 L40 70 L12 54 L12 22 Z" fill="rgba(255,255,255,0.08)"/>
-              <path d="M40 10 L64 24.5 L64 51.5 L40 66 L16 51.5 L16 24.5 Z" fill="rgba(255,255,255,0.12)"/>
-              <path d="M40 10 L16 24.5 Q12 20 16 14 L40 6 Z" fill="rgba(255,255,255,0.06)"/>
-              <circle cx="40" cy="38" r="16" fill="none" stroke="white" stroke-width="5" stroke-opacity="0.8"/>
-              <circle cx="40" cy="38" r="6" fill="white" opacity="0.8"/>
+        <div class="mvv">
+          <article class="mvv__cell" data-reveal>
+            <svg class="mvv__icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="1.6"/>
+              <circle cx="24" cy="24" r="10" stroke="currentColor" stroke-width="1.6"/>
+              <circle cx="24" cy="24" r="2.6" fill="currentColor"/>
+              <path d="M24 24 39 9m0 0h-6m6 0v6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            <div class="nav-logo-text">
-              <span class="brand-name" style="color:white;">DESIRE GROUP</span>
-              <span class="brand-tagline">Shaping the Future</span>
+            <p class="mvv__title heading-sm"><strong>Our</strong> <span>Mission</span></p>
+            <p class="body">
+              To create sustainable business ventures that enhance lifestyles,
+              promote well-being and empower creativity — while maintaining the
+              highest standards of service and integrity.
+            </p>
+          </article>
+
+          <article class="mvv__cell" data-reveal data-delay="0.1">
+            <svg class="mvv__icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <path d="M24 6a13 13 0 0 0-8 23.3c1.4 1.1 2 2 2 3.7v1h12v-1c0-1.7.6-2.6 2-3.7A13 13 0 0 0 24 6Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+              <path d="M19 38h10M21 42h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M24 20v6m0 0-3-2m3 2 3-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <p class="mvv__title heading-sm"><strong>Our</strong> <span>Vision</span></p>
+            <p class="body">
+              To be a leading multi-sector enterprise recognized for excellence,
+              innovation and commitment to shaping a better future for our
+              communities.
+            </p>
+          </article>
+
+          <article class="mvv__cell" data-reveal data-delay="0.2">
+            <svg class="mvv__icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <path d="M8 30c4 4 9 6 16 6s12-2 16-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M24 30c5 0 9-3 9-3l-6-1-3-5-3 5-6 1s4 3 9 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+              <path d="M34 10l1.2 3.3L38.5 14.5 35.2 15.7 34 19l-1.2-3.3L29.5 14.5 32.8 13.3 34 10Z" fill="currentColor"/>
+            </svg>
+            <p class="mvv__title heading-sm"><strong>Our</strong> <span>Values</span></p>
+            <p class="body">
+              We stand for integrity, innovation and excellence. We value our
+              customers, believe in sustainable growth, and remain committed to
+              delivering quality and trust across every brand we create.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── FOCAL / SECTION TWO ─────────────────── -->
+    <section class="focal">
+      <canvas id="focal-canvas" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
+      <div class="wrap" style="position:relative;z-index:2;">
+        <svg class="focal__icon" viewBox="0 0 48 48" fill="none" aria-hidden="true" data-reveal>
+          <path d="M24 3.5 41 13v22L24 44.5 7 35V13L24 3.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          <path d="M29 13.5v13.8a7.9 7.9 0 1 1-3.6-6.65" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <circle cx="21.6" cy="24.3" r="3.6" fill="currentColor"/>
+        </svg>
+        <h2 class="heading-lg" data-reveal data-delay="0.05">One group. A constellation of brands.</h2>
+        <p class="body subheading measure focal__lead body--bone" data-reveal data-delay="0.1" style="margin-inline:auto;">
+          Each venture is a point of light in the same sky — independent in
+          character, united by a commitment to quality, trust and the people we serve.
+        </p>
+      </div>
+    </section>
+
+    <!-- ───────────────────────────── BRANDS ───────────────────────────── -->
+    <section class="section-pad" id="brands">
+      <div class="wrap">
+        <div class="section-head" data-reveal>
+          <p class="eyebrow eyebrow--amber">A family of brands</p>
+          <h2 class="heading-lg">Seven brands,<br/>shaping the future.</h2>
+        </div>
+
+        <div class="brands__grid">
+
+          <!-- FULLDAY -->
+          <article class="brand-card" data-reveal>
+            <div class="brand-card__top">
+              <div class="brand-logo" style="background:#0f7a3d;color:#fff;font-weight:700;font-size:18px;">FD</div>
+              <span class="brand-card__index">01 / 07</span>
             </div>
+            <h3 class="brand-card__name">FullDay</h3>
+            <p class="brand-card__cat">Supermarket · Mini Mart · Groceries</p>
+            <p class="brand-card__desc">
+              A growing lifestyle retail brand bringing convenience, quality and value
+              closer to every neighbourhood — because every day deserves the best.
+            </p>
+            <p class="brand-card__locs">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
+              KBT Building, Jebel Ali Ind. Area 3
+            </p>
+          </article>
+
+          <!-- FOOD MAHAL -->
+          <article class="brand-card" data-reveal data-delay="0.06">
+            <div class="brand-card__top">
+              <div class="brand-logo"><img src="logo/food-mahal-logo.png" alt="Food Mahal Restaurant logo" loading="lazy" /></div>
+              <span class="brand-card__index">02 / 07</span>
+            </div>
+            <h3 class="brand-card__name">Food Mahal</h3>
+            <p class="brand-card__cat">Restaurant</p>
+            <p class="brand-card__desc">
+              A destination for authentic flavours and memorable dining — Indian,
+              Pakistani, Malabar, Chinese and Filipino cuisines, fresh and tasty,
+              at prices that stay within reach.
+            </p>
+            <p class="brand-card__locs">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
+              KBT Building, Jebel Ali Ind. Area 3
+            </p>
+          </article>
+
+          <!-- CRESCENT -->
+          <article class="brand-card" data-reveal data-delay="0.12">
+            <div class="brand-card__top">
+              <div class="brand-logo"><img src="logo/crescent-logo.png" alt="Crescent Cafeteria logo" loading="lazy" /></div>
+              <span class="brand-card__index">03 / 07</span>
+            </div>
+            <h3 class="brand-card__name">Crescent Cafeteria</h3>
+            <p class="brand-card__cat">Cafeteria · Quick Service</p>
+            <p class="brand-card__desc">
+              A modern, energetic spot for today's fast-moving crowd — fresh snacks,
+              sandwiches, teas, juices and coffees, crafted for speed without losing
+              the taste. Feel the best taste.
+            </p>
+            <p class="brand-card__locs">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
+              Dip-1 · Dip-2 · Al Quoz Mall
+            </p>
+          </article>
+
+          <!-- GROOMERS -->
+          <article class="brand-card" data-reveal data-delay="0.06">
+            <div class="brand-card__top">
+              <div class="brand-logo"><img src="logo/groomers.png" alt="Groomers Men's Saloon logo" loading="lazy" /></div>
+              <span class="brand-card__index">04 / 07</span>
+            </div>
+            <h3 class="brand-card__name">Groomers</h3>
+            <p class="brand-card__cat">Men's Saloon · Grooming</p>
+            <p class="brand-card__desc">
+              Redefining modern men's grooming — style, sophistication and precision.
+              From classic cuts and beard styling to advanced treatments, every visit
+              is a statement of confidence.
+            </p>
+            <p class="brand-card__locs">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
+              Al Jazeera Al Hamra · Freezone &amp; Ind. Area
+            </p>
+          </article>
+
+          <!-- MEDWELL -->
+          <article class="brand-card" data-reveal data-delay="0.12">
+            <div class="brand-card__top">
+              <div class="brand-logo"><img src="logo/medwell-logo.jpeg" alt="Medwell Pharmacy logo" loading="lazy" /></div>
+              <span class="brand-card__index">05 / 07</span>
+            </div>
+            <h3 class="brand-card__name">Medwell Pharmacy</h3>
+            <p class="brand-card__cat">Healthcare · Pharmacy</p>
+            <p class="brand-card__desc">
+              Committed to community health through trusted, accessible care — a wide
+              range of quality medicines, healthcare products and wellness essentials,
+              with expert pharmacists on hand.
+            </p>
+            <p class="brand-card__locs">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
+              Dubai Production City · Inv. Park-1 · RAK
+            </p>
+          </article>
+
+          <!-- PICS-L -->
+          <article class="brand-card" data-reveal data-delay="0.18">
+            <div class="brand-card__top">
+              <div class="brand-logo" style="background:#0a0a0a;border:1px solid var(--hairline-strong);color:var(--lichen);font-weight:700;font-size:16px;">PL</div>
+              <span class="brand-card__index">06 / 07</span>
+            </div>
+            <h3 class="brand-card__name">PICS-L Studio</h3>
+            <p class="brand-card__cat">Photography · Videography</p>
+            <p class="brand-card__desc">
+              Where creativity meets precision — capturing life's moments through
+              portraits, events, corporate campaigns and commercial productions that
+              connect, inspire and endure.
+            </p>
+            <p class="brand-card__locs">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
+              Dip-1 · Jabal Ali · Al Jazeera Al Hamra, RAK
+            </p>
+          </article>
+
+          <!-- TASTY WORLD -->
+          <article class="brand-card" data-reveal data-delay="0.06">
+            <div class="brand-card__top">
+              <div class="brand-logo"><img src="logo/tasty-world-logo.jpeg" alt="Tasty World Restaurant logo" loading="lazy" /></div>
+              <span class="brand-card__index">07 / 07</span>
+            </div>
+            <h3 class="brand-card__name">Tasty World</h3>
+            <p class="brand-card__cat">Restaurant · Catering</p>
+            <p class="brand-card__desc">
+              A long-standing culinary destination — Indian, Pakistani, Arabic,
+              Filipino and international dishes, dine-in, takeaway and professional
+              catering, with quality and value at every visit.
+            </p>
+            <p class="brand-card__locs">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
+              Caliber Plaza, Dubai Production City
+            </p>
+          </article>
+
+          <!-- Closing tile -->
+          <article class="brand-card" data-reveal data-delay="0.12" style="justify-content:center;align-items:flex-start;">
+            <p class="eyebrow eyebrow--plum" style="margin-bottom:16px;">More to come</p>
+            <h3 class="heading" style="margin-bottom:18px;">The constellation keeps growing.</h3>
+            <a href="#contact" class="btn btn--ghost">Partner with us</a>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────────── CONTACT ───────────────────────────── -->
+    <section class="section-pad" id="contact">
+      <div class="wrap">
+        <div class="cta" data-reveal>
+          <div>
+            <p class="eyebrow eyebrow--plum" style="margin-bottom:20px;">Get in touch</p>
+            <h2 class="heading-lg cta__title">Let's shape<br/>what's next.</h2>
+            <p class="body subheading measure">
+              Whether you're a customer, partner or future collaborator — we'd love
+              to hear from you. Reach the Desire Group team directly.
+            </p>
           </div>
-          <p>A diversified business conglomerate driving excellence across hospitality, healthcare, retail, and creative services in the UAE.</p>
-          <div class="footer-social">
-            <a href="#" class="social-btn" aria-label="Facebook">
-              <svg width="16" height="16" fill="white" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
-            </a>
-            <a href="#" class="social-btn" aria-label="Instagram">
-              <svg width="16" height="16" fill="none" stroke="white" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
-            </a>
-            <a href="#" class="social-btn" aria-label="LinkedIn">
-              <svg width="16" height="16" fill="white" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
-            </a>
-          </div>
-        </div>
 
-        <div class="footer-col">
-          <h4>Quick Links</h4>
-          <ul>
-            <li><a href="#about">Who We Are</a></li>
-            <li><a href="#why">Why Choose Us</a></li>
-            <li><a href="#mvv">Mission & Vision</a></li>
-            <li><a href="#brands">Our Brands</a></li>
-            <li><a href="#contact">Contact</a></li>
-          </ul>
-        </div>
-
-        <div class="footer-col">
-          <h4>Our Brands</h4>
-          <ul>
-            <li><a href="#brands">FullDay</a></li>
-            <li><a href="#brands">Food Mahal</a></li>
-            <li><a href="#brands">Crescent Cafeteria</a></li>
-            <li><a href="#brands">Groomers</a></li>
-            <li><a href="#brands">Medwell Pharmacy</a></li>
-            <li><a href="#brands">PICS-L Studio</a></li>
-            <li><a href="#brands">Tasty World</a></li>
-          </ul>
-        </div>
-
-        <div class="footer-col footer-newsletter">
-          <h4>Stay Connected</h4>
-          <p>Get the latest news and updates from Desire Group delivered to your inbox.</p>
-          <div class="newsletter-form">
-            <input type="email" placeholder="your@email.com" aria-label="Email for newsletter">
-            <button type="button">Subscribe</button>
+          <div class="cta__links">
+            <a class="cta__link" href="mailto:info@desiregroup.ae">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              info@desiregroup.ae
+            </a>
+            <a class="cta__link" href="https://www.desiregroup.ae" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c2.5 2.7 3.8 6 3.8 9S14.5 18.3 12 21c-2.5-2.7-3.8-6-3.8-9S9.5 5.7 12 3Z" stroke="currentColor" stroke-width="1.6"/></svg>
+              www.desiregroup.ae
+            </a>
+            <a class="cta__link" href="#brands">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
+              Dubai · United Arab Emirates
+            </a>
           </div>
         </div>
       </div>
+    </section>
 
-      <div class="footer-bottom">
-        <p>&copy; 2025 Desire Group. All rights reserved.</p>
-        <div class="footer-bottom-links">
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Service</a>
-        </div>
-      </div>
+  </main>
+
+  <!-- ───────────────────────────── FOOTER ───────────────────────────── -->
+  <footer class="footer page">
+    <div class="wrap footer__grid">
+      <a href="#top" class="brandmark" aria-label="Desire Group home">
+        <svg class="brandmark__icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <path d="M16 2.7 27.5 9v14L16 29.3 4.5 23V9L16 2.7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M19.5 9.5v9.2a5.3 5.3 0 1 1-2.4-4.45" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <circle cx="14.4" cy="16.2" r="2.5" fill="currentColor"/>
+        </svg>
+        <span class="brandmark__name">DESIRE GROUP</span>
+      </a>
+
+      <nav class="footer__nav" aria-label="Footer">
+        <a href="#about">About</a>
+        <a href="#purpose">Purpose</a>
+        <a href="#brands">Brands</a>
+        <a href="#contact">Contact</a>
+      </nav>
+
+      <p class="footer__copy">© <span id="year">2026</span> Desire Group · Shaping the Future</p>
     </div>
   </footer>
 
-  <!-- Back to top -->
-  <button id="back-top" aria-label="Back to top">
-    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
-  </button>
+  <!-- ─── Libraries: GSAP + ScrollTrigger and Motion (vanilla successor to Framer Motion) ─── -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/motion@10.18.0/dist/motion.js" defer></script>
 
-  <script>
-    // ─── NAV SCROLL ───────────────────────────────
-    const navbar = document.getElementById('navbar');
-    const backTop = document.getElementById('back-top');
-    window.addEventListener('scroll', () => {
-      const y = window.scrollY;
-      navbar.classList.toggle('scrolled', y > 40);
-      backTop.classList.toggle('show', y > 500);
-    }, { passive: true });
-    backTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-
-    // ─── MOBILE MENU ─────────────────────────────
-    const ham = document.getElementById('hamburger');
-    const mobileMenu = document.getElementById('mobile-menu');
-    ham.addEventListener('click', () => {
-      const isOpen = mobileMenu.classList.toggle('open');
-      ham.classList.toggle('open', isOpen);
-      ham.setAttribute('aria-expanded', isOpen);
-    });
-    document.querySelectorAll('.mobile-link, .mobile-menu .nav-cta').forEach(link => {
-      link.addEventListener('click', () => {
-        mobileMenu.classList.remove('open');
-        ham.classList.remove('open');
-        ham.setAttribute('aria-expanded', 'false');
-      });
-    });
-
-    // ─── INTERSECTION OBSERVER (scroll reveals) ───
-    const revealEls = document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale');
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          e.target.classList.add('visible');
-          observer.unobserve(e.target);
-        }
-      });
-    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-    revealEls.forEach(el => observer.observe(el));
-
-    // ─── COUNTER ANIMATION ────────────────────────
-    function animateCounter(el, target, duration = 1600) {
-      let start = null;
-      const step = (ts) => {
-        if (!start) start = ts;
-        const progress = Math.min((ts - start) / duration, 1);
-        const ease = 1 - Math.pow(1 - progress, 3);
-        el.textContent = Math.round(ease * target);
-        if (progress < 1) requestAnimationFrame(step);
-        else el.textContent = target;
-      };
-      requestAnimationFrame(step);
-    }
-    const counterObs = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          const target = parseInt(e.target.dataset.count);
-          animateCounter(e.target, target);
-          counterObs.unobserve(e.target);
-        }
-      });
-    }, { threshold: 0.5 });
-    document.querySelectorAll('[data-count]').forEach(el => counterObs.observe(el));
-
-    // ─── HERO CANVAS PARTICLES ────────────────────
-    (function initCanvas() {
-      const canvas = document.getElementById('hero-canvas');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      let W, H, particles;
-
-      function resize() {
-        W = canvas.width = canvas.offsetWidth;
-        H = canvas.height = canvas.offsetHeight;
-      }
-
-      function createParticles() {
-        particles = [];
-        const count = Math.floor((W * H) / 14000);
-        for (let i = 0; i < count; i++) {
-          particles.push({
-            x: Math.random() * W,
-            y: Math.random() * H,
-            r: Math.random() * 1.8 + 0.4,
-            dx: (Math.random() - 0.5) * 0.3,
-            dy: (Math.random() - 0.5) * 0.3,
-            opacity: Math.random() * 0.4 + 0.1,
-            color: Math.random() > 0.6 ? '#0D7377' : '#B8A369'
-          });
-        }
-      }
-
-      function draw() {
-        ctx.clearRect(0, 0, W, H);
-        particles.forEach(p => {
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-          ctx.fillStyle = p.color;
-          ctx.globalAlpha = p.opacity;
-          ctx.fill();
-          p.x += p.dx;
-          p.y += p.dy;
-          if (p.x < 0) p.x = W;
-          if (p.x > W) p.x = 0;
-          if (p.y < 0) p.y = H;
-          if (p.y > H) p.y = 0;
-        });
-        ctx.globalAlpha = 1;
-
-        // Draw subtle connecting lines
-        for (let i = 0; i < particles.length; i++) {
-          for (let j = i + 1; j < particles.length; j++) {
-            const dx = particles[i].x - particles[j].x;
-            const dy = particles[i].y - particles[j].y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < 100) {
-              ctx.beginPath();
-              ctx.moveTo(particles[i].x, particles[i].y);
-              ctx.lineTo(particles[j].x, particles[j].y);
-              ctx.strokeStyle = '#0D7377';
-              ctx.globalAlpha = (1 - dist / 100) * 0.06;
-              ctx.lineWidth = 0.5;
-              ctx.stroke();
-            }
-          }
-        }
-        ctx.globalAlpha = 1;
-        requestAnimationFrame(draw);
-      }
-
-      resize();
-      createParticles();
-      draw();
-      let resizeTimer;
-      window.addEventListener('resize', () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => { resize(); createParticles(); }, 200);
-      });
-    })();
-
-    // ─── BRAND CARD 3D TILT ───────────────────────
-    document.querySelectorAll('.why-card').forEach(card => {
-      card.addEventListener('mousemove', e => {
-        const rect = card.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width - 0.5) * 8;
-        const y = ((e.clientY - rect.top) / rect.height - 0.5) * -8;
-        card.style.transform = `translateY(-6px) perspective(600px) rotateX(${y}deg) rotateY(${x}deg)`;
-      });
-      card.addEventListener('mouseleave', () => {
-        card.style.transform = '';
-      });
-    });
-
-    // ─── CONTACT FORM ─────────────────────────────
-    const form = document.getElementById('contact-form');
-    const submitBtn = document.getElementById('submit-btn');
-    const successEl = document.getElementById('form-success');
-    if (form) {
-      form.addEventListener('submit', e => {
-        e.preventDefault();
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" /></svg> Sending...';
-        setTimeout(() => {
-          form.style.display = 'none';
-          successEl.classList.add('show');
-        }, 1200);
-      });
-    }
-
-    // ─── SMOOTH SCROLL (nav links) ────────────────
-    document.querySelectorAll('a[href^="#"]').forEach(link => {
-      link.addEventListener('click', e => {
-        const target = document.querySelector(link.getAttribute('href'));
-        if (target) {
-          e.preventDefault();
-          const top = target.getBoundingClientRect().top + window.scrollY - 80;
-          window.scrollTo({ top, behavior: 'smooth' });
-        }
-      });
-    });
-  </script>
+  <!-- App scripts -->
+  <script src="assets/js/constellation.js" defer></script>
+  <script src="assets/js/app.js" defer></script>
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
 </body>
 </html>
