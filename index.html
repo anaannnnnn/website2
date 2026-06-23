@@ -4,760 +4,565 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Desire Group — Shaping the Future</title>
-  <meta name="description" content="Desire Group is a diversified UAE conglomerate shaping the future through excellence across hospitality, healthcare, retail, grooming and creative media — one group, seven brands." />
+  <meta name="description" content="Desire Group — a diversified UAE conglomerate shaping the future across hospitality, healthcare, retail, grooming and creative media. Seven brands. One vision." />
   <meta name="theme-color" content="#000000" />
   <meta property="og:title" content="Desire Group — Shaping the Future" />
-  <meta property="og:description" content="A diversified UAE conglomerate. Seven brands built on trust, innovation and value." />
+  <meta property="og:description" content="A diversified UAE conglomerate. Seven brands. One vision." />
   <meta property="og:type" content="website" />
 
-  <!-- Barlow Condensed (display) + Space Mono (UI / body) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
 
   <style>
-  /* ═══ TOKENS — official Desire Group palette (orange→plum, yellow→amber) ═══ */
+  /* ═══ TOKENS — Desire Group palette on the void ═══ */
   :root {
-    --ink:    #000000;          /* void */
-    --ink-2:  #0a0a0a;
-    --bone:   #ffffff;          /* bone */
-    --dim:    rgba(255, 255, 255, .52);  /* smoke */
-    --dim-2:  rgba(255, 255, 255, .30);
-    --bdr:    rgba(255, 255, 255, .10);  /* hairline */
-    --plum:   #8052ff;          /* plum voltage — primary accent */
-    --amber:  #ffb829;          /* amber spark — secondary accent */
-    --lichen: #15846e;          /* lichen — tertiary / constellation */
-    --fd: 'Barlow Condensed', sans-serif;  /* display */
-    --fm: 'Space Mono', monospace;         /* ui / body */
+    --void:   #000000;
+    --bone:   #ffffff;
+    --dim:    rgba(255,255,255,.60);
+    --dim-2:  rgba(255,255,255,.38);
+    --dim-3:  rgba(255,255,255,.16);
+    --bdr:    rgba(255,255,255,.12);
+    --plum:   #8052ff;
+    --amber:  #ffb829;
+    --lichen: #15846e;
+    --fhead: 'Archivo Black', 'Arial Black', sans-serif;
+    --fmono: 'Space Mono', 'Courier New', monospace;
+    --fbody: 'Space Grotesk', system-ui, sans-serif;
   }
 
-  /* ═══ RESET ═══ */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { overflow-x: hidden; }
-  body {
-    background: var(--ink); color: var(--bone);
-    font-family: var(--fm);
-    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
-  }
+  html { overflow-x: hidden; scroll-behavior: smooth; }
+  body { background: var(--void); color: var(--bone); font-family: var(--fbody); overflow-x: hidden; -webkit-font-smoothing: antialiased; }
   a { color: inherit; text-decoration: none; }
   ul { list-style: none; }
   img { max-width: 100%; display: block; }
-  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
-  :focus-visible { outline: 2px solid var(--plum); outline-offset: 3px; }
+  ::selection { background: var(--plum); color: #fff; }
 
-  /* ═══ CUSTOM CURSOR ═══ */
-  #c-dot, #c-ring { position: fixed; top: 0; left: 0; border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); }
-  #c-dot  { width: 7px; height: 7px; background: var(--plum); }
-  #c-ring { width: 34px; height: 34px; border: 1.5px solid rgba(128, 82, 255, .45); transition: width .2s, height .2s, border-color .2s; }
-  body.hov #c-ring { width: 54px; height: 54px; border-color: var(--amber); }
-  @media (pointer: coarse) { #c-dot, #c-ring { display: none; } }
+  /* ═══ TOP NAV ═══ */
+  .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; padding: 22px 6vw; mix-blend-mode: difference; }
+  .nav__brand { display: flex; align-items: baseline; gap: 12px; }
+  .nav__brand b { font-family: var(--fhead); font-size: 1.05rem; letter-spacing: .22em; text-transform: uppercase; color: #fff; }
+  .nav__brand span { font-family: var(--fmono); font-size: .58rem; letter-spacing: .3em; color: rgba(255,255,255,.7); text-transform: uppercase; }
+  .nav__links { display: flex; gap: 28px; }
+  .nav__links a { font-family: var(--fmono); font-size: .6rem; letter-spacing: .24em; text-transform: uppercase; color: rgba(255,255,255,.75); transition: opacity .25s; }
+  .nav__links a:hover { opacity: .55; }
+  @media (max-width: 760px) { .nav__links { display: none; } }
 
-  /* ═══ PRELOADER ═══ */
-  #preloader { position: fixed; inset: 0; z-index: 9990; background: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 36px; }
-  .pre-logo { font-family: var(--fd); font-size: clamp(3rem, 8vw, 9rem); font-weight: 900; text-transform: uppercase; letter-spacing: .04em; line-height: 1; opacity: 0; text-align: center; }
-  .pre-logo em { color: var(--plum); font-style: normal; }
-  .pre-track { width: clamp(200px, 38vw, 420px); height: 2px; background: rgba(255, 255, 255, .08); overflow: hidden; }
-  .pre-bar   { height: 100%; width: 0; background: var(--plum); }
-  .pre-pct   { font-size: .6rem; letter-spacing: .3em; text-transform: uppercase; color: var(--dim); }
+  /* ═══ HERO (cosmic flythrough) ═══ */
+  .hero { position: relative; width: 100%; height: 320vh; background: var(--void); }
+  .hero__canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 0; }
 
-  /* ═══ NAV ═══ */
-  #nav { position: fixed; top: 0; left: 0; right: 0; z-index: 500; display: flex; align-items: center; justify-content: space-between; padding: 26px 6vw; transition: background .4s, backdrop-filter .4s, padding .3s, border-color .4s; border-bottom: 1px solid transparent; }
-  #nav.glass { background: rgba(0, 0, 0, .92); backdrop-filter: blur(14px); padding: 14px 6vw; border-bottom: 1px solid var(--bdr); }
-  .nav-logo { font-family: var(--fd); font-size: 1.4rem; font-weight: 900; text-transform: uppercase; letter-spacing: .12em; }
-  .nav-logo em { color: var(--plum); font-style: normal; }
-  .nav-links { display: flex; gap: 32px; }
-  .nav-links a { font-size: .6rem; letter-spacing: .22em; text-transform: uppercase; color: var(--dim); transition: color .25s; }
-  .nav-links a:hover { color: var(--plum); }
-  @media (max-width: 768px) { .nav-links { display: none; } }
-  .nav-cta { display: inline-flex; align-items: center; min-height: 44px; font-family: var(--fm); font-size: .58rem; letter-spacing: .2em; text-transform: uppercase; background: var(--plum); color: var(--bone); padding: 0 20px; transition: background .25s, color .25s; }
-  .nav-cta:hover { background: var(--amber); color: var(--ink); }
+  .side-menu { position: fixed; top: 50%; left: 2rem; transform: translateY(-50%); z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 1.4rem; visibility: hidden; }
+  .side-menu .bars { display: flex; flex-direction: column; gap: 5px; }
+  .side-menu .bars span { display: block; width: 24px; height: 2px; background: rgba(255,255,255,.8); }
+  .side-menu .vtext { writing-mode: vertical-rl; color: rgba(255,255,255,.45); font-size: .62rem; letter-spacing: .32em; font-family: var(--fmono); text-transform: uppercase; }
 
-  /* ═══ HERO ═══ */
-  #hero { position: relative; height: 100vh; min-height: 600px; background: var(--ink); overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 6vw 8vh; }
-  #hero-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
-  .hero-veil { position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(to top, rgba(0, 0, 0, .92) 0%, rgba(0, 0, 0, .35) 60%, rgba(0, 0, 0, .55) 100%); }
-  .hero-content { position: relative; z-index: 2; }
-  .hero-label { font-size: .6rem; letter-spacing: .3em; text-transform: uppercase; color: var(--plum); margin-bottom: 18px; opacity: 0; transform: translateY(12px); }
-  .hero-h { font-family: var(--fd); font-size: clamp(5.5rem, 17vw, 24rem); font-weight: 900; line-height: .83; text-transform: uppercase; letter-spacing: -.01em; margin-bottom: 44px; }
-  .hero-h .ln { display: block; overflow: hidden; }
-  .hero-h .ln span { display: block; transform: translateY(110%); }
-  .hero-h .orn { color: var(--plum); }
-  .hero-h .ylw { color: var(--amber); }
-  .hero-bot { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; opacity: 0; }
-  .hero-tag { font-size: .7rem; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); max-width: 300px; line-height: 2.1; }
-  .hero-scroll { display: flex; align-items: center; gap: 14px; font-size: .55rem; letter-spacing: .26em; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
-  .hero-scroll-bar { width: 30px; height: 1px; background: var(--plum); transform-origin: left; transform: scaleX(0); }
+  .hero__content { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 2; text-align: center; pointer-events: none; width: 100%; padding: 0 2rem; }
+  .hero__title { font-family: var(--fhead); font-size: clamp(3.2rem, 12vw, 10rem); letter-spacing: .18em; color: #fff; line-height: 1; margin: 0 0 1.4rem; text-transform: uppercase; }
+  .tchar { display: inline-block; }
+  .hero__title .accent { color: var(--plum); }
+  .hero__sub { display: flex; flex-direction: column; gap: .3rem; }
+  .hero__sub p { font-family: var(--fmono); font-size: clamp(.72rem, 1.5vw, 1rem); color: rgba(255,255,255,.62); letter-spacing: .16em; text-transform: uppercase; }
 
-  /* ═══ MARQUEE ═══ */
-  .mq-wrap { overflow: hidden; border-top: 1px solid var(--bdr); border-bottom: 1px solid var(--bdr); }
-  .mq-wrap.inv { background: var(--plum); border-color: rgba(0, 0, 0, .18); }
-  .mq-track { display: flex; white-space: nowrap; will-change: transform; padding: 18px 0; }
-  .mq-item { display: inline-flex; align-items: center; gap: 36px; padding: 0 36px; flex-shrink: 0; }
-  .mq-item span { font-family: var(--fd); font-size: clamp(2.8rem, 7vw, 9rem); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-  .mq-wrap.inv .mq-item span { color: var(--bone); }
-  .mq-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
-  .mq-wrap.inv .mq-dot { background: var(--ink); }
+  .scroll-ui { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 4; display: flex; align-items: center; gap: 1rem; visibility: hidden; }
+  .scroll-ui .lbl { font-family: var(--fmono); font-size: .6rem; letter-spacing: .3em; color: rgba(255,255,255,.45); text-transform: uppercase; }
+  .scroll-ui .track { width: 120px; height: 1px; background: rgba(255,255,255,.18); overflow: hidden; }
+  .scroll-ui .fill { height: 100%; width: 0%; background: var(--plum); }
+  .scroll-ui .count { font-family: var(--fmono); font-size: .6rem; letter-spacing: .2em; color: rgba(255,255,255,.45); }
 
-  /* ═══ SECTION SHARED ═══ */
-  .s-lbl { font-size: .58rem; letter-spacing: .3em; text-transform: uppercase; color: var(--plum); margin-bottom: 20px; opacity: 0; transform: translateY(12px); }
+  .hero__sections { position: absolute; top: 100vh; left: 0; width: 100%; }
+  .hero__section { height: 110vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; pointer-events: none; }
+  .hero__section .hero__title .accent { color: var(--amber); }
 
-  /* ═══ ABOUT ═══ */
-  #about { padding: 130px 6vw; }
-  .about-grid { display: grid; grid-template-columns: 5fr 4fr; gap: 100px; align-items: start; }
-  @media (max-width: 860px) { .about-grid { grid-template-columns: 1fr; gap: 48px; } }
-  #about .s-h { font-family: var(--fd); font-size: clamp(4rem, 9vw, 13rem); font-weight: 900; text-transform: uppercase; line-height: .85; letter-spacing: -.01em; }
-  #about .s-h .yl { color: var(--amber); }
-  #about .s-h .or { color: var(--plum); }
-  .about-body { font-size: .82rem; line-height: 2; color: var(--dim); opacity: 0; transform: translateX(40px); padding-top: 20px; }
-  .about-body strong { color: var(--bone); font-weight: 400; }
+  /* ═══ CONTENT (covers the canvas) ═══ */
+  .content { position: relative; z-index: 5; background: var(--void); }
+  .wrap { width: 100%; max-width: 1240px; margin-inline: auto; padding-inline: 6vw; }
+  .sec { padding-block: clamp(90px, 14vw, 190px); position: relative; }
+  .sec + .sec { border-top: 1px solid var(--bdr); }
 
-  /* ═══ STATS ═══ */
-  #stats { padding: 100px 6vw; border-top: 1px solid var(--bdr); border-bottom: 1px solid var(--bdr); }
-  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); }
-  @media (max-width: 640px) { .stats-row { grid-template-columns: 1fr; } }
-  .s-box { padding: 0 48px 0 0; border-right: 1px solid var(--bdr); opacity: 0; transform: translateY(48px); }
-  .s-box:first-child { padding-left: 0; }
-  .s-box:last-child  { border-right: none; padding-right: 0; }
-  @media (max-width: 640px) {
-    .s-box { border-right: none; border-bottom: 1px solid var(--bdr); padding: 0 0 40px; margin-bottom: 40px; }
-    .s-box:last-child { border-bottom: none; margin-bottom: 0; }
-  }
-  .s-num { font-family: var(--fd); font-size: clamp(5rem, 12vw, 14rem); font-weight: 900; line-height: .8; color: var(--plum); text-transform: uppercase; }
-  .s-unit { font-family: var(--fd); font-size: clamp(1.5rem, 3vw, 3.5rem); font-weight: 700; color: var(--bone); }
-  .s-lbl2 { font-size: .58rem; letter-spacing: .28em; text-transform: uppercase; color: var(--dim); margin-top: 16px; }
+  .eyebrow { font-family: var(--fmono); font-size: .62rem; letter-spacing: .3em; text-transform: uppercase; color: var(--plum); margin-bottom: 24px; }
+  .h-xl { font-family: var(--fhead); font-size: clamp(2.6rem, 8vw, 7rem); line-height: .94; letter-spacing: -.01em; text-transform: uppercase; }
+  .h-xl .am { color: var(--amber); }
+  .h-xl .pl { color: var(--plum); }
 
-  /* ═══ BRANDS ═══ */
-  #brands { border-top: 1px solid var(--bdr); }
-  .brands-hd { padding: 100px 6vw 50px; }
-  .brands-hd .s-h { font-family: var(--fd); font-size: clamp(5rem, 13vw, 18rem); font-weight: 900; text-transform: uppercase; line-height: .82; letter-spacing: -.01em; }
-  .brands-hd .s-h .orn { color: var(--plum); }
-  .br-row { display: grid; grid-template-columns: 64px 80px 1fr auto; gap: 0; padding: 28px 6vw; border-top: 1px solid var(--bdr); align-items: center; opacity: 0; transform: translateX(-56px); transition: background .3s; }
-  .br-row:hover { background: rgba(128, 82, 255, .07); }
-  .br-row:hover .br-num { color: var(--amber); }
-  @media (max-width: 860px) { .br-row { grid-template-columns: 44px 1fr; } }
-  .br-logo { width: 46px; height: 46px; border-radius: 12px; background: var(--bone); display: grid; place-items: center; overflow: hidden; font-family: var(--fd); font-weight: 900; font-size: 1rem; color: var(--ink); }
-  .br-logo img { width: 100%; height: 100%; object-fit: contain; padding: 6px; }
-  .br-logo.dark { background: var(--ink-2); border: 1px solid var(--bdr); color: var(--lichen); }
-  @media (max-width: 860px) { .br-logo { display: none; } }
-  .br-num { font-size: .58rem; letter-spacing: .22em; color: var(--plum); transition: color .25s; }
-  .br-name { font-family: var(--fd); font-size: clamp(2.2rem, 4.5vw, 6rem); font-weight: 800; text-transform: uppercase; line-height: .9; }
-  .br-cat { font-size: .58rem; letter-spacing: .18em; text-transform: uppercase; color: var(--dim); margin-top: 10px; }
-  .br-meta { text-align: right; }
-  @media (max-width: 860px) { .br-meta { display: none; } }
-  .br-loc { font-size: .55rem; letter-spacing: .18em; text-transform: uppercase; color: var(--dim-2); }
-  .br-desc { font-size: .7rem; line-height: 1.75; color: var(--dim); max-width: 320px; margin-top: 8px; }
+  /* About */
+  .about { display: grid; grid-template-columns: 1.1fr .9fr; gap: 70px; align-items: end; }
+  @media (max-width: 880px) { .about { grid-template-columns: 1fr; gap: 36px; } }
+  .about__body { font-size: 1rem; line-height: 1.9; color: var(--dim); max-width: 52ch; }
+  .about__body strong { color: var(--bone); font-weight: 500; }
 
-  /* ═══ MVV ═══ */
-  #mvv { background: var(--plum); padding: 120px 6vw; }
-  .mvv-hd { margin-bottom: 56px; }
-  .mvv-hd .s-lbl { color: rgba(0, 0, 0, .7); }
-  .mvv-hd .s-h { font-family: var(--fd); font-size: clamp(5rem, 12vw, 16rem); font-weight: 900; text-transform: uppercase; line-height: .82; color: var(--ink); }
-  .mvv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
-  @media (max-width: 900px) { .mvv-grid { grid-template-columns: 1fr; } }
-  .mv-card { background: var(--ink); padding: 48px 40px; opacity: 0; transform: translateY(50px); will-change: transform, opacity; }
-  .mvc-lbl { font-size: .55rem; letter-spacing: .3em; text-transform: uppercase; color: var(--plum); margin-bottom: 28px; }
-  .mvc-title { font-family: var(--fd); font-size: clamp(2.2rem, 4vw, 5rem); font-weight: 900; text-transform: uppercase; line-height: .88; color: var(--bone); overflow: hidden; }
-  .mvc-title span { display: block; transform: translateY(110%); }
-  .mvc-div { width: 30px; height: 2px; background: var(--amber); margin: 24px 0; opacity: 0; transform: scaleX(0); transform-origin: left; }
-  .mvc-body { font-size: .76rem; line-height: 1.9; color: var(--dim); opacity: 0; transform: translateY(14px); }
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 0; margin-top: 70px; border-top: 1px solid var(--bdr); }
+  @media (max-width: 640px) { .stats { grid-template-columns: 1fr; } }
+  .stat { padding: 36px 30px 0 0; border-right: 1px solid var(--bdr); }
+  .stat:last-child { border-right: none; }
+  @media (max-width: 640px) { .stat { border-right: none; border-bottom: 1px solid var(--bdr); padding: 30px 0; } .stat:last-child { border-bottom: none; } }
+  .stat b { font-family: var(--fhead); font-size: clamp(3rem, 7vw, 5.5rem); line-height: .9; color: var(--plum); display: block; }
+  .stat span { font-family: var(--fmono); font-size: .6rem; letter-spacing: .22em; text-transform: uppercase; color: var(--dim-2); margin-top: 14px; display: block; }
 
-  /* ═══ STATEMENT ═══ */
-  #stmt { padding: 160px 6vw; overflow: hidden; }
-  .stmt-h { font-family: var(--fd); font-size: clamp(5rem, 14vw, 22rem); font-weight: 900; text-transform: uppercase; line-height: .82; letter-spacing: -.01em; }
-  .stmt-h .ln { display: block; overflow: hidden; }
-  .stmt-h .ln span { display: block; transform: translateY(108%); }
-  .stmt-h .orn { color: var(--plum); }
-  .stmt-h .ylw { color: var(--amber); }
+  /* Brands */
+  .brand-head { margin-bottom: 50px; }
+  .brow { display: grid; grid-template-columns: 58px 70px 1fr auto; gap: 20px; align-items: center; padding: 26px 0; border-top: 1px solid var(--bdr); transition: padding .35s ease, background .35s ease; }
+  .brow:last-child { border-bottom: 1px solid var(--bdr); }
+  .brow:hover { padding-inline: 22px; background: rgba(128,82,255,.07); }
+  .brow:hover .brow__num { color: var(--amber); }
+  @media (max-width: 820px) { .brow { grid-template-columns: 44px 1fr; gap: 14px; } }
+  .brow__logo { width: 50px; height: 50px; border-radius: 12px; background: var(--bone); display: grid; place-items: center; overflow: hidden; font-family: var(--fhead); font-size: .85rem; color: #000; }
+  .brow__logo img { width: 100%; height: 100%; object-fit: contain; padding: 7px; }
+  .brow__logo.dk { background: #0c0c12; border: 1px solid var(--bdr); color: var(--lichen); }
+  .brow__num { font-family: var(--fmono); font-size: .62rem; letter-spacing: .2em; color: var(--plum); transition: color .3s; }
+  @media (max-width: 820px) { .brow__num { display: none; } }
+  .brow__name { font-family: var(--fhead); font-size: clamp(1.5rem, 3.6vw, 3rem); text-transform: uppercase; line-height: 1; }
+  .brow__cat { font-family: var(--fmono); font-size: .6rem; letter-spacing: .14em; text-transform: uppercase; color: var(--dim-2); margin-top: 9px; }
+  .brow__meta { text-align: right; max-width: 300px; }
+  @media (max-width: 820px) { .brow__meta { display: none; } }
+  .brow__loc { font-family: var(--fmono); font-size: .56rem; letter-spacing: .14em; text-transform: uppercase; color: var(--dim-3); }
+  .brow__desc { font-size: .82rem; line-height: 1.7; color: var(--dim); margin-top: 7px; }
 
-  /* ═══ CONTACT ═══ */
-  #contact { padding: 130px 6vw 90px; display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: end; border-top: 1px solid var(--bdr); }
-  @media (max-width: 768px) { #contact { grid-template-columns: 1fr; gap: 60px; padding: 100px 6vw 80px; } }
-  .c-big { font-family: var(--fd); font-size: clamp(4rem, 9vw, 13rem); font-weight: 900; text-transform: uppercase; line-height: .85; margin-bottom: 36px; }
-  .c-big .ln { overflow: hidden; }
-  .c-big .ln span { display: block; transform: translateY(110%); }
-  .c-big .orn { color: var(--plum); }
-  .c-link { display: inline-flex; align-items: center; gap: 12px; font-size: .6rem; letter-spacing: .2em; text-transform: uppercase; color: var(--plum); border-bottom: 1px solid rgba(128, 82, 255, .3); padding-bottom: 8px; transition: gap .3s, color .25s; min-height: 44px; }
-  .c-link:hover { gap: 22px; color: var(--amber); }
-  .c-details { display: flex; flex-direction: column; gap: 36px; }
-  .c-item { opacity: 0; transform: translateY(18px); }
-  .c-ilbl { font-size: .55rem; letter-spacing: .3em; text-transform: uppercase; color: var(--plum); margin-bottom: 8px; }
-  .c-ival { font-family: var(--fd); font-size: clamp(1.2rem, 2.5vw, 2.2rem); font-weight: 700; text-transform: uppercase; transition: color .25s; }
-  a.c-ival:hover { color: var(--amber); }
+  /* Purpose / MVV */
+  .mvv-head { margin-bottom: 50px; }
+  .mvv { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--bdr); border: 1px solid var(--bdr); }
+  @media (max-width: 880px) { .mvv { grid-template-columns: 1fr; } }
+  .mvc { background: var(--void); padding: 44px 36px; }
+  .mvc__k { font-family: var(--fmono); font-size: .58rem; letter-spacing: .3em; text-transform: uppercase; color: var(--plum); margin-bottom: 24px; }
+  .mvc__t { font-family: var(--fhead); font-size: clamp(1.7rem, 3vw, 2.6rem); text-transform: uppercase; line-height: .96; margin-bottom: 20px; }
+  .mvc:nth-child(2) .mvc__t .x { color: var(--amber); }
+  .mvc:nth-child(1) .mvc__t .x { color: var(--plum); }
+  .mvc:nth-child(3) .mvc__t .x { color: var(--lichen); }
+  .mvc__b { font-size: .9rem; line-height: 1.85; color: var(--dim); }
 
-  /* ═══ FOOTER ═══ */
-  #footer { padding: 30px 6vw; border-top: 1px solid var(--bdr); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; }
-  .ft { font-size: .55rem; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
-  .ft.orn { color: var(--plum); }
+  /* Contact */
+  .contact { display: grid; grid-template-columns: 1.2fr .8fr; gap: 60px; align-items: end; }
+  @media (max-width: 880px) { .contact { grid-template-columns: 1fr; gap: 40px; } }
+  .contact__cta { display: inline-flex; align-items: center; gap: 12px; margin-top: 34px; font-family: var(--fmono); font-size: .64rem; letter-spacing: .2em; text-transform: uppercase; color: var(--plum); border-bottom: 1px solid rgba(128,82,255,.35); padding-bottom: 8px; transition: gap .3s, color .25s; }
+  .contact__cta:hover { gap: 22px; color: var(--amber); }
+  .cdetails { display: flex; flex-direction: column; gap: 30px; }
+  .cdetails .k { font-family: var(--fmono); font-size: .56rem; letter-spacing: .3em; text-transform: uppercase; color: var(--plum); margin-bottom: 8px; }
+  .cdetails .v { font-family: var(--fhead); font-size: clamp(1.1rem, 2.2vw, 1.8rem); text-transform: uppercase; transition: color .25s; }
+  a.v:hover { color: var(--amber); }
 
-  /* ═══ REDUCED MOTION ═══ */
+  /* Footer */
+  .footer { border-top: 1px solid var(--bdr); padding: 36px 6vw; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; }
+  .footer span { font-family: var(--fmono); font-size: .56rem; letter-spacing: .2em; text-transform: uppercase; color: var(--dim-2); }
+  .footer .pl { color: var(--plum); }
+
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation: none !important; transition: none !important; }
-    .hero-h .ln span, .stmt-h .ln span, .c-big .ln span, .mvc-title span { transform: none !important; }
-    .hero-label, .hero-bot, .about-body, .s-lbl, .s-box, .br-row, .mv-card, .mvc-div, .mvc-body, .c-item { opacity: 1 !important; transform: none !important; }
-    #c-dot, #c-ring { display: none; }
+    html { scroll-behavior: auto; }
+    .side-menu, .scroll-ui { visibility: visible !important; }
   }
   </style>
 </head>
 <body>
 
-<div id="c-dot"  aria-hidden="true"></div>
-<div id="c-ring" aria-hidden="true"></div>
-
-<!-- ═══ PRELOADER ═══ -->
-<div id="preloader" role="status" aria-label="Loading">
-  <div class="pre-logo"><em>D</em>esire <em>G</em>roup</div>
-  <div class="pre-track"><div class="pre-bar" id="pre-bar"></div></div>
-  <div class="pre-pct" id="pre-pct">0%</div>
-</div>
-
 <!-- ═══ NAV ═══ -->
-<nav id="nav" aria-label="Main navigation">
-  <a href="#hero" class="nav-logo">DG<em>.</em></a>
-  <ul class="nav-links">
+<nav class="nav">
+  <div class="nav__brand"><b>Desire Group</b><span>Est. UAE</span></div>
+  <ul class="nav__links">
     <li><a href="#about">About</a></li>
     <li><a href="#brands">Brands</a></li>
-    <li><a href="#mvv">Purpose</a></li>
+    <li><a href="#purpose">Purpose</a></li>
     <li><a href="#contact">Contact</a></li>
   </ul>
-  <a href="mailto:info@desiregroup.ae" class="nav-cta">Contact Us</a>
 </nav>
 
-<!-- ═══ HERO ═══ -->
-<section id="hero" aria-label="Hero">
-  <canvas id="hero-canvas" aria-hidden="true"></canvas>
-  <div class="hero-veil" aria-hidden="true"></div>
-  <div class="hero-content">
-    <p class="hero-label">Est. UAE — Diversified Group</p>
-    <h1 class="hero-h">
-      <span class="ln"><span class="orn">Shaping</span></span>
-      <span class="ln"><span>The</span></span>
-      <span class="ln"><span>Future</span></span>
-    </h1>
-    <div class="hero-bot">
-      <p class="hero-tag">Excellence across hospitality, healthcare,<br>creative media &amp; lifestyle.</p>
-      <div class="hero-scroll" aria-hidden="true">
-        <div class="hero-scroll-bar"></div>
-        <span>Scroll to Explore</span>
+<!-- ═══ HERO — COSMIC FLYTHROUGH ═══ -->
+<div class="hero" id="hero">
+  <canvas id="heroCanvas" class="hero__canvas"></canvas>
+
+  <div class="side-menu" id="sideMenu">
+    <div class="bars"><span></span><span></span><span></span></div>
+    <div class="vtext">Shaping the Future</div>
+  </div>
+
+  <div class="hero__content" id="heroContent">
+    <h1 class="hero__title" id="heroTitle">DESIRE</h1>
+    <div class="hero__sub">
+      <p>A diversified UAE conglomerate,</p>
+      <p>shaping the future of everyday life</p>
+    </div>
+  </div>
+
+  <div class="scroll-ui" id="scrollUI">
+    <div class="lbl">Scroll</div>
+    <div class="track"><div class="fill" id="progFill"></div></div>
+    <div class="count" id="chapterCount">01 / 03</div>
+  </div>
+
+  <div class="hero__sections">
+    <section class="hero__section">
+      <h1 class="hero__title">SHAPING</h1>
+      <div class="hero__sub">
+        <p>Hospitality. Healthcare. Retail.</p>
+        <p>Grooming &amp; creative media.</p>
+      </div>
+    </section>
+    <section class="hero__section">
+      <h1 class="hero__title">FUTURE</h1>
+      <div class="hero__sub">
+        <p>Seven brands. One vision.</p>
+        <p>Built on trust, innovation &amp; value.</p>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ═══ CONTENT ═══ -->
+<main class="content">
+
+  <!-- About -->
+  <section class="sec" id="about">
+    <div class="wrap">
+      <p class="eyebrow" data-anim>01 — About the group</p>
+      <h2 class="h-xl" data-anim>Built on <span class="pl">vi</span><span class="am">sion</span></h2>
+      <div class="about" style="margin-top:50px;">
+        <p class="about__body" data-anim><strong>Desire Group</strong> was founded to innovate, inspire and impact — a diversified business conglomerate shaping the future through excellence across multiple industries. Our journey began with a simple idea: to build brands that stand for trust, innovation and value.</p>
+        <p class="about__body" data-anim>From fresh groceries to precision healthcare, authentic dining to modern grooming and creative media — one group, seven brands, a single purpose: to deliver quality experiences that enrich everyday life.</p>
+      </div>
+      <div class="stats">
+        <div class="stat" data-anim><b id="st1">7</b><span>Brands Operating</span></div>
+        <div class="stat" data-anim><b>UAE</b><span>Country of Origin</span></div>
+        <div class="stat" data-anim><b id="st3">5</b><span>Sectors Covered</span></div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- ═══ MARQUEE 1 — plum bg, moves left ═══ -->
-<div class="mq-wrap inv" aria-hidden="true">
-  <div class="mq-track" id="mq1">
-    <div class="mq-item"><span>DESIRE GROUP</span><div class="mq-dot"></div><span>BORN IN UAE</span><div class="mq-dot"></div><span>7 BRANDS</span><div class="mq-dot"></div><span>SHAPING THE FUTURE</span><div class="mq-dot"></div></div>
-    <div class="mq-item"><span>DESIRE GROUP</span><div class="mq-dot"></div><span>BORN IN UAE</span><div class="mq-dot"></div><span>7 BRANDS</span><div class="mq-dot"></div><span>SHAPING THE FUTURE</span><div class="mq-dot"></div></div>
-  </div>
-</div>
+  <!-- Brands -->
+  <section class="sec" id="brands">
+    <div class="wrap">
+      <div class="brand-head">
+        <p class="eyebrow" data-anim>02 — Portfolio</p>
+        <h2 class="h-xl" data-anim><span class="pl">Seven</span> brands,<br>one vision</h2>
+      </div>
 
-<!-- ═══ ABOUT ═══ -->
-<section id="about" aria-label="About">
-  <div class="about-grid">
-    <div>
-      <p class="s-lbl">01 — About Us</p>
-      <h2 class="s-h">Built<br>on<br><span class="or">Vi</span><span class="yl">sion</span></h2>
-    </div>
-    <p class="about-body">Founded to innovate, inspire and impact — <strong>Desire Group</strong> is a diversified business conglomerate shaping the future through excellence across multiple industries. Our journey began with a simple idea: to build brands that stand for trust, innovation and value. From fresh groceries to precision healthcare, authentic dining to modern grooming and creative media — one group, seven brands, a single purpose: to deliver quality experiences that enrich everyday life.</p>
-  </div>
-</section>
+      <div class="brow">
+        <div class="brow__logo" style="background:#0f7a3d;color:#fff;">FD</div>
+        <div class="brow__num">01</div>
+        <div><div class="brow__name">FullDay</div><div class="brow__cat">Supermarket · Mini Mart · Groceries</div></div>
+        <div class="brow__meta"><p class="brow__loc">KBT Building, Jebel Ali</p><p class="brow__desc">Freshness every day — quality groceries and everyday essentials.</p></div>
+      </div>
 
-<!-- ═══ STATS ═══ -->
-<section id="stats" aria-label="Stats">
-  <div class="stats-row">
-    <div class="s-box">
-      <div class="s-num" id="st1">0</div>
-      <div class="s-lbl2">Brands Operating</div>
-    </div>
-    <div class="s-box">
-      <div class="s-num">UAE</div>
-      <div class="s-lbl2">Country of Origin</div>
-    </div>
-    <div class="s-box">
-      <div><span class="s-num" id="st3">0</span><span class="s-unit">+</span></div>
-      <div class="s-lbl2">Sectors Covered</div>
-    </div>
-  </div>
-</section>
+      <div class="brow">
+        <div class="brow__logo"><img src="logo/food-mahal-logo.png" alt="Food Mahal logo" loading="lazy"></div>
+        <div class="brow__num">02</div>
+        <div><div class="brow__name">Food Mahal</div><div class="brow__cat">Restaurant · Multi-Cuisine</div></div>
+        <div class="brow__meta"><p class="brow__loc">KBT Building, Jebel Ali</p><p class="brow__desc">Authentic Indian, Pakistani, Malabar, Chinese &amp; Filipino flavours.</p></div>
+      </div>
 
-<!-- ═══ MARQUEE 2 — dark bg, moves right ═══ -->
-<div class="mq-wrap" aria-hidden="true">
-  <div class="mq-track" id="mq2">
-    <div class="mq-item"><span>FULLDAY</span><div class="mq-dot"></div><span>FOOD MAHAL</span><div class="mq-dot"></div><span>CRESCENT</span><div class="mq-dot"></div><span>GROOMERS</span><div class="mq-dot"></div><span>MEDWELL</span><div class="mq-dot"></div><span>PICS-L</span><div class="mq-dot"></div><span>TASTY WORLD</span><div class="mq-dot"></div></div>
-    <div class="mq-item"><span>FULLDAY</span><div class="mq-dot"></div><span>FOOD MAHAL</span><div class="mq-dot"></div><span>CRESCENT</span><div class="mq-dot"></div><span>GROOMERS</span><div class="mq-dot"></div><span>MEDWELL</span><div class="mq-dot"></div><span>PICS-L</span><div class="mq-dot"></div><span>TASTY WORLD</span><div class="mq-dot"></div></div>
-  </div>
-</div>
+      <div class="brow">
+        <div class="brow__logo"><img src="logo/crescent-logo.png" alt="Crescent Cafeteria logo" loading="lazy"></div>
+        <div class="brow__num">03</div>
+        <div><div class="brow__name">Crescent</div><div class="brow__cat">Cafeteria · Quick Service · 3 Locations</div></div>
+        <div class="brow__meta"><p class="brow__loc">DIP-1 · DIP-2 · Al Quoz Mall</p><p class="brow__desc">Fast, fresh, affordable snacks, teas, juices and coffees.</p></div>
+      </div>
 
-<!-- ═══ BRANDS ═══ -->
-<section id="brands" aria-label="Our Brands">
-  <div class="brands-hd">
-    <p class="s-lbl">02 — Portfolio</p>
-    <h2 class="s-h"><span class="orn">7</span> Brands,<br>One Vision</h2>
-  </div>
+      <div class="brow">
+        <div class="brow__logo"><img src="logo/groomers.png" alt="Groomers logo" loading="lazy"></div>
+        <div class="brow__num">04</div>
+        <div><div class="brow__name">Groomers</div><div class="brow__cat">Men's Saloon · Premium Grooming</div></div>
+        <div class="brow__meta"><p class="brow__loc">Al Jazeera Al Hamra, RAK</p><p class="brow__desc">Modern men's grooming — precision cuts and beard styling.</p></div>
+      </div>
 
-  <div class="br-row">
-    <div class="br-logo" style="background:#0f7a3d;color:#fff;">FD</div>
-    <div class="br-num">01</div>
-    <div>
-      <div class="br-name">FullDay</div>
-      <div class="br-cat">Supermarket · Mini Mart · Groceries</div>
-    </div>
-    <div class="br-meta">
-      <p class="br-loc">KBT Building, Jebel Ali</p>
-      <p class="br-desc">Freshness every day — quality groceries, fresh produce and everyday essentials, because every day deserves the best.</p>
-    </div>
-  </div>
+      <div class="brow">
+        <div class="brow__logo"><img src="logo/medwell-logo.jpeg" alt="Medwell Pharmacy logo" loading="lazy"></div>
+        <div class="brow__num">05</div>
+        <div><div class="brow__name">Medwell</div><div class="brow__cat">Healthcare · Pharmacy · 3 Branches</div></div>
+        <div class="brow__meta"><p class="brow__loc">DPC · Inv. Park-1 · Al Jazeera Al Hamra</p><p class="brow__desc">Trusted, accessible healthcare and wellness essentials.</p></div>
+      </div>
 
-  <div class="br-row">
-    <div class="br-logo"><img src="logo/food-mahal-logo.png" alt="Food Mahal logo" loading="lazy"></div>
-    <div class="br-num">02</div>
-    <div>
-      <div class="br-name">Food Mahal</div>
-      <div class="br-cat">Restaurant · Multi-Cuisine</div>
-    </div>
-    <div class="br-meta">
-      <p class="br-loc">KBT Building, Jebel Ali</p>
-      <p class="br-desc">Indian, Pakistani, Malabar, Chinese &amp; Filipino — authentic flavours and memorable dining at prices within reach.</p>
-    </div>
-  </div>
+      <div class="brow">
+        <div class="brow__logo dk">PL</div>
+        <div class="brow__num">06</div>
+        <div><div class="brow__name">PICS-L Studio</div><div class="brow__cat">Creative Media · Photography · 3 Studios</div></div>
+        <div class="brow__meta"><p class="brow__loc">DIP-1 · Jabal Ali · Al Jazeera Al Hamra</p><p class="brow__desc">Where creativity meets precision — photography &amp; videography.</p></div>
+      </div>
 
-  <div class="br-row">
-    <div class="br-logo"><img src="logo/crescent-logo.png" alt="Crescent Cafeteria logo" loading="lazy"></div>
-    <div class="br-num">03</div>
-    <div>
-      <div class="br-name">Crescent Cafeteria</div>
-      <div class="br-cat">Cafeteria · Quick Service · 3 Locations</div>
+      <div class="brow">
+        <div class="brow__logo"><img src="logo/tasty-world-logo.jpeg" alt="Tasty World logo" loading="lazy"></div>
+        <div class="brow__num">07</div>
+        <div><div class="brow__name">Tasty World</div><div class="brow__cat">Restaurant · Catering · Events</div></div>
+        <div class="brow__meta"><p class="brow__loc">Caliber Plaza, Dubai Production City</p><p class="brow__desc">Multi-cuisine dining and full catering with great value.</p></div>
+      </div>
     </div>
-    <div class="br-meta">
-      <p class="br-loc">DIP-1 · DIP-2 · Al Quoz Mall</p>
-      <p class="br-desc">Fast, fresh, affordable — snacks, sandwiches, teas, juices and coffees. Feel the best taste.</p>
-    </div>
-  </div>
+  </section>
 
-  <div class="br-row">
-    <div class="br-logo"><img src="logo/groomers.png" alt="Groomers logo" loading="lazy"></div>
-    <div class="br-num">04</div>
-    <div>
-      <div class="br-name">Groomers</div>
-      <div class="br-cat">Men's Saloon · Premium Grooming</div>
+  <!-- Purpose -->
+  <section class="sec" id="purpose">
+    <div class="wrap">
+      <div class="mvv-head">
+        <p class="eyebrow" data-anim>03 — Purpose</p>
+        <h2 class="h-xl" data-anim>Mission · Vision · <span class="am">Values</span></h2>
+      </div>
+      <div class="mvv">
+        <div class="mvc" data-anim>
+          <div class="mvc__k">Mission</div>
+          <div class="mvc__t"><span class="x">Create.</span><br>Sustain.<br>Enrich.</div>
+          <p class="mvc__b">To create sustainable business ventures that enhance lifestyles, promote well-being and empower creativity — maintaining the highest standards of service and integrity.</p>
+        </div>
+        <div class="mvc" data-anim>
+          <div class="mvc__k">Vision</div>
+          <div class="mvc__t"><span class="x">Inspire.</span><br>Lead.<br>Transform.</div>
+          <p class="mvc__b">To be a leading multi-sector enterprise recognized for excellence, innovation and commitment to shaping a better future for our communities.</p>
+        </div>
+        <div class="mvc" data-anim>
+          <div class="mvc__k">Values</div>
+          <div class="mvc__t"><span class="x">Integrity.</span><br>Excellence.<br>Care.</div>
+          <p class="mvc__b">We stand for integrity, innovation and excellence — believing in sustainable growth and delivering quality and trust across every brand we build.</p>
+        </div>
+      </div>
     </div>
-    <div class="br-meta">
-      <p class="br-loc">Al Jazeera Al Hamra, RAK</p>
-      <p class="br-desc">Modern men's grooming redefined — precision cuts, beard styling and a statement of confidence.</p>
-    </div>
-  </div>
+  </section>
 
-  <div class="br-row">
-    <div class="br-logo"><img src="logo/medwell-logo.jpeg" alt="Medwell Pharmacy logo" loading="lazy"></div>
-    <div class="br-num">05</div>
-    <div>
-      <div class="br-name">Medwell Pharmacy</div>
-      <div class="br-cat">Healthcare · Pharmacy · 3 Branches</div>
+  <!-- Contact -->
+  <section class="sec" id="contact">
+    <div class="wrap">
+      <div class="contact">
+        <div>
+          <p class="eyebrow" data-anim>04 — Contact</p>
+          <h2 class="h-xl" data-anim>Let's build<br><span class="pl">together</span></h2>
+          <a class="contact__cta" href="mailto:info@desiregroup.ae" data-anim>
+            info@desiregroup.ae
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+          </a>
+        </div>
+        <div class="cdetails">
+          <div data-anim><p class="k">Email</p><a class="v" href="mailto:info@desiregroup.ae">info@desiregroup.ae</a></div>
+          <div data-anim><p class="k">Website</p><a class="v" href="https://www.desiregroup.ae" target="_blank" rel="noopener">desiregroup.ae</a></div>
+          <div data-anim><p class="k">Location</p><span class="v">United Arab Emirates</span></div>
+        </div>
+      </div>
     </div>
-    <div class="br-meta">
-      <p class="br-loc">DPC · Inv. Park-1 · Al Jazeera Al Hamra</p>
-      <p class="br-desc">Trusted, accessible healthcare — quality medicines, wellness products and expert pharmacists.</p>
-    </div>
-  </div>
+  </section>
 
-  <div class="br-row">
-    <div class="br-logo dark">PL</div>
-    <div class="br-num">06</div>
-    <div>
-      <div class="br-name">PICS-L Studio</div>
-      <div class="br-cat">Creative Media · Photography · 3 Studios</div>
-    </div>
-    <div class="br-meta">
-      <p class="br-loc">DIP-1 · Jabal Ali · Al Jazeera Al Hamra</p>
-      <p class="br-desc">Where creativity meets precision — photography &amp; videography that connect, inspire and endure.</p>
-    </div>
-  </div>
+  <footer class="footer">
+    <span>© <span id="year">2025</span> Desire Group</span>
+    <span class="pl">Shaping the Future</span>
+    <span>Dubai · UAE</span>
+  </footer>
+</main>
 
-  <div class="br-row">
-    <div class="br-logo"><img src="logo/tasty-world-logo.jpeg" alt="Tasty World logo" loading="lazy"></div>
-    <div class="br-num">07</div>
-    <div>
-      <div class="br-name">Tasty World</div>
-      <div class="br-cat">Restaurant · Catering · Events</div>
-    </div>
-    <div class="br-meta">
-      <p class="br-loc">Caliber Plaza, Dubai Production City</p>
-      <p class="br-desc">Multi-cuisine dining and full catering — generous portions, consistent quality and great value.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ MVV ═══ -->
-<section id="mvv" aria-label="Mission Vision Values">
-  <div class="mvv-hd">
-    <p class="s-lbl">03 — Purpose</p>
-    <h2 class="s-h">Mission<br>Vision<br>Values</h2>
-  </div>
-  <div class="mvv-grid">
-    <div class="mv-card mc1">
-      <div class="mvc-lbl">Mission</div>
-      <div class="mvc-title"><span>Create.<br>Sustain.<br>Enrich.</span></div>
-      <div class="mvc-div"></div>
-      <p class="mvc-body">To create sustainable business ventures that enhance lifestyles, promote well-being and empower creativity — maintaining the highest standards of service and integrity.</p>
-    </div>
-    <div class="mv-card mc2">
-      <div class="mvc-lbl">Vision</div>
-      <div class="mvc-title"><span>Inspire.<br>Lead.<br>Transform.</span></div>
-      <div class="mvc-div"></div>
-      <p class="mvc-body">To be a leading multi-sector enterprise recognized for excellence, innovation and commitment to shaping a better future for our communities.</p>
-    </div>
-    <div class="mv-card mc3">
-      <div class="mvc-lbl">Values</div>
-      <div class="mvc-title"><span>Excellence.<br>Integrity.<br>Care.</span></div>
-      <div class="mvc-div"></div>
-      <p class="mvc-body">We stand for integrity, innovation and excellence — believing in sustainable growth and delivering quality and trust across every brand we build.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ STATEMENT ═══ -->
-<section id="stmt" aria-label="Statement">
-  <h2 class="stmt-h">
-    <span class="ln"><span>The</span></span>
-    <span class="ln"><span class="orn">Future</span></span>
-    <span class="ln"><span>Belongs</span></span>
-    <span class="ln"><span class="ylw">To The Bold</span></span>
-  </h2>
-</section>
-
-<!-- ═══ CONTACT ═══ -->
-<section id="contact" aria-label="Contact">
-  <div>
-    <p class="s-lbl">04 — Contact</p>
-    <div class="c-big">
-      <div class="ln"><span>Let's</span></div>
-      <div class="ln"><span>Build</span></div>
-      <div class="ln"><span class="orn">Together</span></div>
-    </div>
-    <a href="mailto:info@desiregroup.ae" class="c-link">
-      info@desiregroup.ae
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
-      </svg>
-    </a>
-  </div>
-  <div class="c-details">
-    <div class="c-item">
-      <p class="c-ilbl">Email</p>
-      <a href="mailto:info@desiregroup.ae" class="c-ival">info@desiregroup.ae</a>
-    </div>
-    <div class="c-item">
-      <p class="c-ilbl">Website</p>
-      <a href="https://www.desiregroup.ae" target="_blank" rel="noopener" class="c-ival">desiregroup.ae</a>
-    </div>
-    <div class="c-item">
-      <p class="c-ilbl">Location</p>
-      <span class="c-ival">United Arab Emirates</span>
-    </div>
-    <div class="c-item">
-      <p class="c-ilbl">Portfolio</p>
-      <span class="c-ival">7 Brands · 5 Industries</span>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ FOOTER ═══ -->
-<footer id="footer">
-  <span class="ft">© <span id="year">2025</span> Desire Group. All Rights Reserved.</span>
-  <span class="ft orn">Shaping The Future</span>
-  <span class="ft">UAE</span>
-</footer>
-
-<!-- ─── CDNs: GSAP + ScrollTrigger + Lenis smooth scroll ─── -->
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
+<!-- ─── Three.js + GSAP ─── -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 
 <script>
 document.getElementById('year').textContent = new Date().getFullYear();
 var REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
-var HAS_GSAP = typeof window.gsap !== 'undefined';
 
-/* ─────────────────────────────────────────────────────────
-   HERO 3D CONSTELLATION
-   A rotating Fibonacci point-cloud sphere of micro geometric
-   primitives (triangles / circles / diamonds / squares) drawn
-   from the brand palette, with depth shading, pointer parallax,
-   ambient drift, and scroll-linked spin + scale. Pure canvas 2D.
-   ───────────────────────────────────────────────────────── */
-(function initHero() {
-  var c = document.getElementById('hero-canvas');
-  if (!c) return;
-  var ctx = c.getContext('2d');
-  var dpr = Math.min(window.devicePixelRatio || 1, 2);
-  var PAL = ['#8052ff', '#ffb829', '#15846e', '#ffffff'];
-  var WT  = [0.34, 0.18, 0.16, 0.32];
-  var w, h, cx, cy, radius;
-  var pts = [], drift = [];
-  var rot = 0, rx = 0, ry = 0, trx = 0, try_ = 0;
-  var mx = 0.5, my = 0.5, tx = 0.5, ty = 0.5;
-  var scrollY = 0;
+/* ───────────────────────────────────────────────
+   COSMIC SCENE (Three.js) — brand-tinted flythrough
+   Enhancement only: the page is fully usable without it.
+   ─────────────────────────────────────────────── */
+(function cosmos() {
+  if (typeof THREE === 'undefined' || REDUCE) return;
+  var canvas = document.getElementById('heroCanvas');
+  if (!canvas) return;
 
-  function pick() { var r = Math.random(), a = 0; for (var i = 0; i < PAL.length; i++) { a += WT[i]; if (r <= a) return PAL[i]; } return PAL[0]; }
+  var scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x000000, 0.00025);
+  var camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 2000);
+  camera.position.set(0, 20, 100);
 
-  function build() {
-    var N = (window.innerWidth < 760 ? 520 : 1050);
-    var gold = Math.PI * (3 - Math.sqrt(5));
-    pts = [];
-    for (var i = 0; i < N; i++) {
-      var y = 1 - (i / (N - 1)) * 2;
-      var r = Math.sqrt(1 - y * y);
-      var th = gold * i;
-      pts.push({
-        x: Math.cos(th) * r, y: y, z: Math.sin(th) * r,
-        s: 1.4 + Math.random() * 3.2, t: (Math.random() * 4) | 0,
-        c: pick(), tw: Math.random() * 6.283
-      });
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.55;
+
+  /* Stars — palette-tinted */
+  var stars = [];
+  for (var layer = 0; layer < 3; layer++) {
+    var count = 5000;
+    var geo = new THREE.BufferGeometry();
+    var pos = new Float32Array(count * 3), col = new Float32Array(count * 3), sizes = new Float32Array(count);
+    for (var j = 0; j < count; j++) {
+      var r = 200 + Math.random() * 800;
+      var t = Math.random() * Math.PI * 2;
+      var p = Math.acos(Math.random() * 2 - 1);
+      pos[j*3] = r*Math.sin(p)*Math.cos(t); pos[j*3+1] = r*Math.sin(p)*Math.sin(t); pos[j*3+2] = r*Math.cos(p);
+      var c = new THREE.Color(), rnd = Math.random();
+      if      (rnd < 0.66) c.setHSL(0,    0,   0.82 + Math.random()*0.18);  // white
+      else if (rnd < 0.85) c.setHSL(0.70, 0.6, 0.72);                       // plum
+      else if (rnd < 0.95) c.setHSL(0.11, 0.7, 0.70);                       // amber
+      else                 c.setHSL(0.47, 0.5, 0.60);                       // lichen
+      col[j*3]=c.r; col[j*3+1]=c.g; col[j*3+2]=c.b;
+      sizes[j] = Math.random()*2 + 0.5;
     }
-  }
-  function spawnDrift() {
-    var n = (window.innerWidth < 760 ? 36 : 70);
-    drift = [];
-    for (var i = 0; i < n; i++) drift.push({
-      x: Math.random() * w, y: Math.random() * h,
-      s: 1 + Math.random() * 2.6, t: (Math.random() * 4) | 0, c: pick(),
-      vy: -0.04 - Math.random() * 0.14, base: 0.06 + Math.random() * 0.22,
-      tw: Math.random() * 6.283, dep: 0.3 + Math.random() * 0.7
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    var mat = new THREE.ShaderMaterial({
+      uniforms: { time: { value: 0 }, depth: { value: layer } },
+      vertexShader: 'attribute float size; attribute vec3 color; varying vec3 vColor; uniform float time, depth; void main(){ vColor=color; vec3 p=position; float a=time*0.05*(1.0-depth*0.3); mat2 rot=mat2(cos(a),-sin(a),sin(a),cos(a)); p.xy=rot*p.xy; vec4 mv=modelViewMatrix*vec4(p,1.0); gl_PointSize=size*(300.0/-mv.z); gl_Position=projectionMatrix*mv; }',
+      fragmentShader: 'varying vec3 vColor; void main(){ float d=length(gl_PointCoord-vec2(0.5)); if(d>0.5) discard; gl_FragColor=vec4(vColor, 1.0-smoothstep(0.0,0.5,d)); }',
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
     });
+    var pts = new THREE.Points(geo, mat); scene.add(pts); stars.push(pts);
   }
-  function resize() {
-    var r = c.getBoundingClientRect(); w = r.width; h = r.height;
-    c.width = w * dpr; c.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // sphere sits upper-right on wide screens, centred on narrow
-    cx = w < 760 ? w * 0.5 : w * 0.66;
-    cy = w < 760 ? h * 0.40 : h * 0.46;
-    radius = Math.min(w, h) * (w < 760 ? 0.42 : 0.40);
-    spawnDrift();
-  }
-  function shape(t, x, y, s, col, a) {
-    ctx.globalAlpha = a; ctx.fillStyle = col; ctx.strokeStyle = col;
-    if (t === 0) { ctx.beginPath(); ctx.arc(x, y, s * 0.5, 0, 6.2832); ctx.fill(); }
-    else if (t === 1) { ctx.fillRect(x - s * 0.5, y - s * 0.5, s, s); }
-    else if (t === 2) { ctx.beginPath(); ctx.moveTo(x, y - s * 0.7); ctx.lineTo(x + s * 0.7, y); ctx.lineTo(x, y + s * 0.7); ctx.lineTo(x - s * 0.7, y); ctx.closePath(); ctx.fill(); }
-    else { ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y - s * 0.7); ctx.lineTo(x + s * 0.65, y + s * 0.5); ctx.lineTo(x - s * 0.65, y + s * 0.5); ctx.closePath(); ctx.stroke(); }
-    ctx.globalAlpha = 1;
-  }
-  window.addEventListener('mousemove', function (e) { tx = e.clientX / window.innerWidth; ty = e.clientY / window.innerHeight; }, { passive: true });
-  window.addEventListener('scroll', function () { scrollY = window.pageYOffset || 0; }, { passive: true });
-  window.addEventListener('resize', function () { resize(); });
 
-  function frame(tm) {
-    ctx.clearRect(0, 0, w, h);
-
-    // progress through hero (0 → 1) drives spin + gentle scale-down on scroll
-    var prog = h ? Math.min(scrollY / h, 1) : 0;
-
-    // ambient drift behind the sphere
-    mx += (tx - mx) * 0.04; my += (ty - my) * 0.04;
-    var ox = (mx - 0.5) * 40, oy = (my - 0.5) * 40;
-    for (var d = 0; d < drift.length; d++) {
-      var q = drift[d];
-      if (!REDUCE) { q.y += q.vy; if (q.y < -8) { q.y = h + 8; q.x = Math.random() * w; } }
-      var qt = REDUCE ? 1 : 0.6 + 0.4 * Math.sin(tm * 0.0015 + q.tw);
-      shape(q.t, q.x + ox * q.dep, q.y + oy * q.dep, q.s, q.c, q.base * qt);
-    }
-
-    // rotating sphere
-    if (!REDUCE) rot += 0.0016;
-    trx = (my - 0.5) * 0.6; try_ = (mx - 0.5) * 0.9;
-    rx += (trx - rx) * 0.05; ry += (try_ - ry) * 0.05;
-    var spin = rot + ry + prog * 1.2;             // scroll adds extra rotation
-    var tilt = rx + prog * 0.25;
-    var scl = 1 - prog * 0.18;                     // subtle shrink as you scroll
-    var cosY = Math.cos(spin), sinY = Math.sin(spin);
-    var cosX = Math.cos(tilt), sinX = Math.sin(tilt);
-    var R = radius * scl;
-
-    for (var i = 0; i < pts.length; i++) {
-      var p = pts[i];
-      var x1 = p.x * cosY - p.z * sinY;
-      var z1 = p.x * sinY + p.z * cosY;
-      var y1 = p.y * cosX - z1 * sinX;
-      z1 = p.y * sinX + z1 * cosX;
-      var persp = 1 / (1.8 - z1);
-      var sx = cx + x1 * R * persp;
-      var sy = cy + y1 * R * persp;
-      var depth = (z1 + 1) / 2;
-      var tw = REDUCE ? 1 : 0.65 + 0.35 * Math.sin(tm * 0.002 + p.tw);
-      var alpha = (0.16 + depth * 0.72) * tw;
-      var size = p.s * (0.5 + depth * 0.95);
-      shape(p.t, sx, sy, size, p.c, Math.min(alpha, 0.96));
-    }
-    requestAnimationFrame(frame);
-  }
-  build(); resize(); requestAnimationFrame(frame);
-})();
-
-/* ─────────────────────────────────────────────────────────
-   CUSTOM CURSOR (pointer:fine only)
-   ───────────────────────────────────────────────────────── */
-(function cursor() {
-  if (matchMedia('(pointer: coarse)').matches) return;
-  var dot = document.getElementById('c-dot'), ring = document.getElementById('c-ring');
-  var mx = innerWidth / 2, my = innerHeight / 2, rx = mx, ry = my;
-  addEventListener('mousemove', function (e) { mx = e.clientX; my = e.clientY; dot.style.transform = 'translate(' + mx + 'px,' + my + 'px) translate(-50%,-50%)'; });
-  document.querySelectorAll('a, button').forEach(function (el) {
-    el.addEventListener('mouseenter', function () { document.body.classList.add('hov'); });
-    el.addEventListener('mouseleave', function () { document.body.classList.remove('hov'); });
+  /* Nebula — plum → amber */
+  var nebulaMat = new THREE.ShaderMaterial({
+    uniforms: { time:{value:0}, color1:{value:new THREE.Color(0x8052ff)}, color2:{value:new THREE.Color(0xffb829)}, opacity:{value:0.32} },
+    vertexShader: 'varying vec2 vUv; varying float vEl; uniform float time; void main(){ vUv=uv; vec3 p=position; float el=sin(p.x*0.01+time)*cos(p.y*0.01+time)*20.0; p.z+=el; vEl=el; gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0); }',
+    fragmentShader: 'uniform vec3 color1,color2; uniform float opacity,time; varying vec2 vUv; varying float vEl; void main(){ float m=sin(vUv.x*10.0+time)*cos(vUv.y*10.0+time); vec3 col=mix(color1,color2,m*0.5+0.5); float a=opacity*(1.0-length(vUv-0.5)*2.0); gl_FragColor=vec4(col, a*(1.0+vEl*0.01)); }',
+    transparent: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false
   });
-  (function raf() { rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12; ring.style.transform = 'translate(' + rx + 'px,' + ry + 'px) translate(-50%,-50%)'; requestAnimationFrame(raf); })();
-})();
+  var nebula = new THREE.Mesh(new THREE.PlaneGeometry(8000, 4000, 100, 100), nebulaMat);
+  nebula.position.z = -1050; scene.add(nebula);
 
-/* ─────────────────────────────────────────────────────────
-   MOTION SYSTEM — GSAP + ScrollTrigger + Lenis (resilient)
-   The preloader is driven by plain JS and ALWAYS dismisses — even
-   if a CDN file is slow or fails to load — so the page can never
-   get trapped on the loading screen (the cause of mobile hangs).
-   ───────────────────────────────────────────────────────── */
-var HAS_ST    = HAS_GSAP && typeof window.ScrollTrigger !== 'undefined';
-var HAS_LENIS = typeof window.Lenis !== 'undefined';
-var _started  = false;
-
-function hidePreloader(done) {
-  var pl = document.getElementById('preloader');
-  if (!pl || pl.dataset.hidden) { if (done) done(); return; }
-  pl.dataset.hidden = '1';
-  pl.style.transition = 'opacity .5s ease';
-  pl.style.opacity = '0';
-  setTimeout(function () { pl.style.display = 'none'; if (done) done(); }, 520);
-}
-
-/* Static fallback — reveal everything when GSAP/ScrollTrigger are absent */
-function revealStatic() {
-  document.querySelectorAll('.hero-label,.hero-bot,.about-body,.s-lbl,.s-box,.br-row,.mv-card,.mvc-div,.mvc-body,.c-item')
-    .forEach(function (el) { el.style.opacity = 1; el.style.transform = 'none'; });
-  document.querySelectorAll('.hero-h .ln span,.stmt-h .ln span,.c-big .ln span,.mvc-title span')
-    .forEach(function (el) { el.style.transform = 'none'; });
-  var s1 = document.getElementById('st1'), s3 = document.getElementById('st3');
-  if (s1) s1.textContent = '7'; if (s3) s3.textContent = '5';
-  var nav = document.getElementById('nav');
-  if (nav) window.addEventListener('scroll', function () { nav.classList.toggle('glass', window.pageYOffset > 60); }, { passive: true });
-}
-
-function startMotion() {
-  if (_started) return; _started = true;
-  if (HAS_GSAP && HAS_ST) { try { boot(); return; } catch (e) { revealStatic(); return; } }
-  revealStatic();
-}
-
-/* Preloader — plain JS, no library dependency */
-(function () {
-  var logo = document.querySelector('.pre-logo'); if (logo) logo.style.opacity = '1';
-  var bar = document.getElementById('pre-bar'), pct = document.getElementById('pre-pct'), p = 0;
-  if (REDUCE) { hidePreloader(startMotion); return; }
-  var t = setInterval(function () {
-    p = Math.min(p + Math.random() * 24, 100);
-    if (bar) bar.style.width = p + '%';
-    if (pct) pct.textContent = Math.round(p) + '%';
-    if (p >= 100) { clearInterval(t); setTimeout(function () { hidePreloader(startMotion); }, 240); }
-  }, 55);
-})();
-
-/* Hard failsafe — a slow/blocked CDN can never trap the page */
-setTimeout(function () { hidePreloader(startMotion); }, 4500);
-
-function boot() {
-  gsap.registerPlugin(ScrollTrigger);
-
-  /* Lenis smooth scroll */
-  if (HAS_LENIS && !REDUCE) {
-    var lenis = new Lenis({ duration: 1.2, easing: function (t) { return Math.min(1, 1.001 - Math.pow(2, -10 * t)); }, smoothWheel: true });
-    lenis.on('scroll', ScrollTrigger.update);
-    gsap.ticker.add(function (t) { lenis.raf(t * 1000); });
-    gsap.ticker.lagSmoothing(0);
-  }
-
-  /* Nav glass */
-  ScrollTrigger.create({ start: 'top -60', onUpdate: function (s) { document.getElementById('nav').classList.toggle('glass', s.progress > 0); } });
-
-    /* HERO */
-    gsap.to('.hero-label', { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' });
-    gsap.to('.hero-h .ln span', { y: '0%', duration: 1.1, stagger: 0.13, ease: 'power4.out', delay: 0.15 });
-    gsap.to('.hero-bot', { opacity: 1, duration: 0.85, delay: 0.75, ease: 'power3.out' });
-    if (!REDUCE) gsap.fromTo('.hero-scroll-bar', { scaleX: 0, transformOrigin: 'left' }, { scaleX: 1, duration: 0.85, repeat: -1, yoyo: true, ease: 'power2.inOut', delay: 1.3 });
-
-    /* Hero fade on scroll */
-    gsap.to('#hero-canvas', { opacity: 0.15, scrollTrigger: { trigger: '#hero', start: 'center top', end: 'bottom top', scrub: true } });
-    gsap.to('.hero-content', { y: -80, opacity: 0, scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: 1 } });
-
-    /* Marquees */
-    function loopMQ(id, dur, reverse) {
-      var el = document.getElementById(id); if (!el) return;
-      var half = el.scrollWidth / 2;
-      gsap.fromTo(el, { x: reverse ? -half : 0 }, { x: reverse ? 0 : -half, duration: dur, ease: 'none', repeat: -1 });
+  /* Mountains — plum-tinted dark ridges */
+  var mountainLayers = [
+    { distance:-50,  height:60,  color:0x0a0a18, opacity:1   },
+    { distance:-100, height:80,  color:0x140f2e, opacity:0.8 },
+    { distance:-150, height:100, color:0x1d1542, opacity:0.6 },
+    { distance:-200, height:120, color:0x2a1f5e, opacity:0.4 }
+  ];
+  var mountains = [], locations = [];
+  mountainLayers.forEach(function (lyr, idx) {
+    var mp = [];
+    for (var i = 0; i <= 50; i++) {
+      var x = (i/50 - 0.5) * 1000;
+      var y = Math.sin(i*0.1)*lyr.height + Math.sin(i*0.05)*lyr.height*0.5 + Math.random()*lyr.height*0.2 - 100;
+      mp.push(new THREE.Vector2(x, y));
     }
-    loopMQ('mq1', 22, false);
-    loopMQ('mq2', 18, true);
+    mp.push(new THREE.Vector2(5000, -300), new THREE.Vector2(-5000, -300));
+    var mesh = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(mp)),
+      new THREE.MeshBasicMaterial({ color: lyr.color, transparent: true, opacity: lyr.opacity, side: THREE.DoubleSide }));
+    mesh.position.z = lyr.distance; mesh.position.y = lyr.distance;
+    scene.add(mesh); mountains.push(mesh); locations.push(lyr.distance);
+  });
 
-    /* About — slide-left */
-    ScrollTrigger.create({
-      trigger: '#about', start: 'top 74%',
-      onEnter: function () {
-        gsap.to('#about .s-lbl', { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' });
-        gsap.from('#about .s-h', { x: -90, opacity: 0, duration: 1.1, ease: 'power3.out', delay: 0.1 });
-        gsap.to('.about-body', { opacity: 1, x: 0, duration: 1, ease: 'power3.out', delay: 0.3 });
-      }
-    });
+  /* Atmosphere glow — plum */
+  var atmoMat = new THREE.ShaderMaterial({
+    uniforms: { time:{value:0} },
+    vertexShader: 'varying vec3 vN; void main(){ vN=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader: 'varying vec3 vN; uniform float time; void main(){ float i=pow(0.7-dot(vN,vec3(0,0,1)),2.0); vec3 a=vec3(0.5,0.34,1.0)*i*(sin(time*2.0)*0.1+0.9); gl_FragColor=vec4(a, i*0.25); }',
+    side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true
+  });
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(600, 32, 32), atmoMat));
 
-    /* Stats — stagger + counters */
-    ScrollTrigger.create({
-      trigger: '#stats', start: 'top 76%',
-      onEnter: function () {
-        gsap.to('.s-box', { opacity: 1, y: 0, duration: 0.95, stagger: 0.13, ease: 'power3.out' });
-        var a1 = { v: 0 }, a3 = { v: 0 }, e1 = document.getElementById('st1'), e3 = document.getElementById('st3');
-        gsap.to(a1, { v: 7, duration: 1.7, ease: 'power2.out', delay: 0.3, onUpdate: function () { e1.textContent = Math.round(a1.v); } });
-        gsap.to(a3, { v: 5, duration: 1.5, ease: 'power2.out', delay: 0.5, onUpdate: function () { e3.textContent = Math.round(a3.v); } });
-      }
-    });
+  /* Camera */
+  var smoothCam = { x:0, y:30, z:100 }, targetCam = { x:0, y:30, z:100 };
+  var camPositions = [ {x:0,y:30,z:300}, {x:0,y:40,z:-50}, {x:0,y:55,z:-700} ];
+  var hero = document.getElementById('hero');
 
-    /* Brands head — scale-up */
-    ScrollTrigger.create({
-      trigger: '.brands-hd', start: 'top 78%',
-      onEnter: function () {
-        gsap.to('.brands-hd .s-lbl', { opacity: 1, y: 0, duration: 0.7 });
-        gsap.from('.brands-hd .s-h', { scale: 0.88, opacity: 0, duration: 1.1, ease: 'power3.out', delay: 0.1 });
-      }
-    });
+  function onScroll() {
+    var maxScroll = hero.offsetHeight - innerHeight;
+    var progress = Math.min(Math.max(window.pageYOffset / maxScroll, 0), 1);
+    var seg = progress * (camPositions.length - 1);
+    var i = Math.min(Math.floor(seg), camPositions.length - 2);
+    var f = seg - i;
+    var a = camPositions[i], b = camPositions[i+1];
+    targetCam.x = a.x + (b.x-a.x)*f;
+    targetCam.y = a.y + (b.y-a.y)*f;
+    targetCam.z = a.z + (b.z-a.z)*f;
 
-    /* Brand rows — batch slide-left */
-    ScrollTrigger.batch('.br-row', { start: 'top 85%', onEnter: function (els) { gsap.to(els, { opacity: 1, x: 0, duration: 0.85, stagger: 0.07, ease: 'power3.out' }); } });
-
-    /* MVV — reveal */
-    ScrollTrigger.create({
-      trigger: '#mvv', start: 'top 72%',
-      onEnter: function () {
-        gsap.to('.mvv-hd .s-lbl', { opacity: 1, y: 0, duration: 0.7 });
-        gsap.from('.mvv-hd .s-h', { y: 60, rotation: 2, opacity: 0, duration: 1, ease: 'power4.out', delay: 0.1 });
-        gsap.to('.mv-card', { opacity: 1, y: 0, duration: 1, stagger: 0.15, ease: 'power3.out', delay: 0.25 });
-        gsap.to('.mvc-title span', { y: '0%', duration: 0.9, stagger: 0.16, ease: 'power4.out', delay: 0.55 });
-        gsap.to('.mvc-div', { opacity: 1, scaleX: 1, duration: 0.5, stagger: 0.15, ease: 'power3.out', delay: 0.85 });
-        gsap.to('.mvc-body', { opacity: 1, y: 0, duration: 0.75, stagger: 0.12, ease: 'power3.out', delay: 1.05 });
-      }
-    });
-    if (!REDUCE) gsap.to('.mvv-grid', { y: -60, scrollTrigger: { trigger: '#mvv', start: 'top bottom', end: 'bottom top', scrub: 1.2 } });
-
-    /* Statement — clip reveal + parallax */
-    ScrollTrigger.create({ trigger: '#stmt', start: 'top 72%', onEnter: function () { gsap.to('.stmt-h .ln span', { y: '0%', duration: 1.2, stagger: 0.16, ease: 'power4.out' }); } });
-    if (!REDUCE) gsap.to('.stmt-h', { y: -100, scrollTrigger: { trigger: '#stmt', start: 'top bottom', end: 'bottom top', scrub: 1.4 } });
-
-    /* Contact — fade-up */
-    ScrollTrigger.create({
-      trigger: '#contact', start: 'top 76%',
-      onEnter: function () {
-        gsap.to('#contact .s-lbl', { opacity: 1, y: 0, duration: 0.7 });
-        gsap.to('.c-big .ln span', { y: '0%', duration: 1, stagger: 0.12, ease: 'power4.out', delay: 0.1 });
-        gsap.to('.c-item', { opacity: 1, y: 0, duration: 0.75, stagger: 0.1, ease: 'power3.out', delay: 0.35 });
-      }
-    });
-
-    ScrollTrigger.refresh();
+    mountains.forEach(function (m, k) { m.position.z = progress > 0.78 ? 600000 : locations[k]; });
+    nebula.position.z = mountains[3].position.z;
   }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    var t = Date.now() * 0.001;
+    stars.forEach(function (s) { s.material.uniforms.time.value = t; });
+    nebulaMat.uniforms.time.value = t * 0.5;
+    atmoMat.uniforms.time.value = t;
+    var k = 0.05;
+    smoothCam.x += (targetCam.x - smoothCam.x) * k;
+    smoothCam.y += (targetCam.y - smoothCam.y) * k;
+    smoothCam.z += (targetCam.z - smoothCam.z) * k;
+    camera.position.x = smoothCam.x + Math.sin(t*0.1)*2;
+    camera.position.y = smoothCam.y + Math.cos(t*0.15)*1;
+    camera.position.z = smoothCam.z;
+    camera.lookAt(0, 10, -600);
+    mountains.forEach(function (m, i) { var pf = 1 + i*0.5; m.position.x = Math.sin(t*0.1)*2*pf; m.position.y = 50 + Math.cos(t*0.15)*1*pf; });
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', function () {
+    camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+})();
+
+/* ───────────────────────────────────────────────
+   HERO UI — progress, chapter counter, fade-out.
+   Always runs (independent of Three.js / GSAP) so the
+   fixed hero never overlays the content below.
+   ─────────────────────────────────────────────── */
+(function heroUI() {
+  var hero = document.getElementById('hero');
+  var hc = document.getElementById('heroContent');
+  var fill = document.getElementById('progFill');
+  var cnt = document.getElementById('chapterCount');
+  var menu = document.getElementById('sideMenu');
+  var sui = document.getElementById('scrollUI');
+  var canvas = document.getElementById('heroCanvas');
+  if (!hero) return;
+  function upd() {
+    var maxS = Math.max(hero.offsetHeight - innerHeight, 1);
+    var pr = Math.min(Math.max(window.pageYOffset / maxS, 0), 1);
+    if (fill) fill.style.width = (pr * 100) + '%';
+    if (cnt) cnt.textContent = String(Math.min(Math.floor(pr * 3), 2) + 1).padStart(2, '0') + ' / 03';
+    if (hc) hc.style.opacity = String(Math.max(1 - pr * 3.2, 0));
+    if (canvas) canvas.style.opacity = String(Math.max(1 - Math.max(pr - 0.85, 0) / 0.15, 0));
+    var past = pr >= 0.999;
+    if (menu) { menu.style.opacity = past ? '0' : ''; menu.style.pointerEvents = past ? 'none' : ''; }
+    if (sui) sui.style.opacity = past ? '0' : '';
+  }
+  window.addEventListener('scroll', upd, { passive: true });
+  window.addEventListener('resize', upd);
+  upd();
+})();
+
+/* ───────────────────────────────────────────────
+   GSAP — title entrance + scroll reveals (guarded)
+   ─────────────────────────────────────────────── */
+(function motion() {
+  // split hero title into chars regardless (visible by default)
+  var title = document.getElementById('heroTitle');
+  if (title) {
+    title.innerHTML = [].map.call(title.textContent, function (ch) { return '<span class="tchar">' + ch + '</span>'; }).join('');
+  }
+  if (typeof gsap === 'undefined' || REDUCE) return;
+
+  var menu = document.getElementById('sideMenu'), scrollUI = document.getElementById('scrollUI');
+  if (menu) menu.style.visibility = 'visible';
+  if (scrollUI) scrollUI.style.visibility = 'visible';
+
+  try {
+    var tl = gsap.timeline({ delay: 0.25 });
+    tl.from(menu, { x: -80, opacity: 0, duration: 1, ease: 'power3.out' });
+    tl.from('#heroTitle .tchar', { y: 200, opacity: 0, duration: 1.4, stagger: 0.05, ease: 'power4.out' }, '-=0.5');
+    tl.from('#heroContent .hero__sub p', { y: 40, opacity: 0, duration: 1, stagger: 0.18, ease: 'power3.out' }, '-=0.8');
+    tl.from(scrollUI, { y: 40, opacity: 0, duration: 1, ease: 'power2.out' }, '-=0.5');
+  } catch (e) {}
+
+  /* Scroll reveals — rect-based, bulletproof. Never leaves content stuck
+     invisible: works with manual scroll, anchor jumps, and the final section. */
+  try {
+    var anims = gsap.utils.toArray('[data-anim]');
+    var brows = gsap.utils.toArray('.brow');
+    gsap.set(anims, { opacity: 0, y: 46 });
+    gsap.set(brows, { opacity: 0, x: -50 });
+    var show = function (el, vars) { if (el._shown) return; el._shown = true; gsap.to(el, vars); };
+    var reveal = function () {
+      var vh = innerHeight * 0.92;
+      anims.forEach(function (el) { if (!el._shown && el.getBoundingClientRect().top < vh) show(el, { opacity: 1, y: 0, duration: 0.9, ease: 'power3.out' }); });
+      brows.forEach(function (el) { if (!el._shown && el.getBoundingClientRect().top < vh) show(el, { opacity: 1, x: 0, duration: 0.8, ease: 'power3.out' }); });
+    };
+    var ticking = false;
+    window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(function () { reveal(); ticking = false; }); } }, { passive: true });
+    window.addEventListener('load', reveal);
+    window.addEventListener('hashchange', function () { setTimeout(reveal, 60); });
+    reveal();
+  } catch (e) {
+    gsap.utils.toArray('[data-anim], .brow').forEach(function (el) { el.style.opacity = 1; el.style.transform = 'none'; });
+  }
+})();
 </script>
 </body>
 </html>
