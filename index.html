@@ -1,431 +1,679 @@
 <!DOCTYPE html>
-<html lang="en" class="no-js">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Desire Group — Shaping the Future</title>
-  <meta name="description" content="Desire Group is a diversified UAE business conglomerate shaping the future through excellence across hospitality, healthcare, retail, grooming and creative media — a family of brands built on trust, innovation and value." />
+  <meta name="description" content="Desire Group is a diversified UAE conglomerate shaping the future through excellence across hospitality, healthcare, retail, grooming and creative media — one group, seven brands." />
   <meta name="theme-color" content="#000000" />
-
-  <!-- Open Graph -->
   <meta property="og:title" content="Desire Group — Shaping the Future" />
-  <meta property="og:description" content="A diversified UAE conglomerate. A family of brands built on trust, innovation and value." />
+  <meta property="og:description" content="A diversified UAE conglomerate. Seven brands built on trust, innovation and value." />
   <meta property="og:type" content="website" />
 
-  <!-- Fonts: Inter as the Acronym substitute (weights 200/400/600/700) -->
+  <!-- Barlow Condensed (display) + Space Mono (UI / body) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="assets/css/styles.css" />
+  <style>
+  /* ═══ TOKENS — official Desire Group palette (orange→plum, yellow→amber) ═══ */
+  :root {
+    --ink:    #000000;          /* void */
+    --ink-2:  #0a0a0a;
+    --bone:   #ffffff;          /* bone */
+    --dim:    rgba(255, 255, 255, .52);  /* smoke */
+    --dim-2:  rgba(255, 255, 255, .30);
+    --bdr:    rgba(255, 255, 255, .10);  /* hairline */
+    --plum:   #8052ff;          /* plum voltage — primary accent */
+    --amber:  #ffb829;          /* amber spark — secondary accent */
+    --lichen: #15846e;          /* lichen — tertiary / constellation */
+    --fd: 'Barlow Condensed', sans-serif;  /* display */
+    --fm: 'Space Mono', monospace;         /* ui / body */
+  }
+
+  /* ═══ RESET ═══ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { overflow-x: hidden; }
+  body {
+    background: var(--ink); color: var(--bone);
+    font-family: var(--fm);
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+  a { color: inherit; text-decoration: none; }
+  ul { list-style: none; }
+  img { max-width: 100%; display: block; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  :focus-visible { outline: 2px solid var(--plum); outline-offset: 3px; }
+
+  /* ═══ CUSTOM CURSOR ═══ */
+  #c-dot, #c-ring { position: fixed; top: 0; left: 0; border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); }
+  #c-dot  { width: 7px; height: 7px; background: var(--plum); }
+  #c-ring { width: 34px; height: 34px; border: 1.5px solid rgba(128, 82, 255, .45); transition: width .2s, height .2s, border-color .2s; }
+  body.hov #c-ring { width: 54px; height: 54px; border-color: var(--amber); }
+  @media (pointer: coarse) { #c-dot, #c-ring { display: none; } }
+
+  /* ═══ PRELOADER ═══ */
+  #preloader { position: fixed; inset: 0; z-index: 9990; background: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 36px; }
+  .pre-logo { font-family: var(--fd); font-size: clamp(3rem, 8vw, 9rem); font-weight: 900; text-transform: uppercase; letter-spacing: .04em; line-height: 1; opacity: 0; text-align: center; }
+  .pre-logo em { color: var(--plum); font-style: normal; }
+  .pre-track { width: clamp(200px, 38vw, 420px); height: 2px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+  .pre-bar   { height: 100%; width: 0; background: var(--plum); }
+  .pre-pct   { font-size: .6rem; letter-spacing: .3em; text-transform: uppercase; color: var(--dim); }
+
+  /* ═══ NAV ═══ */
+  #nav { position: fixed; top: 0; left: 0; right: 0; z-index: 500; display: flex; align-items: center; justify-content: space-between; padding: 26px 6vw; transition: background .4s, backdrop-filter .4s, padding .3s, border-color .4s; border-bottom: 1px solid transparent; }
+  #nav.glass { background: rgba(0, 0, 0, .92); backdrop-filter: blur(14px); padding: 14px 6vw; border-bottom: 1px solid var(--bdr); }
+  .nav-logo { font-family: var(--fd); font-size: 1.4rem; font-weight: 900; text-transform: uppercase; letter-spacing: .12em; }
+  .nav-logo em { color: var(--plum); font-style: normal; }
+  .nav-links { display: flex; gap: 32px; }
+  .nav-links a { font-size: .6rem; letter-spacing: .22em; text-transform: uppercase; color: var(--dim); transition: color .25s; }
+  .nav-links a:hover { color: var(--plum); }
+  @media (max-width: 768px) { .nav-links { display: none; } }
+  .nav-cta { display: inline-flex; align-items: center; min-height: 44px; font-family: var(--fm); font-size: .58rem; letter-spacing: .2em; text-transform: uppercase; background: var(--plum); color: var(--bone); padding: 0 20px; transition: background .25s, color .25s; }
+  .nav-cta:hover { background: var(--amber); color: var(--ink); }
+
+  /* ═══ HERO ═══ */
+  #hero { position: relative; height: 100vh; min-height: 600px; background: var(--ink); overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 6vw 8vh; }
+  #hero-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+  .hero-veil { position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(to top, rgba(0, 0, 0, .92) 0%, rgba(0, 0, 0, .35) 60%, rgba(0, 0, 0, .55) 100%); }
+  .hero-content { position: relative; z-index: 2; }
+  .hero-label { font-size: .6rem; letter-spacing: .3em; text-transform: uppercase; color: var(--plum); margin-bottom: 18px; opacity: 0; transform: translateY(12px); }
+  .hero-h { font-family: var(--fd); font-size: clamp(5.5rem, 17vw, 24rem); font-weight: 900; line-height: .83; text-transform: uppercase; letter-spacing: -.01em; margin-bottom: 44px; }
+  .hero-h .ln { display: block; overflow: hidden; }
+  .hero-h .ln span { display: block; transform: translateY(110%); }
+  .hero-h .orn { color: var(--plum); }
+  .hero-h .ylw { color: var(--amber); }
+  .hero-bot { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; opacity: 0; }
+  .hero-tag { font-size: .7rem; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); max-width: 300px; line-height: 2.1; }
+  .hero-scroll { display: flex; align-items: center; gap: 14px; font-size: .55rem; letter-spacing: .26em; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
+  .hero-scroll-bar { width: 30px; height: 1px; background: var(--plum); transform-origin: left; transform: scaleX(0); }
+
+  /* ═══ MARQUEE ═══ */
+  .mq-wrap { overflow: hidden; border-top: 1px solid var(--bdr); border-bottom: 1px solid var(--bdr); }
+  .mq-wrap.inv { background: var(--plum); border-color: rgba(0, 0, 0, .18); }
+  .mq-track { display: flex; white-space: nowrap; will-change: transform; padding: 18px 0; }
+  .mq-item { display: inline-flex; align-items: center; gap: 36px; padding: 0 36px; flex-shrink: 0; }
+  .mq-item span { font-family: var(--fd); font-size: clamp(2.8rem, 7vw, 9rem); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .mq-wrap.inv .mq-item span { color: var(--bone); }
+  .mq-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
+  .mq-wrap.inv .mq-dot { background: var(--ink); }
+
+  /* ═══ SECTION SHARED ═══ */
+  .s-lbl { font-size: .58rem; letter-spacing: .3em; text-transform: uppercase; color: var(--plum); margin-bottom: 20px; opacity: 0; transform: translateY(12px); }
+
+  /* ═══ ABOUT ═══ */
+  #about { padding: 130px 6vw; }
+  .about-grid { display: grid; grid-template-columns: 5fr 4fr; gap: 100px; align-items: start; }
+  @media (max-width: 860px) { .about-grid { grid-template-columns: 1fr; gap: 48px; } }
+  #about .s-h { font-family: var(--fd); font-size: clamp(4rem, 9vw, 13rem); font-weight: 900; text-transform: uppercase; line-height: .85; letter-spacing: -.01em; }
+  #about .s-h .yl { color: var(--amber); }
+  #about .s-h .or { color: var(--plum); }
+  .about-body { font-size: .82rem; line-height: 2; color: var(--dim); opacity: 0; transform: translateX(40px); padding-top: 20px; }
+  .about-body strong { color: var(--bone); font-weight: 400; }
+
+  /* ═══ STATS ═══ */
+  #stats { padding: 100px 6vw; border-top: 1px solid var(--bdr); border-bottom: 1px solid var(--bdr); }
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 640px) { .stats-row { grid-template-columns: 1fr; } }
+  .s-box { padding: 0 48px 0 0; border-right: 1px solid var(--bdr); opacity: 0; transform: translateY(48px); }
+  .s-box:first-child { padding-left: 0; }
+  .s-box:last-child  { border-right: none; padding-right: 0; }
+  @media (max-width: 640px) {
+    .s-box { border-right: none; border-bottom: 1px solid var(--bdr); padding: 0 0 40px; margin-bottom: 40px; }
+    .s-box:last-child { border-bottom: none; margin-bottom: 0; }
+  }
+  .s-num { font-family: var(--fd); font-size: clamp(5rem, 12vw, 14rem); font-weight: 900; line-height: .8; color: var(--plum); text-transform: uppercase; }
+  .s-unit { font-family: var(--fd); font-size: clamp(1.5rem, 3vw, 3.5rem); font-weight: 700; color: var(--bone); }
+  .s-lbl2 { font-size: .58rem; letter-spacing: .28em; text-transform: uppercase; color: var(--dim); margin-top: 16px; }
+
+  /* ═══ BRANDS ═══ */
+  #brands { border-top: 1px solid var(--bdr); }
+  .brands-hd { padding: 100px 6vw 50px; }
+  .brands-hd .s-h { font-family: var(--fd); font-size: clamp(5rem, 13vw, 18rem); font-weight: 900; text-transform: uppercase; line-height: .82; letter-spacing: -.01em; }
+  .brands-hd .s-h .orn { color: var(--plum); }
+  .br-row { display: grid; grid-template-columns: 64px 80px 1fr auto; gap: 0; padding: 28px 6vw; border-top: 1px solid var(--bdr); align-items: center; opacity: 0; transform: translateX(-56px); transition: background .3s; }
+  .br-row:hover { background: rgba(128, 82, 255, .07); }
+  .br-row:hover .br-num { color: var(--amber); }
+  @media (max-width: 860px) { .br-row { grid-template-columns: 44px 1fr; } }
+  .br-logo { width: 46px; height: 46px; border-radius: 12px; background: var(--bone); display: grid; place-items: center; overflow: hidden; font-family: var(--fd); font-weight: 900; font-size: 1rem; color: var(--ink); }
+  .br-logo img { width: 100%; height: 100%; object-fit: contain; padding: 6px; }
+  .br-logo.dark { background: var(--ink-2); border: 1px solid var(--bdr); color: var(--lichen); }
+  @media (max-width: 860px) { .br-logo { display: none; } }
+  .br-num { font-size: .58rem; letter-spacing: .22em; color: var(--plum); transition: color .25s; }
+  .br-name { font-family: var(--fd); font-size: clamp(2.2rem, 4.5vw, 6rem); font-weight: 800; text-transform: uppercase; line-height: .9; }
+  .br-cat { font-size: .58rem; letter-spacing: .18em; text-transform: uppercase; color: var(--dim); margin-top: 10px; }
+  .br-meta { text-align: right; }
+  @media (max-width: 860px) { .br-meta { display: none; } }
+  .br-loc { font-size: .55rem; letter-spacing: .18em; text-transform: uppercase; color: var(--dim-2); }
+  .br-desc { font-size: .7rem; line-height: 1.75; color: var(--dim); max-width: 320px; margin-top: 8px; }
+
+  /* ═══ MVV ═══ */
+  #mvv { background: var(--plum); padding: 120px 6vw; }
+  .mvv-hd { margin-bottom: 56px; }
+  .mvv-hd .s-lbl { color: rgba(0, 0, 0, .7); }
+  .mvv-hd .s-h { font-family: var(--fd); font-size: clamp(5rem, 12vw, 16rem); font-weight: 900; text-transform: uppercase; line-height: .82; color: var(--ink); }
+  .mvv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+  @media (max-width: 900px) { .mvv-grid { grid-template-columns: 1fr; } }
+  .mv-card { background: var(--ink); padding: 48px 40px; opacity: 0; transform: translateY(50px); will-change: transform, opacity; }
+  .mvc-lbl { font-size: .55rem; letter-spacing: .3em; text-transform: uppercase; color: var(--plum); margin-bottom: 28px; }
+  .mvc-title { font-family: var(--fd); font-size: clamp(2.2rem, 4vw, 5rem); font-weight: 900; text-transform: uppercase; line-height: .88; color: var(--bone); overflow: hidden; }
+  .mvc-title span { display: block; transform: translateY(110%); }
+  .mvc-div { width: 30px; height: 2px; background: var(--amber); margin: 24px 0; opacity: 0; transform: scaleX(0); transform-origin: left; }
+  .mvc-body { font-size: .76rem; line-height: 1.9; color: var(--dim); opacity: 0; transform: translateY(14px); }
+
+  /* ═══ STATEMENT ═══ */
+  #stmt { padding: 160px 6vw; overflow: hidden; }
+  .stmt-h { font-family: var(--fd); font-size: clamp(5rem, 14vw, 22rem); font-weight: 900; text-transform: uppercase; line-height: .82; letter-spacing: -.01em; }
+  .stmt-h .ln { display: block; overflow: hidden; }
+  .stmt-h .ln span { display: block; transform: translateY(108%); }
+  .stmt-h .orn { color: var(--plum); }
+  .stmt-h .ylw { color: var(--amber); }
+
+  /* ═══ CONTACT ═══ */
+  #contact { padding: 130px 6vw 90px; display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: end; border-top: 1px solid var(--bdr); }
+  @media (max-width: 768px) { #contact { grid-template-columns: 1fr; gap: 60px; padding: 100px 6vw 80px; } }
+  .c-big { font-family: var(--fd); font-size: clamp(4rem, 9vw, 13rem); font-weight: 900; text-transform: uppercase; line-height: .85; margin-bottom: 36px; }
+  .c-big .ln { overflow: hidden; }
+  .c-big .ln span { display: block; transform: translateY(110%); }
+  .c-big .orn { color: var(--plum); }
+  .c-link { display: inline-flex; align-items: center; gap: 12px; font-size: .6rem; letter-spacing: .2em; text-transform: uppercase; color: var(--plum); border-bottom: 1px solid rgba(128, 82, 255, .3); padding-bottom: 8px; transition: gap .3s, color .25s; min-height: 44px; }
+  .c-link:hover { gap: 22px; color: var(--amber); }
+  .c-details { display: flex; flex-direction: column; gap: 36px; }
+  .c-item { opacity: 0; transform: translateY(18px); }
+  .c-ilbl { font-size: .55rem; letter-spacing: .3em; text-transform: uppercase; color: var(--plum); margin-bottom: 8px; }
+  .c-ival { font-family: var(--fd); font-size: clamp(1.2rem, 2.5vw, 2.2rem); font-weight: 700; text-transform: uppercase; transition: color .25s; }
+  a.c-ival:hover { color: var(--amber); }
+
+  /* ═══ FOOTER ═══ */
+  #footer { padding: 30px 6vw; border-top: 1px solid var(--bdr); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; }
+  .ft { font-size: .55rem; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+  .ft.orn { color: var(--plum); }
+
+  /* ═══ REDUCED MOTION ═══ */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .hero-h .ln span, .stmt-h .ln span, .c-big .ln span, .mvc-title span { transform: none !important; }
+    .hero-label, .hero-bot, .about-body, .s-lbl, .s-box, .br-row, .mv-card, .mvc-div, .mvc-body, .c-item { opacity: 1 !important; transform: none !important; }
+    #c-dot, #c-ring { display: none; }
+  }
+  </style>
 </head>
 <body>
 
-  <!-- Ambient constellation drift — fixed behind everything -->
-  <canvas id="bg-constellation" aria-hidden="true"></canvas>
+<div id="c-dot"  aria-hidden="true"></div>
+<div id="c-ring" aria-hidden="true"></div>
 
-  <!-- ───────────────────────────── NAV ───────────────────────────── -->
-  <nav class="nav" aria-label="Primary">
-    <a href="#top" class="brandmark" aria-label="Desire Group home">
-      <svg class="brandmark__icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        <path d="M16 2.7 27.5 9v14L16 29.3 4.5 23V9L16 2.7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-        <path d="M19.5 9.5v9.2a5.3 5.3 0 1 1-2.4-4.45" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-        <circle cx="14.4" cy="16.2" r="2.5" fill="currentColor"/>
-      </svg>
-      <span class="brandmark__name">DESIRE GROUP</span>
-    </a>
+<!-- ═══ PRELOADER ═══ -->
+<div id="preloader" role="status" aria-label="Loading">
+  <div class="pre-logo"><em>D</em>esire <em>G</em>roup</div>
+  <div class="pre-track"><div class="pre-bar" id="pre-bar"></div></div>
+  <div class="pre-pct" id="pre-pct">0%</div>
+</div>
 
-    <ul class="nav__links" id="nav-links">
-      <li><a class="nav__link" href="#about">About</a></li>
-      <li><a class="nav__link" href="#purpose">Purpose</a></li>
-      <li><a class="nav__link" href="#brands">Brands</a></li>
-      <li><a class="nav__link" href="#contact">Contact</a></li>
-      <li><a class="btn btn--ghost nav__cta-mobile" href="#contact">Get in touch</a></li>
-    </ul>
+<!-- ═══ NAV ═══ -->
+<nav id="nav" aria-label="Main navigation">
+  <a href="#hero" class="nav-logo">DG<em>.</em></a>
+  <ul class="nav-links">
+    <li><a href="#about">About</a></li>
+    <li><a href="#brands">Brands</a></li>
+    <li><a href="#mvv">Purpose</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <a href="mailto:info@desiregroup.ae" class="nav-cta">Contact Us</a>
+</nav>
 
-    <a href="#contact" class="btn btn--primary nav__cta-desktop">Get in touch</a>
-
-    <button class="nav__toggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="nav-links">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-      </svg>
-    </button>
-  </nav>
-
-  <main class="page" id="top">
-
-    <!-- ───────────────────────────── HERO ───────────────────────────── -->
-    <header class="hero" id="hero">
-      <div class="hero__visual" aria-hidden="true">
-        <canvas id="hero-canvas"></canvas>
+<!-- ═══ HERO ═══ -->
+<section id="hero" aria-label="Hero">
+  <canvas id="hero-canvas" aria-hidden="true"></canvas>
+  <div class="hero-veil" aria-hidden="true"></div>
+  <div class="hero-content">
+    <p class="hero-label">Est. UAE — Diversified Group</p>
+    <h1 class="hero-h">
+      <span class="ln"><span class="orn">Shaping</span></span>
+      <span class="ln"><span>The</span></span>
+      <span class="ln"><span>Future</span></span>
+    </h1>
+    <div class="hero-bot">
+      <p class="hero-tag">Excellence across hospitality, healthcare,<br>creative media &amp; lifestyle.</p>
+      <div class="hero-scroll" aria-hidden="true">
+        <div class="hero-scroll-bar"></div>
+        <span>Scroll to Explore</span>
       </div>
-
-      <div class="wrap">
-        <div class="hero__copy">
-          <p class="eyebrow eyebrow--plum hero__eyebrow" data-hero>Diversified business conglomerate · UAE</p>
-          <h1 class="display hero__title">
-            <span class="line" data-hero><span>Shaping</span></span>
-            <span class="line" data-hero><span>the <em>future.</em></span></span>
-          </h1>
-          <p class="body subheading measure hero__lead body--bone" data-hero>
-            Founded to innovate, inspire and impact — Desire Group is a family of
-            brands across hospitality, healthcare, retail, grooming and creative
-            media, all driven by a single purpose: to deliver quality experiences
-            that enrich everyday life.
-          </p>
-          <div class="hero__actions" data-hero>
-            <a href="#brands" class="btn btn--primary btn--lg">Explore our brands</a>
-            <a href="#about" class="btn btn--ghost btn--lg">Our story</a>
-          </div>
-
-          <div class="hero__stats" data-hero>
-            <div class="stat">
-              <div class="stat__num"><span data-count="7">0</span></div>
-              <div class="stat__label">Brands</div>
-            </div>
-            <div class="stat">
-              <div class="stat__num"><span data-count="5">0</span></div>
-              <div class="stat__label">Industries</div>
-            </div>
-            <div class="stat">
-              <div class="stat__num"><em><span data-count="14" data-suffix="+">0</span></em></div>
-              <div class="stat__label">Locations</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="scroll-hint" aria-hidden="true">
-        <span class="scroll-hint__line"></span> Scroll
-      </div>
-    </header>
-
-    <!-- ───────────────────────────── ABOUT ───────────────────────────── -->
-    <section class="section-pad" id="about">
-      <div class="wrap">
-        <div class="section-head" data-reveal>
-          <p class="eyebrow eyebrow--amber">About our group</p>
-          <h2 class="heading-lg">A single purpose,<br/>many ventures.</h2>
-        </div>
-
-        <div class="about__grid">
-          <div class="about__body measure" data-reveal>
-            <p class="body subheading body--bone">
-              With a strong presence across multiple industries, Desire Group is a
-              diversified conglomerate shaping the future through excellence — in
-              hospitality, healthcare, creative media and grooming services.
-            </p>
-            <p class="body">
-              Our journey began with a simple idea: to create brands that stand for
-              trust, innovation and value. Today, Desire Group proudly operates a
-              portfolio of successful ventures that have earned the confidence of
-              our customers and partners alike — each one built to enrich everyday life.
-            </p>
-          </div>
-
-          <aside class="about__aside" data-reveal data-delay="0.1">
-            <h3 class="heading-sm">Where we operate</h3>
-            <div class="tags">
-              <span class="tag">Hospitality</span>
-              <span class="tag">Healthcare</span>
-              <span class="tag">Retail &amp; Grocery</span>
-              <span class="tag">Grooming</span>
-              <span class="tag">Creative media</span>
-            </div>
-          </aside>
-        </div>
-      </div>
-    </section>
-
-    <!-- ───────────────────── MISSION / VISION / VALUES ───────────────── -->
-    <section class="section-pad" id="purpose">
-      <div class="wrap">
-        <div class="section-head" data-reveal>
-          <p class="eyebrow eyebrow--plum">What drives us</p>
-          <h2 class="heading-lg">Mission. Vision.<br/>Values.</h2>
-        </div>
-
-        <div class="mvv">
-          <article class="mvv__cell" data-reveal>
-            <svg class="mvv__icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-              <circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="1.6"/>
-              <circle cx="24" cy="24" r="10" stroke="currentColor" stroke-width="1.6"/>
-              <circle cx="24" cy="24" r="2.6" fill="currentColor"/>
-              <path d="M24 24 39 9m0 0h-6m6 0v6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <p class="mvv__title heading-sm"><strong>Our</strong> <span>Mission</span></p>
-            <p class="body">
-              To create sustainable business ventures that enhance lifestyles,
-              promote well-being and empower creativity — while maintaining the
-              highest standards of service and integrity.
-            </p>
-          </article>
-
-          <article class="mvv__cell" data-reveal data-delay="0.1">
-            <svg class="mvv__icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-              <path d="M24 6a13 13 0 0 0-8 23.3c1.4 1.1 2 2 2 3.7v1h12v-1c0-1.7.6-2.6 2-3.7A13 13 0 0 0 24 6Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-              <path d="M19 38h10M21 42h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-              <path d="M24 20v6m0 0-3-2m3 2 3-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <p class="mvv__title heading-sm"><strong>Our</strong> <span>Vision</span></p>
-            <p class="body">
-              To be a leading multi-sector enterprise recognized for excellence,
-              innovation and commitment to shaping a better future for our
-              communities.
-            </p>
-          </article>
-
-          <article class="mvv__cell" data-reveal data-delay="0.2">
-            <svg class="mvv__icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-              <path d="M8 30c4 4 9 6 16 6s12-2 16-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-              <path d="M24 30c5 0 9-3 9-3l-6-1-3-5-3 5-6 1s4 3 9 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-              <path d="M34 10l1.2 3.3L38.5 14.5 35.2 15.7 34 19l-1.2-3.3L29.5 14.5 32.8 13.3 34 10Z" fill="currentColor"/>
-            </svg>
-            <p class="mvv__title heading-sm"><strong>Our</strong> <span>Values</span></p>
-            <p class="body">
-              We stand for integrity, innovation and excellence. We value our
-              customers, believe in sustainable growth, and remain committed to
-              delivering quality and trust across every brand we create.
-            </p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- ───────────────────────── FOCAL / SECTION TWO ─────────────────── -->
-    <section class="focal">
-      <canvas id="focal-canvas" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
-      <div class="wrap" style="position:relative;z-index:2;">
-        <svg class="focal__icon" viewBox="0 0 48 48" fill="none" aria-hidden="true" data-reveal>
-          <path d="M24 3.5 41 13v22L24 44.5 7 35V13L24 3.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
-          <path d="M29 13.5v13.8a7.9 7.9 0 1 1-3.6-6.65" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-          <circle cx="21.6" cy="24.3" r="3.6" fill="currentColor"/>
-        </svg>
-        <h2 class="heading-lg" data-reveal data-delay="0.05">One group. A constellation of brands.</h2>
-        <p class="body subheading measure focal__lead body--bone" data-reveal data-delay="0.1" style="margin-inline:auto;">
-          Each venture is a point of light in the same sky — independent in
-          character, united by a commitment to quality, trust and the people we serve.
-        </p>
-      </div>
-    </section>
-
-    <!-- ───────────────────────────── BRANDS ───────────────────────────── -->
-    <section class="section-pad" id="brands">
-      <div class="wrap">
-        <div class="section-head" data-reveal>
-          <p class="eyebrow eyebrow--amber">A family of brands</p>
-          <h2 class="heading-lg">Seven brands,<br/>shaping the future.</h2>
-        </div>
-
-        <div class="brands__grid">
-
-          <!-- FULLDAY -->
-          <article class="brand-card" data-reveal>
-            <div class="brand-card__top">
-              <div class="brand-logo" style="background:#0f7a3d;color:#fff;font-weight:700;font-size:18px;">FD</div>
-              <span class="brand-card__index">01 / 07</span>
-            </div>
-            <h3 class="brand-card__name">FullDay</h3>
-            <p class="brand-card__cat">Supermarket · Mini Mart · Groceries</p>
-            <p class="brand-card__desc">
-              A growing lifestyle retail brand bringing convenience, quality and value
-              closer to every neighbourhood — because every day deserves the best.
-            </p>
-            <p class="brand-card__locs">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
-              KBT Building, Jebel Ali Ind. Area 3
-            </p>
-          </article>
-
-          <!-- FOOD MAHAL -->
-          <article class="brand-card" data-reveal data-delay="0.06">
-            <div class="brand-card__top">
-              <div class="brand-logo"><img src="logo/food-mahal-logo.png" alt="Food Mahal Restaurant logo" loading="lazy" /></div>
-              <span class="brand-card__index">02 / 07</span>
-            </div>
-            <h3 class="brand-card__name">Food Mahal</h3>
-            <p class="brand-card__cat">Restaurant</p>
-            <p class="brand-card__desc">
-              A destination for authentic flavours and memorable dining — Indian,
-              Pakistani, Malabar, Chinese and Filipino cuisines, fresh and tasty,
-              at prices that stay within reach.
-            </p>
-            <p class="brand-card__locs">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
-              KBT Building, Jebel Ali Ind. Area 3
-            </p>
-          </article>
-
-          <!-- CRESCENT -->
-          <article class="brand-card" data-reveal data-delay="0.12">
-            <div class="brand-card__top">
-              <div class="brand-logo"><img src="logo/crescent-logo.png" alt="Crescent Cafeteria logo" loading="lazy" /></div>
-              <span class="brand-card__index">03 / 07</span>
-            </div>
-            <h3 class="brand-card__name">Crescent Cafeteria</h3>
-            <p class="brand-card__cat">Cafeteria · Quick Service</p>
-            <p class="brand-card__desc">
-              A modern, energetic spot for today's fast-moving crowd — fresh snacks,
-              sandwiches, teas, juices and coffees, crafted for speed without losing
-              the taste. Feel the best taste.
-            </p>
-            <p class="brand-card__locs">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
-              Dip-1 · Dip-2 · Al Quoz Mall
-            </p>
-          </article>
-
-          <!-- GROOMERS -->
-          <article class="brand-card" data-reveal data-delay="0.06">
-            <div class="brand-card__top">
-              <div class="brand-logo"><img src="logo/groomers.png" alt="Groomers Men's Saloon logo" loading="lazy" /></div>
-              <span class="brand-card__index">04 / 07</span>
-            </div>
-            <h3 class="brand-card__name">Groomers</h3>
-            <p class="brand-card__cat">Men's Saloon · Grooming</p>
-            <p class="brand-card__desc">
-              Redefining modern men's grooming — style, sophistication and precision.
-              From classic cuts and beard styling to advanced treatments, every visit
-              is a statement of confidence.
-            </p>
-            <p class="brand-card__locs">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
-              Al Jazeera Al Hamra · Freezone &amp; Ind. Area
-            </p>
-          </article>
-
-          <!-- MEDWELL -->
-          <article class="brand-card" data-reveal data-delay="0.12">
-            <div class="brand-card__top">
-              <div class="brand-logo"><img src="logo/medwell-logo.jpeg" alt="Medwell Pharmacy logo" loading="lazy" /></div>
-              <span class="brand-card__index">05 / 07</span>
-            </div>
-            <h3 class="brand-card__name">Medwell Pharmacy</h3>
-            <p class="brand-card__cat">Healthcare · Pharmacy</p>
-            <p class="brand-card__desc">
-              Committed to community health through trusted, accessible care — a wide
-              range of quality medicines, healthcare products and wellness essentials,
-              with expert pharmacists on hand.
-            </p>
-            <p class="brand-card__locs">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
-              Dubai Production City · Inv. Park-1 · RAK
-            </p>
-          </article>
-
-          <!-- PICS-L -->
-          <article class="brand-card" data-reveal data-delay="0.18">
-            <div class="brand-card__top">
-              <div class="brand-logo" style="background:#0a0a0a;border:1px solid var(--hairline-strong);color:var(--lichen);font-weight:700;font-size:16px;">PL</div>
-              <span class="brand-card__index">06 / 07</span>
-            </div>
-            <h3 class="brand-card__name">PICS-L Studio</h3>
-            <p class="brand-card__cat">Photography · Videography</p>
-            <p class="brand-card__desc">
-              Where creativity meets precision — capturing life's moments through
-              portraits, events, corporate campaigns and commercial productions that
-              connect, inspire and endure.
-            </p>
-            <p class="brand-card__locs">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
-              Dip-1 · Jabal Ali · Al Jazeera Al Hamra, RAK
-            </p>
-          </article>
-
-          <!-- TASTY WORLD -->
-          <article class="brand-card" data-reveal data-delay="0.06">
-            <div class="brand-card__top">
-              <div class="brand-logo"><img src="logo/tasty-world-logo.jpeg" alt="Tasty World Restaurant logo" loading="lazy" /></div>
-              <span class="brand-card__index">07 / 07</span>
-            </div>
-            <h3 class="brand-card__name">Tasty World</h3>
-            <p class="brand-card__cat">Restaurant · Catering</p>
-            <p class="brand-card__desc">
-              A long-standing culinary destination — Indian, Pakistani, Arabic,
-              Filipino and international dishes, dine-in, takeaway and professional
-              catering, with quality and value at every visit.
-            </p>
-            <p class="brand-card__locs">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
-              Caliber Plaza, Dubai Production City
-            </p>
-          </article>
-
-          <!-- Closing tile -->
-          <article class="brand-card" data-reveal data-delay="0.12" style="justify-content:center;align-items:flex-start;">
-            <p class="eyebrow eyebrow--plum" style="margin-bottom:16px;">More to come</p>
-            <h3 class="heading" style="margin-bottom:18px;">The constellation keeps growing.</h3>
-            <a href="#contact" class="btn btn--ghost">Partner with us</a>
-          </article>
-
-        </div>
-      </div>
-    </section>
-
-    <!-- ───────────────────────────── CONTACT ───────────────────────────── -->
-    <section class="section-pad" id="contact">
-      <div class="wrap">
-        <div class="cta" data-reveal>
-          <div>
-            <p class="eyebrow eyebrow--plum" style="margin-bottom:20px;">Get in touch</p>
-            <h2 class="heading-lg cta__title">Let's shape<br/>what's next.</h2>
-            <p class="body subheading measure">
-              Whether you're a customer, partner or future collaborator — we'd love
-              to hear from you. Reach the Desire Group team directly.
-            </p>
-          </div>
-
-          <div class="cta__links">
-            <a class="cta__link" href="mailto:info@desiregroup.ae">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-              info@desiregroup.ae
-            </a>
-            <a class="cta__link" href="https://www.desiregroup.ae" target="_blank" rel="noopener">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c2.5 2.7 3.8 6 3.8 9S14.5 18.3 12 21c-2.5-2.7-3.8-6-3.8-9S9.5 5.7 12 3Z" stroke="currentColor" stroke-width="1.6"/></svg>
-              www.desiregroup.ae
-            </a>
-            <a class="cta__link" href="#brands">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
-              Dubai · United Arab Emirates
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- ───────────────────────────── FOOTER ───────────────────────────── -->
-  <footer class="footer page">
-    <div class="wrap footer__grid">
-      <a href="#top" class="brandmark" aria-label="Desire Group home">
-        <svg class="brandmark__icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M16 2.7 27.5 9v14L16 29.3 4.5 23V9L16 2.7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-          <path d="M19.5 9.5v9.2a5.3 5.3 0 1 1-2.4-4.45" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-          <circle cx="14.4" cy="16.2" r="2.5" fill="currentColor"/>
-        </svg>
-        <span class="brandmark__name">DESIRE GROUP</span>
-      </a>
-
-      <nav class="footer__nav" aria-label="Footer">
-        <a href="#about">About</a>
-        <a href="#purpose">Purpose</a>
-        <a href="#brands">Brands</a>
-        <a href="#contact">Contact</a>
-      </nav>
-
-      <p class="footer__copy">© <span id="year">2026</span> Desire Group · Shaping the Future</p>
     </div>
-  </footer>
+  </div>
+</section>
 
-  <!-- ─── Libraries: GSAP + ScrollTrigger and Motion (vanilla successor to Framer Motion) ─── -->
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/motion@10.18.0/dist/motion.js" defer></script>
+<!-- ═══ MARQUEE 1 — plum bg, moves left ═══ -->
+<div class="mq-wrap inv" aria-hidden="true">
+  <div class="mq-track" id="mq1">
+    <div class="mq-item"><span>DESIRE GROUP</span><div class="mq-dot"></div><span>BORN IN UAE</span><div class="mq-dot"></div><span>7 BRANDS</span><div class="mq-dot"></div><span>SHAPING THE FUTURE</span><div class="mq-dot"></div></div>
+    <div class="mq-item"><span>DESIRE GROUP</span><div class="mq-dot"></div><span>BORN IN UAE</span><div class="mq-dot"></div><span>7 BRANDS</span><div class="mq-dot"></div><span>SHAPING THE FUTURE</span><div class="mq-dot"></div></div>
+  </div>
+</div>
 
-  <!-- App scripts -->
-  <script src="assets/js/constellation.js" defer></script>
-  <script src="assets/js/app.js" defer></script>
-  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+<!-- ═══ ABOUT ═══ -->
+<section id="about" aria-label="About">
+  <div class="about-grid">
+    <div>
+      <p class="s-lbl">01 — About Us</p>
+      <h2 class="s-h">Built<br>on<br><span class="or">Vi</span><span class="yl">sion</span></h2>
+    </div>
+    <p class="about-body">Founded to innovate, inspire and impact — <strong>Desire Group</strong> is a diversified business conglomerate shaping the future through excellence across multiple industries. Our journey began with a simple idea: to build brands that stand for trust, innovation and value. From fresh groceries to precision healthcare, authentic dining to modern grooming and creative media — one group, seven brands, a single purpose: to deliver quality experiences that enrich everyday life.</p>
+  </div>
+</section>
+
+<!-- ═══ STATS ═══ -->
+<section id="stats" aria-label="Stats">
+  <div class="stats-row">
+    <div class="s-box">
+      <div class="s-num" id="st1">0</div>
+      <div class="s-lbl2">Brands Operating</div>
+    </div>
+    <div class="s-box">
+      <div class="s-num">UAE</div>
+      <div class="s-lbl2">Country of Origin</div>
+    </div>
+    <div class="s-box">
+      <div><span class="s-num" id="st3">0</span><span class="s-unit">+</span></div>
+      <div class="s-lbl2">Sectors Covered</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ MARQUEE 2 — dark bg, moves right ═══ -->
+<div class="mq-wrap" aria-hidden="true">
+  <div class="mq-track" id="mq2">
+    <div class="mq-item"><span>FULLDAY</span><div class="mq-dot"></div><span>FOOD MAHAL</span><div class="mq-dot"></div><span>CRESCENT</span><div class="mq-dot"></div><span>GROOMERS</span><div class="mq-dot"></div><span>MEDWELL</span><div class="mq-dot"></div><span>PICS-L</span><div class="mq-dot"></div><span>TASTY WORLD</span><div class="mq-dot"></div></div>
+    <div class="mq-item"><span>FULLDAY</span><div class="mq-dot"></div><span>FOOD MAHAL</span><div class="mq-dot"></div><span>CRESCENT</span><div class="mq-dot"></div><span>GROOMERS</span><div class="mq-dot"></div><span>MEDWELL</span><div class="mq-dot"></div><span>PICS-L</span><div class="mq-dot"></div><span>TASTY WORLD</span><div class="mq-dot"></div></div>
+  </div>
+</div>
+
+<!-- ═══ BRANDS ═══ -->
+<section id="brands" aria-label="Our Brands">
+  <div class="brands-hd">
+    <p class="s-lbl">02 — Portfolio</p>
+    <h2 class="s-h"><span class="orn">7</span> Brands,<br>One Vision</h2>
+  </div>
+
+  <div class="br-row">
+    <div class="br-logo" style="background:#0f7a3d;color:#fff;">FD</div>
+    <div class="br-num">01</div>
+    <div>
+      <div class="br-name">FullDay</div>
+      <div class="br-cat">Supermarket · Mini Mart · Groceries</div>
+    </div>
+    <div class="br-meta">
+      <p class="br-loc">KBT Building, Jebel Ali</p>
+      <p class="br-desc">Freshness every day — quality groceries, fresh produce and everyday essentials, because every day deserves the best.</p>
+    </div>
+  </div>
+
+  <div class="br-row">
+    <div class="br-logo"><img src="logo/food-mahal-logo.png" alt="Food Mahal logo" loading="lazy"></div>
+    <div class="br-num">02</div>
+    <div>
+      <div class="br-name">Food Mahal</div>
+      <div class="br-cat">Restaurant · Multi-Cuisine</div>
+    </div>
+    <div class="br-meta">
+      <p class="br-loc">KBT Building, Jebel Ali</p>
+      <p class="br-desc">Indian, Pakistani, Malabar, Chinese &amp; Filipino — authentic flavours and memorable dining at prices within reach.</p>
+    </div>
+  </div>
+
+  <div class="br-row">
+    <div class="br-logo"><img src="logo/crescent-logo.png" alt="Crescent Cafeteria logo" loading="lazy"></div>
+    <div class="br-num">03</div>
+    <div>
+      <div class="br-name">Crescent Cafeteria</div>
+      <div class="br-cat">Cafeteria · Quick Service · 3 Locations</div>
+    </div>
+    <div class="br-meta">
+      <p class="br-loc">DIP-1 · DIP-2 · Al Quoz Mall</p>
+      <p class="br-desc">Fast, fresh, affordable — snacks, sandwiches, teas, juices and coffees. Feel the best taste.</p>
+    </div>
+  </div>
+
+  <div class="br-row">
+    <div class="br-logo"><img src="logo/groomers.png" alt="Groomers logo" loading="lazy"></div>
+    <div class="br-num">04</div>
+    <div>
+      <div class="br-name">Groomers</div>
+      <div class="br-cat">Men's Saloon · Premium Grooming</div>
+    </div>
+    <div class="br-meta">
+      <p class="br-loc">Al Jazeera Al Hamra, RAK</p>
+      <p class="br-desc">Modern men's grooming redefined — precision cuts, beard styling and a statement of confidence.</p>
+    </div>
+  </div>
+
+  <div class="br-row">
+    <div class="br-logo"><img src="logo/medwell-logo.jpeg" alt="Medwell Pharmacy logo" loading="lazy"></div>
+    <div class="br-num">05</div>
+    <div>
+      <div class="br-name">Medwell Pharmacy</div>
+      <div class="br-cat">Healthcare · Pharmacy · 3 Branches</div>
+    </div>
+    <div class="br-meta">
+      <p class="br-loc">DPC · Inv. Park-1 · Al Jazeera Al Hamra</p>
+      <p class="br-desc">Trusted, accessible healthcare — quality medicines, wellness products and expert pharmacists.</p>
+    </div>
+  </div>
+
+  <div class="br-row">
+    <div class="br-logo dark">PL</div>
+    <div class="br-num">06</div>
+    <div>
+      <div class="br-name">PICS-L Studio</div>
+      <div class="br-cat">Creative Media · Photography · 3 Studios</div>
+    </div>
+    <div class="br-meta">
+      <p class="br-loc">DIP-1 · Jabal Ali · Al Jazeera Al Hamra</p>
+      <p class="br-desc">Where creativity meets precision — photography &amp; videography that connect, inspire and endure.</p>
+    </div>
+  </div>
+
+  <div class="br-row">
+    <div class="br-logo"><img src="logo/tasty-world-logo.jpeg" alt="Tasty World logo" loading="lazy"></div>
+    <div class="br-num">07</div>
+    <div>
+      <div class="br-name">Tasty World</div>
+      <div class="br-cat">Restaurant · Catering · Events</div>
+    </div>
+    <div class="br-meta">
+      <p class="br-loc">Caliber Plaza, Dubai Production City</p>
+      <p class="br-desc">Multi-cuisine dining and full catering — generous portions, consistent quality and great value.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ MVV ═══ -->
+<section id="mvv" aria-label="Mission Vision Values">
+  <div class="mvv-hd">
+    <p class="s-lbl">03 — Purpose</p>
+    <h2 class="s-h">Mission<br>Vision<br>Values</h2>
+  </div>
+  <div class="mvv-grid">
+    <div class="mv-card mc1">
+      <div class="mvc-lbl">Mission</div>
+      <div class="mvc-title"><span>Create.<br>Sustain.<br>Enrich.</span></div>
+      <div class="mvc-div"></div>
+      <p class="mvc-body">To create sustainable business ventures that enhance lifestyles, promote well-being and empower creativity — maintaining the highest standards of service and integrity.</p>
+    </div>
+    <div class="mv-card mc2">
+      <div class="mvc-lbl">Vision</div>
+      <div class="mvc-title"><span>Inspire.<br>Lead.<br>Transform.</span></div>
+      <div class="mvc-div"></div>
+      <p class="mvc-body">To be a leading multi-sector enterprise recognized for excellence, innovation and commitment to shaping a better future for our communities.</p>
+    </div>
+    <div class="mv-card mc3">
+      <div class="mvc-lbl">Values</div>
+      <div class="mvc-title"><span>Excellence.<br>Integrity.<br>Care.</span></div>
+      <div class="mvc-div"></div>
+      <p class="mvc-body">We stand for integrity, innovation and excellence — believing in sustainable growth and delivering quality and trust across every brand we build.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ STATEMENT ═══ -->
+<section id="stmt" aria-label="Statement">
+  <h2 class="stmt-h">
+    <span class="ln"><span>The</span></span>
+    <span class="ln"><span class="orn">Future</span></span>
+    <span class="ln"><span>Belongs</span></span>
+    <span class="ln"><span class="ylw">To The Bold</span></span>
+  </h2>
+</section>
+
+<!-- ═══ CONTACT ═══ -->
+<section id="contact" aria-label="Contact">
+  <div>
+    <p class="s-lbl">04 — Contact</p>
+    <div class="c-big">
+      <div class="ln"><span>Let's</span></div>
+      <div class="ln"><span>Build</span></div>
+      <div class="ln"><span class="orn">Together</span></div>
+    </div>
+    <a href="mailto:info@desiregroup.ae" class="c-link">
+      info@desiregroup.ae
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
+      </svg>
+    </a>
+  </div>
+  <div class="c-details">
+    <div class="c-item">
+      <p class="c-ilbl">Email</p>
+      <a href="mailto:info@desiregroup.ae" class="c-ival">info@desiregroup.ae</a>
+    </div>
+    <div class="c-item">
+      <p class="c-ilbl">Website</p>
+      <a href="https://www.desiregroup.ae" target="_blank" rel="noopener" class="c-ival">desiregroup.ae</a>
+    </div>
+    <div class="c-item">
+      <p class="c-ilbl">Location</p>
+      <span class="c-ival">United Arab Emirates</span>
+    </div>
+    <div class="c-item">
+      <p class="c-ilbl">Portfolio</p>
+      <span class="c-ival">7 Brands · 5 Industries</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer id="footer">
+  <span class="ft">© <span id="year">2025</span> Desire Group. All Rights Reserved.</span>
+  <span class="ft orn">Shaping The Future</span>
+  <span class="ft">UAE</span>
+</footer>
+
+<!-- ─── CDNs: GSAP + ScrollTrigger + Lenis smooth scroll ─── -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
+
+<script>
+document.getElementById('year').textContent = new Date().getFullYear();
+var REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
+var HAS_GSAP = typeof window.gsap !== 'undefined';
+
+/* ─────────────────────────────────────────────────────────
+   HERO CONSTELLATION — palette-driven micro-shape drift
+   (triangles / circles / diamonds / squares) behind the veil.
+   ───────────────────────────────────────────────────────── */
+(function initHero() {
+  var c = document.getElementById('hero-canvas');
+  if (!c) return;
+  var ctx = c.getContext('2d');
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var PAL = ['#8052ff', '#ffb829', '#15846e', '#ffffff'];
+  var WT  = [0.34, 0.18, 0.16, 0.32];
+  var w, h, parts = [], mx = 0.5, my = 0.5, tx = 0.5, ty = 0.5;
+
+  function pick() { var r = Math.random(), a = 0; for (var i = 0; i < PAL.length; i++) { a += WT[i]; if (r <= a) return PAL[i]; } return PAL[0]; }
+  function spawn() {
+    var n = Math.min(190, Math.floor(w * h / 8800));
+    parts = [];
+    for (var i = 0; i < n; i++) parts.push({
+      x: Math.random() * w, y: Math.random() * h,
+      s: 1 + Math.random() * 3.4, t: (Math.random() * 4) | 0, c: pick(),
+      vx: (Math.random() - 0.5) * 0.12, vy: -0.04 - Math.random() * 0.16,
+      base: 0.08 + Math.random() * 0.34, tw: Math.random() * 6.283, dep: 0.3 + Math.random() * 0.7
+    });
+  }
+  function resize() {
+    var r = c.getBoundingClientRect(); w = r.width; h = r.height;
+    c.width = w * dpr; c.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); spawn();
+  }
+  function shape(t, x, y, s, col, a) {
+    ctx.globalAlpha = a; ctx.fillStyle = col; ctx.strokeStyle = col;
+    if (t === 0) { ctx.beginPath(); ctx.arc(x, y, s * 0.5, 0, 6.2832); ctx.fill(); }
+    else if (t === 1) { ctx.fillRect(x - s * 0.5, y - s * 0.5, s, s); }
+    else if (t === 2) { ctx.beginPath(); ctx.moveTo(x, y - s * 0.7); ctx.lineTo(x + s * 0.7, y); ctx.lineTo(x, y + s * 0.7); ctx.lineTo(x - s * 0.7, y); ctx.closePath(); ctx.fill(); }
+    else { ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y - s * 0.7); ctx.lineTo(x + s * 0.65, y + s * 0.5); ctx.lineTo(x - s * 0.65, y + s * 0.5); ctx.closePath(); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+  window.addEventListener('mousemove', function (e) { tx = e.clientX / window.innerWidth; ty = e.clientY / window.innerHeight; }, { passive: true });
+  window.addEventListener('resize', resize);
+  function frame(tm) {
+    ctx.clearRect(0, 0, w, h);
+    mx += (tx - mx) * 0.04; my += (ty - my) * 0.04;
+    var ox = (mx - 0.5) * 44, oy = (my - 0.5) * 44;
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      if (!REDUCE) { p.x += p.vx; p.y += p.vy; if (p.y < -8) { p.y = h + 8; p.x = Math.random() * w; } if (p.x < -8) p.x = w + 8; if (p.x > w + 8) p.x = -8; }
+      var tw = REDUCE ? 1 : 0.6 + 0.4 * Math.sin(tm * 0.0015 + p.tw);
+      shape(p.t, p.x + ox * p.dep, p.y + oy * p.dep, p.s, p.c, p.base * tw);
+    }
+    requestAnimationFrame(frame);
+  }
+  resize(); requestAnimationFrame(frame);
+})();
+
+/* ─────────────────────────────────────────────────────────
+   CUSTOM CURSOR (pointer:fine only)
+   ───────────────────────────────────────────────────────── */
+(function cursor() {
+  if (matchMedia('(pointer: coarse)').matches) return;
+  var dot = document.getElementById('c-dot'), ring = document.getElementById('c-ring');
+  var mx = innerWidth / 2, my = innerHeight / 2, rx = mx, ry = my;
+  addEventListener('mousemove', function (e) { mx = e.clientX; my = e.clientY; dot.style.transform = 'translate(' + mx + 'px,' + my + 'px) translate(-50%,-50%)'; });
+  document.querySelectorAll('a, button').forEach(function (el) {
+    el.addEventListener('mouseenter', function () { document.body.classList.add('hov'); });
+    el.addEventListener('mouseleave', function () { document.body.classList.remove('hov'); });
+  });
+  (function raf() { rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12; ring.style.transform = 'translate(' + rx + 'px,' + ry + 'px) translate(-50%,-50%)'; requestAnimationFrame(raf); })();
+})();
+
+/* ─────────────────────────────────────────────────────────
+   MOTION SYSTEM — GSAP + ScrollTrigger + Lenis
+   ───────────────────────────────────────────────────────── */
+if (HAS_GSAP) {
+  gsap.registerPlugin(ScrollTrigger);
+
+  /* Lenis smooth scroll */
+  if (typeof Lenis !== 'undefined' && !REDUCE) {
+    var lenis = new Lenis({ duration: 1.2, easing: function (t) { return Math.min(1, 1.001 - Math.pow(2, -10 * t)); }, smoothWheel: true });
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add(function (t) { lenis.raf(t * 1000); });
+    gsap.ticker.lagSmoothing(0);
+  }
+
+  /* Nav glass */
+  ScrollTrigger.create({ start: 'top -60', onUpdate: function (s) { document.getElementById('nav').classList.toggle('glass', s.progress > 0); } });
+
+  /* Preloader → boot */
+  (function () {
+    var bar = document.getElementById('pre-bar'), pct = document.getElementById('pre-pct'), p = 0;
+    gsap.to('.pre-logo', { opacity: 1, duration: 0.5, delay: 0.1, ease: 'power3.out' });
+    var t = setInterval(function () {
+      p = Math.min(p + Math.random() * 20, 100);
+      bar.style.width = p + '%'; pct.textContent = Math.round(p) + '%';
+      if (p >= 100) {
+        clearInterval(t);
+        setTimeout(function () {
+          gsap.to('#preloader', { opacity: 0, duration: 0.55, ease: 'power2.in', onComplete: function () { document.getElementById('preloader').style.display = 'none'; boot(); } });
+        }, 260);
+      }
+    }, 55);
+  })();
+
+  function boot() {
+    /* HERO */
+    gsap.to('.hero-label', { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' });
+    gsap.to('.hero-h .ln span', { y: '0%', duration: 1.1, stagger: 0.13, ease: 'power4.out', delay: 0.15 });
+    gsap.to('.hero-bot', { opacity: 1, duration: 0.85, delay: 0.75, ease: 'power3.out' });
+    if (!REDUCE) gsap.fromTo('.hero-scroll-bar', { scaleX: 0, transformOrigin: 'left' }, { scaleX: 1, duration: 0.85, repeat: -1, yoyo: true, ease: 'power2.inOut', delay: 1.3 });
+
+    /* Hero fade on scroll */
+    gsap.to('#hero-canvas', { opacity: 0.15, scrollTrigger: { trigger: '#hero', start: 'center top', end: 'bottom top', scrub: true } });
+    gsap.to('.hero-content', { y: -80, opacity: 0, scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: 1 } });
+
+    /* Marquees */
+    function loopMQ(id, dur, reverse) {
+      var el = document.getElementById(id); if (!el) return;
+      var half = el.scrollWidth / 2;
+      gsap.fromTo(el, { x: reverse ? -half : 0 }, { x: reverse ? 0 : -half, duration: dur, ease: 'none', repeat: -1 });
+    }
+    loopMQ('mq1', 22, false);
+    loopMQ('mq2', 18, true);
+
+    /* About — slide-left */
+    ScrollTrigger.create({
+      trigger: '#about', start: 'top 74%',
+      onEnter: function () {
+        gsap.to('#about .s-lbl', { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' });
+        gsap.from('#about .s-h', { x: -90, opacity: 0, duration: 1.1, ease: 'power3.out', delay: 0.1 });
+        gsap.to('.about-body', { opacity: 1, x: 0, duration: 1, ease: 'power3.out', delay: 0.3 });
+      }
+    });
+
+    /* Stats — stagger + counters */
+    ScrollTrigger.create({
+      trigger: '#stats', start: 'top 76%',
+      onEnter: function () {
+        gsap.to('.s-box', { opacity: 1, y: 0, duration: 0.95, stagger: 0.13, ease: 'power3.out' });
+        var a1 = { v: 0 }, a3 = { v: 0 }, e1 = document.getElementById('st1'), e3 = document.getElementById('st3');
+        gsap.to(a1, { v: 7, duration: 1.7, ease: 'power2.out', delay: 0.3, onUpdate: function () { e1.textContent = Math.round(a1.v); } });
+        gsap.to(a3, { v: 5, duration: 1.5, ease: 'power2.out', delay: 0.5, onUpdate: function () { e3.textContent = Math.round(a3.v); } });
+      }
+    });
+
+    /* Brands head — scale-up */
+    ScrollTrigger.create({
+      trigger: '.brands-hd', start: 'top 78%',
+      onEnter: function () {
+        gsap.to('.brands-hd .s-lbl', { opacity: 1, y: 0, duration: 0.7 });
+        gsap.from('.brands-hd .s-h', { scale: 0.88, opacity: 0, duration: 1.1, ease: 'power3.out', delay: 0.1 });
+      }
+    });
+
+    /* Brand rows — batch slide-left */
+    ScrollTrigger.batch('.br-row', { start: 'top 85%', onEnter: function (els) { gsap.to(els, { opacity: 1, x: 0, duration: 0.85, stagger: 0.07, ease: 'power3.out' }); } });
+
+    /* MVV — reveal */
+    ScrollTrigger.create({
+      trigger: '#mvv', start: 'top 72%',
+      onEnter: function () {
+        gsap.to('.mvv-hd .s-lbl', { opacity: 1, y: 0, duration: 0.7 });
+        gsap.from('.mvv-hd .s-h', { y: 60, rotation: 2, opacity: 0, duration: 1, ease: 'power4.out', delay: 0.1 });
+        gsap.to('.mv-card', { opacity: 1, y: 0, duration: 1, stagger: 0.15, ease: 'power3.out', delay: 0.25 });
+        gsap.to('.mvc-title span', { y: '0%', duration: 0.9, stagger: 0.16, ease: 'power4.out', delay: 0.55 });
+        gsap.to('.mvc-div', { opacity: 1, scaleX: 1, duration: 0.5, stagger: 0.15, ease: 'power3.out', delay: 0.85 });
+        gsap.to('.mvc-body', { opacity: 1, y: 0, duration: 0.75, stagger: 0.12, ease: 'power3.out', delay: 1.05 });
+      }
+    });
+    if (!REDUCE) gsap.to('.mvv-grid', { y: -60, scrollTrigger: { trigger: '#mvv', start: 'top bottom', end: 'bottom top', scrub: 1.2 } });
+
+    /* Statement — clip reveal + parallax */
+    ScrollTrigger.create({ trigger: '#stmt', start: 'top 72%', onEnter: function () { gsap.to('.stmt-h .ln span', { y: '0%', duration: 1.2, stagger: 0.16, ease: 'power4.out' }); } });
+    if (!REDUCE) gsap.to('.stmt-h', { y: -100, scrollTrigger: { trigger: '#stmt', start: 'top bottom', end: 'bottom top', scrub: 1.4 } });
+
+    /* Contact — fade-up */
+    ScrollTrigger.create({
+      trigger: '#contact', start: 'top 76%',
+      onEnter: function () {
+        gsap.to('#contact .s-lbl', { opacity: 1, y: 0, duration: 0.7 });
+        gsap.to('.c-big .ln span', { y: '0%', duration: 1, stagger: 0.12, ease: 'power4.out', delay: 0.1 });
+        gsap.to('.c-item', { opacity: 1, y: 0, duration: 0.75, stagger: 0.1, ease: 'power3.out', delay: 0.35 });
+      }
+    });
+
+    ScrollTrigger.refresh();
+  }
+} else {
+  /* ── Fallback when GSAP is unavailable: reveal everything ── */
+  (function () {
+    var pl = document.getElementById('preloader'); if (pl) pl.style.display = 'none';
+    document.querySelectorAll('.hero-label,.hero-bot,.about-body,.s-lbl,.s-box,.br-row,.mv-card,.mvc-div,.mvc-body,.c-item').forEach(function (el) { el.style.opacity = 1; el.style.transform = 'none'; });
+    document.querySelectorAll('.hero-h .ln span,.stmt-h .ln span,.c-big .ln span,.mvc-title span').forEach(function (el) { el.style.transform = 'none'; });
+    var st1 = document.getElementById('st1'), st3 = document.getElementById('st3');
+    if (st1) st1.textContent = '7'; if (st3) st3.textContent = '5';
+    window.addEventListener('scroll', function () { document.getElementById('nav').classList.toggle('glass', window.scrollY > 60); });
+  })();
+}
+</script>
 </body>
 </html>
