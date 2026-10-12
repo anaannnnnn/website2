@@ -75,7 +75,16 @@ main{position:relative;overflow:hidden;background:#06090d}
 #rainChart svg{width:100%;height:auto;display:block}
 .leaflet-container{background:#0b0f14}
 .drawing .leaflet-container{cursor:crosshair!important}
+#sheets{position:absolute;inset:0;overflow:auto;display:none;padding:16px;background:#dfe3e8}
+.sheetgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:16px}
+.sheetcard{background:#fff;border-radius:10px;overflow:hidden;color:#111;box-shadow:0 2px 12px rgba(0,0,0,.18)}
+.sheetcard img{width:100%;display:block;background:#fff;cursor:zoom-in}
+.sheetcard .sb{display:flex;gap:6px;padding:8px 10px;align-items:center;border-top:1px solid #e5e5e5}
+.sheetcard .sb b{flex:1;font-size:13px}
+.sheetcard .btn{background:#f4f5f7;border-color:#cfd4da;color:#111}
+.sheetempty{color:#4a5563;text-align:center;padding:60px 20px}
 @media (max-width:900px){
+  .sheetgrid{grid-template-columns:minmax(0,1fr)}
   .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 58vh auto;height:auto}
   html,body{overflow-x:hidden}
   header{grid-column:1;flex-wrap:wrap;padding:8px 16px;gap:8px}
@@ -97,6 +106,7 @@ main{position:relative;overflow:hidden;background:#06090d}
     <div class="tabs" role="tablist">
       <button id="tabMap" class="on" role="tab">Map</button>
       <button id="tab3d" role="tab">3D</button>
+      <button id="tabSheets" role="tab">Sheets</button>
     </div>
     <div class="statusbox"><div id="status">Pick an area on the map, then press Generate.</div><div class="bar"><div id="bar"></div></div></div>
   </header>
@@ -157,6 +167,7 @@ main{position:relative;overflow:hidden;background:#06090d}
           </select>
         </label>
         <div class="checks">
+          <label><input type="checkbox" id="banded" checked> Crisp classed bands</label>
           <label><input type="checkbox" id="hillBlend" checked> Relief shading</label>
           <label><input type="checkbox" id="featOverlay" checked> Map features</label>
           <label><input type="checkbox" id="contOverlay" checked> Contour lines</label>
@@ -226,7 +237,19 @@ main{position:relative;overflow:hidden;background:#06090d}
     </section>
 
     <section class="card">
-      <h3><b>05</b> Site statistics</h3>
+      <h3><b>05</b> Presentation sheets</h3>
+      <div class="body">
+        <div class="hint">Clean, print-ready boards (vector SVG + PNG): building heights, slope analysis, contour heat maps (site + wider area), layered interpretation and a 3D topography & contour model.</div>
+        <div class="row"><button id="btnSite" class="btn grow">📍 Place site marker</button><button id="btnSiteReset" class="btn">Centre</button></div>
+        <label class="f">Terrain smoothing (removes DEM noise) <span class="v" id="smoothV">1.5</span><input id="smooth" type="range" min="0" max="5" step="0.5" value="1.5"></label>
+        <label class="f">Wider-area extent (× site size)<select id="wideX"><option>3</option><option selected>5</option><option>8</option><option>12</option></select></label>
+        <button id="btnSheets" class="btn primary big">Create presentation sheets</button>
+        <div class="row"><button id="btnSheetsZip" class="btn grow">⬇ All sheets (.zip: SVG + PNG)</button></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3><b>06</b> Site statistics</h3>
       <div class="body">
         <div id="stats" class="stats"><div>Status</div><div>not generated</div></div>
         <div id="rainChart"></div>
@@ -238,6 +261,7 @@ main{position:relative;overflow:hidden;background:#06090d}
 
   <main>
     <div id="map"></div>
+    <div id="sheets"><div class="sheetempty" id="sheetEmpty">Generate an area, then press <b>Create presentation sheets</b> in panel 05.</div><div class="sheetgrid" id="sheetGrid"></div></div>
     <div id="view3d"><div class="empty3d" id="empty3d">Generate an area first — the 3D model appears here.</div></div>
     <div class="legend" id="legend"><div id="legTitle"></div><div class="grad" id="legGrad"></div><div class="ends"><span id="legMin"></span><span id="legMax"></span></div></div>
     <div class="overlay-help" id="help3d">Drag: rotate · Right-drag: pan · Scroll: zoom</div>
@@ -438,7 +462,40 @@ async function buildDEM(b, N) {
       data[j * W + i] = v; if (v < min) min = v; if (v > max) max = v; sum += v;
     }
   }
+  const fixed = despike(data, W, H);
+  if (fixed) {
+    log(`Repaired ${fixed} cells of terrain-tile dropouts`);
+    min = Infinity; max = -Infinity; sum = 0;
+    for (const v of data) { if (v < min) min = v; if (v > max) max = v; sum += v; }
+  }
   return { W, H, data, min, max, mean: sum / (W * H), dx: m.widthM / (W - 1), dy: m.heightM / (H - 1), zoom: z };
+}
+/* Terrain tiles occasionally contain deep "dropout" holes (e.g. -100 m squares in flat cities).
+   Cells far below the robust range are masked (plus a 2-cell halo) and refilled from their neighbours. */
+function despike(data, W, H) {
+  const [p2, p98] = percentiles(data, 0.02, 0.98), fence = p2 - Math.max(15, 2 * (p98 - p2));
+  let mask = new Uint8Array(W * H), n = 0;
+  for (let k = 0; k < data.length; k++) if (data[k] < fence) { mask[k] = 1; n++; }
+  if (!n || n > data.length * 0.25) return 0;
+  for (let pass = 0; pass < 2; pass++) {
+    const m2 = mask.slice();
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (mask[j * W + i])
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const a = i + di, b = j + dj; if (a >= 0 && b >= 0 && a < W && b < H) m2[b * W + a] = 1; }
+    mask = m2;
+  }
+  let left = mask.reduce((a, v) => a + v, 0); const total = left;
+  for (let it = 0; left && it < 4 * (W + H); it++) {
+    const fill = [];
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      const k = j * W + i; if (!mask[k]) continue;
+      let s = 0, c = 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const a = i + di, b = j + dj; if (a >= 0 && b >= 0 && a < W && b < H && !mask[b * W + a]) { s += data[b * W + a]; c++; } }
+      if (c) fill.push([k, s / c]);
+    }
+    for (const [k, v] of fill) { data[k] = v; mask[k] = 0; left--; }
+    if (!fill.length) break;
+  }
+  return total;
 }
 /* elevation at local metres (x east, y north) */
 function demAt(x, y) {
@@ -573,7 +630,7 @@ function buildingHeight(t) {
   const h = parseFloat(String(t.height || '').replace(',', '.'));
   if (Number.isFinite(h) && h > 0) return h;
   const lv = parseFloat(t['building:levels']);
-  if (Number.isFinite(lv) && lv > 0) return lv * 3.2 + (parseFloat(t['roof:levels']) || 0) * 2.5;
+  if (Number.isFinite(lv) && lv > 0) return lv * 3.5 + (parseFloat(t['roof:levels']) || 0) * 2.5;
   return null;
 }
 function parseOSM(js) {
@@ -719,23 +776,26 @@ function getContours() {
   const { W, H, data, min, max } = S.dem, b = S.bbox;
   const levels = [];
   for (let v = Math.ceil(min / iv) * iv; v <= max && levels.length < 600; v += iv) levels.push(+v.toFixed(4));
-  const lines = [];
-  const onEdge = p => p[0] <= 0 || p[0] >= W || p[1] <= 0 || p[1] >= H;
   const toLL = p => [b.w + clamp(p[0] - 0.5, 0, W - 1) / (W - 1) * (b.e - b.w), b.n - clamp(p[1] - 0.5, 0, H - 1) / (H - 1) * (b.n - b.s)];
-  if (levels.length) for (const c of d3.contours().size([W, H]).thresholds(levels)(data)) {
-    const major = Math.abs(c.value / (iv * 5) - Math.round(c.value / (iv * 5))) < 1e-6;
+  const lines = contourPolylines(data, W, H, levels).map(l => ({ elev: l.v, major: Math.abs(l.v / (iv * 5) - Math.round(l.v / (iv * 5))) < 1e-6, pts: l.pts.map(toLL) }));
+  return S.contours = { iv, lines };
+}
+/* d3 contour rings split into open polylines, dropping segments that run along the grid border (no frame "bleed") */
+function contourPolylines(data, W, H, levels) {
+  const out = [], onEdge = p => p[0] <= 0 || p[0] >= W || p[1] <= 0 || p[1] >= H;
+  if (!levels.length) return out;
+  for (const c of d3.contours().size([W, H]).thresholds(levels)(data))
     for (const poly of c.coordinates) for (const ring of poly) {
       let cur = [];
       for (let k = 0; k < ring.length - 1; k++) {
         const p = ring[k], q = ring[k + 1];
-        if (onEdge(p) && onEdge(q)) { if (cur.length > 1) lines.push({ elev: c.value, major, pts: cur }); cur = []; continue; }
-        if (!cur.length) cur.push(toLL(p));
-        cur.push(toLL(q));
+        if (onEdge(p) && onEdge(q)) { if (cur.length > 1) out.push({ v: c.value, pts: cur }); cur = []; continue; }
+        if (!cur.length) cur.push(p);
+        cur.push(q);
       }
-      if (cur.length > 1) lines.push({ elev: c.value, major, pts: cur });
+      if (cur.length > 1) out.push({ v: c.value, pts: cur });
     }
-  }
-  return S.contours = { iv, lines };
+  return out;
 }
 
 /* ───────────────────────── texture ───────────────────────── */
@@ -758,20 +818,24 @@ function buildTexture(mode) {
   if (mode === 'satellite' && S.sat) {
     ctx.drawImage(S.sat.cv, S.sat.sx, S.sat.sy, S.sat.sw, S.sat.sh, 0, 0, TW, TH);
   } else {
-    const small = document.createElement('canvas'); small.width = W; small.height = H;
-    const sctx = small.getContext('2d'), img = sctx.createImageData(W, H);
+    // sample values per texel (not colours) so class boundaries stay crisp — no blurry colour bleed
+    const img = ctx.createImageData(TW, TH);
     const blend = $('#hillBlend').checked && !(hv && hv.h.noBlend);
     const shade = S.der.shade;
     const v = hv || { arr: S.dem.data, lo: S.dem.min, hi: S.dem.max, h: HEAT.plain };
     const t = lut(hv ? hv.h.cmap : 'plain'), span = (v.hi - v.lo) || 1;
-    for (let k = 0; k < W * H; k++) {
-      const c = Math.round(clamp((v.arr[k] - v.lo) / span, 0, 1) * 255) * 3;
-      const f = blend ? 0.45 + 0.75 * shade[k] : 1;
-      img.data[k * 4] = Math.min(255, t[c] * f); img.data[k * 4 + 1] = Math.min(255, t[c + 1] * f); img.data[k * 4 + 2] = Math.min(255, t[c + 2] * f); img.data[k * 4 + 3] = 255;
+    const NB = $('#banded').checked && hv && !hv.h.noBlend && mode !== 'plain' ? 12 : 0;
+    for (let y = 0, p = 0; y < TH; y++) {
+      const gy = y / (TH - 1) * (H - 1);
+      for (let x = 0; x < TW; x++, p += 4) {
+        const gx = x / (TW - 1) * (W - 1);
+        let tv = clamp((bilinear(v.arr, W, H, gx, gy) - v.lo) / span, 0, 1);
+        if (NB) tv = Math.min(NB - 1, Math.floor(tv * NB)) / (NB - 1);
+        const c = Math.round(tv * 255) * 3, f = blend ? 0.5 + 0.65 * bilinear(shade, W, H, gx, gy) : 1;
+        img.data[p] = Math.min(255, t[c] * f); img.data[p + 1] = Math.min(255, t[c + 1] * f); img.data[p + 2] = Math.min(255, t[c + 2] * f); img.data[p + 3] = 255;
+      }
     }
-    sctx.putImageData(img, 0, 0);
-    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(small, 0, 0, TW, TH);
+    ctx.putImageData(img, 0, 0);
   }
   updateLegend(mode, mode === 'satellite' ? null : hv);
   const P = (lon, lat) => [(lon - b.w) / (b.e - b.w) * TW, (b.n - lat) / (b.n - b.s) * TH];
@@ -836,8 +900,8 @@ controls.addEventListener('change', requestRender);
 function disposeObj(o) { if (!o) return; o.parent && o.parent.remove(o); o.geometry && o.geometry.dispose(); }
 
 /* closed terrain solid: textured top surface + skirt walls + bottom */
-function terrainSolid(exag, base) {
-  const d = S.dem, step = Math.max(1, Math.ceil(Math.max(d.W, d.H) / 600));
+function terrainSolid(exag, base, dem = S.dem) {
+  const d = dem, step = Math.max(1, Math.ceil(Math.max(d.W, d.H) / 600));
   const W = Math.floor((d.W - 1) / step) + 1, H = Math.floor((d.H - 1) / step) + 1;
   const sx = S.m.widthM / (W - 1), sz = S.m.heightM / (H - 1), x0 = -S.m.widthM / 2, z0 = -S.m.heightM / 2;
   const pos = [], uv = [], idx = [];
@@ -1033,7 +1097,7 @@ async function generate() {
   const b = S.bbox; if (!b) return;
   const btn = $('#btnGen'); btn.disabled = true; $('#log').textContent = '';
   try {
-    S.m = metrics(b); S.contours = null; S.sat = null; S.osm = null; S.climate = null;
+    S.m = metrics(b); S.contours = null; S.sheets = null; S.smooth = null; S.sat = null; S.osm = null; S.climate = null;
     const km2 = S.m.widthM * S.m.heightM / 1e6;
     if (S.m.widthM > 150000 || S.m.heightM > 150000) throw new Error('Area too large — keep it under 150 km per side.');
     setStatus('Downloading elevation…', 0.03);
@@ -1095,19 +1159,23 @@ function renderStats() {
 
 /* ───────────────────────── UI wiring ───────────────────────── */
 function showTab(t) {
-  $('#tabMap').classList.toggle('on', t === 'map'); $('#tab3d').classList.toggle('on', t === '3d');
+  $('#tabMap').classList.toggle('on', t === 'map'); $('#tab3d').classList.toggle('on', t === '3d'); $('#tabSheets').classList.toggle('on', t === 'sheets');
+  $('#sheets').style.display = t === 'sheets' ? 'block' : 'none';
   $('#map').style.display = t === 'map' ? 'block' : 'none';
   host.style.display = t === '3d' ? 'block' : 'none';
   $('#help3d').style.display = t === '3d' && S.dem ? 'block' : 'none';
   $('#empty3d').style.display = S.dem ? 'none' : 'flex';
-  if (t === 'map') { map.invalidateSize(); $('#legend').style.display = 'none'; }
+  if (t !== '3d') $('#legend').style.display = 'none';
+  if (t === 'map') map.invalidateSize();
+  else if (t === 'sheets') {}
   else { resize(); requestRender(); if (S.dem) updateLegend($('#heat').value, $('#heat').value === 'satellite' ? null : heatValues($('#heat').value)); }
 }
 $('#tabMap').onclick = () => showTab('map');
 $('#tab3d').onclick = () => showTab('3d');
+$('#tabSheets').onclick = () => showTab('sheets');
 let rbTimer;
 const scheduleRebuild = () => { clearTimeout(rbTimer); rbTimer = setTimeout(() => rebuild3D().catch(e => setStatus('Error: ' + e.message)), 120); };
-['#heat', '#style', '#hillBlend', '#featOverlay', '#contOverlay', '#contInt', '#showBuildings', '#showTrees', '#gap', '#base', '#defH'].forEach(s => $(s).addEventListener('change', scheduleRebuild));
+['#heat', '#style', '#banded', '#hillBlend', '#featOverlay', '#contOverlay', '#contInt', '#showBuildings', '#showTrees', '#gap', '#base', '#defH'].forEach(s => $(s).addEventListener('change', scheduleRebuild));
 $('#blocks').addEventListener('input', () => { $('#blocksV').textContent = $('#blocks').value; if (/blocks|bars|terraced/.test($('#style').value)) scheduleRebuild(); });
 $('#exag').addEventListener('input', () => { $('#exagV').textContent = (+$('#exag').value).toFixed(1) + '×'; scheduleRebuild(); });
 $('#flood').addEventListener('change', () => { updateWater(); if ($('#heat').value === 'flood') scheduleRebuild(); });
@@ -1383,6 +1451,7 @@ async function exportZip() {
     const c = climateCSV(); if (c) z.file('climate/rainfall_climate.csv', c);
     renderer.render(scene, camera); z.file('images/render.png', await canvasBlob(renderer.domElement));
   });
+  await step('Drawing presentation sheets…', 0.82, () => addSheetsToZip(z));
   setStatus('Compressing zip…', 0.9);
   const blob = await z.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 3 } }, m => setStatus(`Compressing zip… ${Math.round(m.percent)}%`, 0.9 + m.percent / 1000));
   download(blob, 'terrakit_export.zip');
@@ -1393,7 +1462,332 @@ document.querySelectorAll('[data-exp]').forEach(btn => btn.addEventListener('cli
   try { await exportOne(btn.dataset.exp); } catch (e) { console.error(e); setStatus('Export failed: ' + e.message); }
   finally { btn.disabled = false; }
 }));
-window.__terrakit = { S, exportOne, generate };
+/* ───────────────────────── presentation sheets ───────────────────────── */
+const SF = 'DejaVu Sans, Verdana, Arial, Helvetica, sans-serif';
+const PAL_ELEV = ['#3f9637', '#7dbb40', '#c4d84a', '#f2dc4a', '#f4a83c', '#ec6c3e', '#d8414b', '#b8306f'];
+const H_CLASSES = [[10, '< 10 m', '#fde0d2'], [20, '10–20', '#fbb497'], [40, '20–40', '#f08068'], [80, '40–80', '#d7434a'], [150, '80–150', '#a01a3c'], [Infinity, '> 150 m', '#5c0a28']];
+const SLOPE_EDGES = [0, 1, 2, 3, 5, 8, 15], SLOPE_COLS = ['#f3f4e9', '#d9eabf', '#b4d57e', '#f0d065', '#ec9a4a', '#d24a3a'];
+const WATER = '#9ec9ea', CREDIT = 'Data: OpenStreetMap contributors, AWS Terrain Tiles';
+const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const r1 = v => Math.round(v * 10) / 10;
+const heightColor = h => H_CLASSES.find(c => h < c[0])[2];
+function interpColors(stops, n) {
+  return Array.from({ length: n }, (_, k) => {
+    const f = (n === 1 ? 0 : k / (n - 1)) * (stops.length - 1), i = Math.min(Math.floor(f), stops.length - 2);
+    return d3.color(d3.interpolateRgb(stops[i], stops[i + 1])(f - i)).formatHex();
+  });
+}
+function gaussian(data, W, H, sigma) {
+  if (sigma <= 0) return Float32Array.from(data);
+  const r = Math.ceil(sigma * 3), k = [];
+  let sum = 0; for (let i = -r; i <= r; i++) { const v = Math.exp(-i * i / (2 * sigma * sigma)); k.push(v); sum += v; }
+  for (let i = 0; i < k.length; i++) k[i] /= sum;
+  const tmp = new Float32Array(W * H), out = new Float32Array(W * H);
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { let a = 0; for (let t = 0; t < k.length; t++) a += data[j * W + clamp(i + t - r, 0, W - 1)] * k[t]; tmp[j * W + i] = a; }
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { let a = 0; for (let t = 0; t < k.length; t++) a += tmp[clamp(j + t - r, 0, H - 1) * W + i] * k[t]; out[j * W + i] = a; }
+  return out;
+}
+function slopeOf(data, W, H, dx, dy) {
+  const out = new Float32Array(W * H), at = (i, j) => data[clamp(j, 0, H - 1) * W + clamp(i, 0, W - 1)];
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const gx = ((at(i + 1, j - 1) + 2 * at(i + 1, j) + at(i + 1, j + 1)) - (at(i - 1, j - 1) + 2 * at(i - 1, j) + at(i - 1, j + 1))) / (8 * dx);
+    const gy = ((at(i - 1, j + 1) + 2 * at(i, j + 1) + at(i + 1, j + 1)) - (at(i - 1, j - 1) + 2 * at(i, j - 1) + at(i + 1, j - 1))) / (8 * dy);
+    out[j * W + i] = Math.atan(Math.hypot(gx, gy)) / D2R;
+  }
+  return out;
+}
+function smoothDEM() {
+  const sg = +$('#smooth').value;
+  if (!S.smooth || S.smooth.sg !== sg || S.smooth.dem !== S.dem) {
+    const data = gaussian(S.dem.data, S.dem.W, S.dem.H, sg);
+    S.smooth = { sg, dem: S.dem, data, slope: slopeOf(data, S.dem.W, S.dem.H, S.dem.dx, S.dem.dy) };
+  }
+  return S.smooth;
+}
+const sitePoint = () => S.site || [(S.bbox.w + S.bbox.e) / 2, (S.bbox.s + S.bbox.n) / 2];
+function niceInterval(range, maxBands) { return [0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000].find(s => range / s <= maxBands) || 1000; }
+
+/* drawing context: P maps lon/lat → sheet px, G maps DEM grid coords → sheet px, path draws d3 contour polygons */
+function mkCtx(gb, grid, P) {
+  const G = (gx, gy) => P(gb.w + (gx - 0.5) / (grid.W - 1) * (gb.e - gb.w), gb.n - (gy - 0.5) / (grid.H - 1) * (gb.n - gb.s));
+  const path = d3.geoPath(d3.geoTransform({ point(x, y) { const q = G(x, y); this.stream.point(q[0], q[1]); } }));
+  if (path.digits) path.digits(1);
+  return { P, G, path };
+}
+function frameLayout(b, maxW, maxH) {
+  const m = metrics(b); let FW = maxW, FH = FW * m.heightM / m.widthM;
+  if (FH > maxH) { FH = maxH; FW = FH * m.widthM / m.heightM; }
+  return { FW: Math.round(FW), FH: Math.round(FH), ppm: Math.round(FW) / m.widthM };
+}
+const frameP = (b, x0, y0, FW, FH) => (lon, lat) => [x0 + (lon - b.w) / (b.e - b.w) * FW, y0 + (b.n - lat) / (b.n - b.s) * FH];
+const ptsStr = (ctx, arr) => arr.map(p => { const q = ctx.P(p[0], p[1]); return r1(q[0]) + ',' + r1(q[1]); }).join(' ');
+const svgBands = (ctx, data, W, H, th, cols) => d3.contours().size([W, H]).thresholds(th)(data).map((c, k) => c.coordinates.length ? `<path d="${ctx.path(c)}" fill="${cols[k]}"/>` : '').join('');
+const svgLines = (ctx, lines, attr) => lines.map(l => `<polyline points="${l.pts.map(p => { const q = ctx.G(p[0], p[1]); return r1(q[0]) + ',' + r1(q[1]); }).join(' ')}" ${attr(l)}/>`).join('');
+const svgPolys = (ctx, items, attr) => items.map(it => `<polygon points="${ptsStr(ctx, it.ring)}" ${attr(it)}/>`).join('');
+function svgRoads(ctx, ppm, { casing, fill, k = 1, min = 0.8, rails = true }) {
+  const rs = ((S.osm && S.osm.roads) || []).slice().sort((a, b) => a.width - b.width), w = r => Math.max(min, r.width * ppm * k);
+  let out = '';
+  if (casing) out += `<g fill="none" stroke="${casing}" stroke-linecap="round" stroke-linejoin="round">${rs.map(r => `<polyline points="${ptsStr(ctx, r.pts)}" stroke-width="${r1(w(r) + 1.6)}"/>`).join('')}</g>`;
+  out += `<g fill="none" stroke="${fill}" stroke-linecap="round" stroke-linejoin="round">${rs.map(r => `<polyline points="${ptsStr(ctx, r.pts)}" stroke-width="${r1(w(r))}"/>`).join('')}</g>`;
+  if (rails && S.osm) out += `<g fill="none" stroke="#555" stroke-dasharray="6 4">${S.osm.rails.map(r => `<polyline points="${ptsStr(ctx, r.pts)}" stroke-width="1.4"/>`).join('')}</g>`;
+  return out;
+}
+const triangle = (x, y, col, s = 20) => `<path d="M${r1(x - s)},${r1(y - s * 0.9)} L${r1(x + s)},${r1(y - s * 0.9)} L${r1(x)},${r1(y + s * 0.9)}Z" fill="${col}" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>`;
+function northArrow(x, y) {
+  return `<rect x="${x}" y="${y}" width="140" height="265" fill="#fff" fill-opacity=".85"/><text x="${x + 70}" y="${y + 58}" font-size="26" font-weight="700" text-anchor="middle">N</text><line x1="${x + 70}" y1="${y + 205}" x2="${x + 70}" y2="${y + 100}" stroke="#000" stroke-width="4"/><path d="M${x + 61},${y + 104} L${x + 70},${y + 80} L${x + 79},${y + 104}Z"/>`;
+}
+function scaleBar(x, y, ppm, target) {
+  const nice = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 20000, 50000];
+  const L = nice.reduce((a, v) => v * ppm <= target ? v : a, nice[0]), px = L * ppm, seg = px / 4;
+  let out = `<rect x="${x}" y="${y}" width="${r1(px + 90)}" height="96" fill="#fff" fill-opacity=".85"/>`;
+  for (let k = 0; k < 4; k++) out += `<rect x="${r1(x + 32 + k * seg)}" y="${y + 56}" width="${r1(seg)}" height="15" fill="${k % 2 ? '#fff' : '#000'}" stroke="#000" stroke-width="1.5"/>`;
+  return out + `<text x="${x + 32}" y="${y + 42}" font-size="20" text-anchor="middle">0</text><text x="${r1(x + 32 + px)}" y="${y + 42}" font-size="20" text-anchor="middle">${L >= 1000 ? L / 1000 + ' km' : L + ' m'}</text>`;
+}
+function legendBox(xr, yb, title, items) { // anchored at bottom-right corner
+  const w = 300, h = 58 + items.length * 34, x = xr - w, y = yb - h;
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff" fill-opacity=".9" stroke="#ccc"/><text x="${x + w / 2}" y="${y + 34}" font-size="23" text-anchor="middle">${esc(title)}</text>` +
+    items.map((it, k) => `<rect x="${x + 14}" y="${y + 50 + k * 34}" width="44" height="18" fill="${it[1]}" stroke="#555" stroke-width="1.5"/><text x="${x + 72}" y="${y + 66 + k * 34}" font-size="21">${esc(it[0])}</text>`).join('');
+}
+function colorbar(x, y, h, edges, cols, label, { ext = false, linear = false, ticks = null } = {}) {
+  const n = cols.length, w = 44, lo = edges[0], hi = edges[edges.length - 1];
+  const pos = (v, i) => linear ? y + h - (v - lo) / (hi - lo) * h : y + h - i * h / n;
+  let out = '';
+  cols.forEach((c, k) => { const y1 = pos(edges[k + 1], k + 1), y0 = pos(edges[k], k); out += `<rect x="${x}" y="${r1(y1)}" width="${w}" height="${r1(y0 - y1 + 0.6)}" fill="${c}"/>`; });
+  if (ext) out += `<path d="M${x},${y} L${x + w / 2},${y - 42} L${x + w},${y}Z" fill="${cols[n - 1]}" stroke="#000" stroke-width="2"/>`;
+  out += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#000" stroke-width="2"/>`;
+  const tk = ticks ? ticks.map(v => [v, pos(v)]) : edges.map((v, i) => [v, pos(v, i)]);
+  for (const [v, ty] of tk) out += `<line x1="${x + w}" y1="${r1(ty)}" x2="${x + w + 10}" y2="${r1(ty)}" stroke="#000" stroke-width="2"/><text x="${x + w + 16}" y="${r1(ty + 8)}" font-size="23">${fmt(v, v % 1 ? 1 : 0)}</text>`;
+  return out + `<text transform="translate(${x + w + 100},${y + h / 2}) rotate(-90)" font-size="23" text-anchor="middle">${esc(label)}</text>`;
+}
+function sheetSVG(W, H, title, sub, body, { titleSize = 36, credit = CREDIT } = {}) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${SF}"><defs><pattern id="hatch" patternUnits="userSpaceOnUse" width="11" height="11" patternTransform="rotate(45)"><rect width="11" height="11" fill="#d9d9d9"/><line x1="0" y1="0" x2="0" y2="11" stroke="#8c8c8c" stroke-width="3.2"/></pattern></defs>` +
+    `<rect width="100%" height="100%" fill="#fff"/><text x="24" y="52" font-size="${titleSize}" font-weight="700" fill="#222">${esc(title)}</text>` +
+    (sub ? `<text x="24" y="86" font-size="21" fill="#777">${esc(sub)}</text>` : '') + body +
+    `<text x="24" y="${H - 26}" font-size="21" font-style="italic" fill="#777">${esc(credit)}</text></svg>`;
+}
+const clipFrame = (x0, y0, FW, FH) => `<defs><clipPath id="fr"><rect x="${x0}" y="${y0}" width="${FW}" height="${FH}"/></clipPath></defs>`;
+const frameBorder = (x0, y0, FW, FH) => `<rect x="${x0}" y="${y0}" width="${FW}" height="${FH}" fill="none" stroke="#000" stroke-width="2.5"/>`;
+function elevBands(data, min, max, iv) {
+  const lo = Math.floor(min / iv) * iv, sorted = percentiles(data, 0, 0.995)[1];
+  const hi = Math.max(lo + iv, Math.ceil(sorted / iv) * iv), ext = max > hi + 1e-6;
+  let th = []; for (let v = lo; v < hi - 1e-9 && th.length < 120; v += iv) th.push(+v.toFixed(4));
+  const sea = min < 0.3;
+  if (sea) th = [0.3, ...th.filter(v => v > 0.3 + 1e-9)];  // ground below ~sea level shows the blue water background
+  const lo2 = sea ? 0 : lo, edges = [lo2, ...th.slice(1), hi], cols = interpColors(PAL_ELEV, th.length);
+  const span = hi - lo2, step = [1, 2, 3, 4, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000].find(s => span / s <= 8) || 1000;
+  const ticks = []; for (let v = Math.ceil(lo2 / step) * step; v <= hi + 1e-9; v += step) ticks.push(v);
+  return { th, edges, cols, ext, ticks, sea };
+}
+
+function sheetBuildings() {
+  const b = S.bbox, x0 = 24, y0 = 100, { FW, FH, ppm } = frameLayout(b, 1410, 1400);
+  const ctx = mkCtx(b, S.dem, frameP(b, x0, y0, FW, FH)), o = S.osm || emptyOSM();
+  const known = o.buildings.filter(x => x.h).length, [sx, sy] = ctx.P(...sitePoint());
+  let body = clipFrame(x0, y0, FW, FH) + `<g clip-path="url(#fr)"><rect x="${x0}" y="${y0}" width="${FW}" height="${FH}" fill="#f2f1ee"/>`;
+  body += `<g fill="#e2e8ee">${svgPolys(ctx, o.water, () => '')}</g>`;
+  body += svgRoads(ctx, ppm, { casing: '#c4c4c4', fill: '#f2f1ee', min: 1.2, rails: false });
+  body += svgPolys(ctx, o.buildings, x => x.h ? `fill="${heightColor(x.h)}" stroke="#555" stroke-width="0.8"` : 'fill="url(#hatch)" stroke="#6b6b6b" stroke-width="0.8"');
+  body += triangle(sx, sy, '#13a36b') + '</g>' + frameBorder(x0, y0, FW, FH);
+  body += northArrow(x0 + FW - 155, y0 + 15) + scaleBar(x0 + 40, y0 + FH - 140, ppm, FW * 0.2);
+  body += legendBox(x0 + FW - 12, y0 + FH - 12, 'Building height', [...H_CLASSES.map(c => [c[1], c[2]]), ['height not recorded', 'url(#hatch)']]);
+  return sheetSVG(x0 + FW + 24, y0 + FH + 90, 'BUILDING HEIGHTS', `${fmt(o.buildings.length)} footprints; ${fmt(known)} with OSM height/levels (levels × 3.5 m).`, body);
+}
+function sheetSlope() {
+  const b = S.bbox, d = S.dem, x0 = 24, y0 = 100, { FW, FH, ppm } = frameLayout(b, 1150, 1150), sm = smoothDEM();
+  const ctx = mkCtx(b, d, frameP(b, x0, y0, FW, FH)), o = S.osm || emptyOSM(), [sx, sy] = ctx.P(...sitePoint());
+  let body = clipFrame(x0, y0, FW, FH) + `<g clip-path="url(#fr)">` + svgBands(ctx, sm.slope, d.W, d.H, [-1, 1, 2, 3, 5, 8], SLOPE_COLS);
+  body += `<g fill="${WATER}">${svgPolys(ctx, o.water, () => '')}</g>`;
+  body += `<g fill="none" stroke="#333" stroke-opacity=".5" stroke-width="0.7">${svgPolys(ctx, o.buildings, () => '')}</g>`;
+  body += triangle(sx, sy, '#e0302f') + '</g>' + frameBorder(x0, y0, FW, FH);
+  body += northArrow(x0 + FW - 155, y0 + 15) + scaleBar(x0 + 40, y0 + FH - 120, ppm, FW * 0.2);
+  body += colorbar(x0 + FW + 72, y0 + 210, FH * 0.67, SLOPE_EDGES, SLOPE_COLS, 'Slope (°)', { ext: true });
+  return sheetSVG(x0 + FW + 260, y0 + FH + 90, 'SLOPE ANALYSIS', `Slope derived from DEM (smoothed σ ≈ ${fmt(sm.sg * d.dx)} m). In dense cities steep patches can reflect buildings/overpasses in the surface model.`, body);
+}
+function contourSheet({ b, dem, data, iv, title, sub, roads, marker, siteBox }) {
+  const x0 = 24, y0 = 100, { FW, FH, ppm } = frameLayout(b, 1300, 1300);
+  const ctx = mkCtx(b, dem, frameP(b, x0, y0, FW, FH)), o = (roads && S.osm) || emptyOSM();
+  const eb = elevBands(data, dem.min, dem.max, iv);
+  const lines = contourPolylines(data, dem.W, dem.H, eb.th.slice(1));
+  let body = clipFrame(x0, y0, FW, FH) + `<g clip-path="url(#fr)"><rect x="${x0}" y="${y0}" width="${FW}" height="${FH}" fill="${WATER}"/>` + svgBands(ctx, data, dem.W, dem.H, eb.th, eb.cols);
+  body += `<g fill="none" stroke="#3d3420">${svgLines(ctx, lines, l => { const maj = Math.abs(l.v / (iv * 5) - Math.round(l.v / (iv * 5))) < 1e-6; return `stroke-opacity="${maj ? 0.6 : 0.3}" stroke-width="${maj ? 1.2 : 0.6}"`; })}</g>`;
+  body += `<g fill="${WATER}">${svgPolys(ctx, o.water, () => '')}</g>`;
+  if (roads) {
+    body += `<g fill="#fff" fill-opacity=".72" stroke="#8b7d65" stroke-width="0.7">${svgPolys(ctx, o.buildings, () => '')}</g>`;
+    body += svgRoads(ctx, ppm, { fill: '#1e1e1e', k: 0.2, min: 0.8 });
+  }
+  if (siteBox) {
+    const [ax, ay] = ctx.P(siteBox.w, siteBox.n), [bx, by] = ctx.P(siteBox.e, siteBox.s);
+    body += `<rect x="${r1(ax)}" y="${r1(ay)}" width="${r1(bx - ax)}" height="${r1(by - ay)}" fill="none" stroke="#000" stroke-width="3.5" stroke-dasharray="14 8"/><text x="${r1(ax)}" y="${r1(ay - 9)}" font-size="23" font-weight="700">SITE AREA (${fmt(metrics(siteBox).widthM / 1000, 1)} km)</text>`;
+  }
+  const [sx, sy] = ctx.P(...sitePoint());
+  body += marker === 'circle' ? `<circle cx="${r1(sx)}" cy="${r1(sy)}" r="11" fill="#e0302f" stroke="#fff" stroke-width="3"/>` : triangle(sx, sy, '#e0302f') + `<text x="${r1(sx + 22)}" y="${r1(sy - 6)}" font-size="26" font-weight="700">SITE</text>`;
+  body += '</g>' + frameBorder(x0, y0, FW, FH) + northArrow(x0 + FW - 155, y0 + 15) + scaleBar(x0 + 40, y0 + FH - 120, ppm, FW * 0.2);
+  body += colorbar(x0 + FW + 82, y0 + 245, FH * 0.66, eb.edges, eb.cols, 'Elevation (m)', { ext: eb.ext, linear: true, ticks: eb.ticks });
+  return sheetSVG(x0 + FW + 270, y0 + FH + 90, title, sub, body);
+}
+function sheetContourSite() {
+  const sm = smoothDEM(), d = S.dem, iv = contourInterval();
+  return contourSheet({ b: S.bbox, dem: d, data: sm.data, iv, roads: true, marker: 'tri', title: 'CONTOUR HEAT MAP — SITE AND SURROUNDINGS',
+    sub: `${fmt(S.m.widthM / 1000, 2)} km × ${fmt(S.m.heightM / 1000, 2)} km. Contour interval ${iv} m, building footprints and street network overlaid.` });
+}
+function sheetContourWide() {
+  const w = S.wide, iv = niceInterval(percentiles(w.smooth, 0, 0.995)[1] - Math.max(0, w.dem.min), 14), [lon, lat] = sitePoint();
+  return contourSheet({ b: w.b, dem: w.dem, data: w.smooth, iv, roads: false, marker: 'circle', siteBox: S.bbox, title: 'CONTOUR HEAT MAP — WIDER AREA',
+    sub: `≈${fmt(metrics(w.b).widthM / 1000, 1)} km around ${Math.abs(lat).toFixed(6)} ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(6)} ${lon >= 0 ? 'E' : 'W'}. Contour interval ${iv} m. Blue = water / sea level.` });
+}
+function sheetLayers() {
+  const [slon, slat] = sitePoint(), R = Math.min(S.m.widthM, S.m.heightM) / 2 * 0.96, r = 360, sq = 0.38, cx = 400, top = 240, gap = 386, d = S.dem;
+  const k = r / R, P = (lon, lat) => [(lon - slon) * S.m.mLon * k, -(lat - slat) * S.m.mLat * k];
+  const ctx = mkCtx(S.bbox, d, P), o = S.osm || emptyOSM(), sm = smoothDEM(), iv = contourInterval();
+  const lines = contourPolylines(sm.data, d.W, d.H, (() => { const a = []; for (let v = Math.ceil(d.min / iv) * iv; v <= d.max && a.length < 300; v += iv) a.push(v); return a; })());
+  const discs = [
+    ['building height', '#fdf1ec', svgPolys(ctx, o.buildings, x => x.h ? `fill="${heightColor(x.h)}" stroke="#a3878a" stroke-width="0.6"` : 'fill="#dcdde0" stroke="#a9a9b0" stroke-width="0.6"')],
+    ['city block / streets', '#f8f8f8', `<g fill="#e1e5eb" stroke="#8d939c" stroke-width="0.6">${svgPolys(ctx, o.buildings, () => '')}</g>` + svgRoads(ctx, k, { casing: '#4b5058', fill: '#fbfbfb', min: 1.2 })],
+    ['slope', '#f3f4e9', svgBands(ctx, sm.slope, d.W, d.H, [-1, 1, 2, 3, 5, 8], SLOPE_COLS)],
+    ['contour lines', '#a47c56', `<g fill="${WATER}">${svgPolys(ctx, o.water, () => '')}</g><g fill="none" stroke="#3e2a17">${svgLines(ctx, lines, l => `stroke-width="${Math.abs(l.v / (iv * 5) - Math.round(l.v / (iv * 5))) < 1e-6 ? 1.6 : 0.9}"`)}</g>`]
+  ];
+  let body = `<defs><clipPath id="disc"><circle r="${r}"/></clipPath></defs><style>.d *{vector-effect:non-scaling-stroke}</style>`;
+  const bottom = top + 3 * gap;
+  body += `<g stroke="#aaa" stroke-width="1.5" stroke-dasharray="2 5"><line x1="${cx - r}" y1="${top}" x2="${cx - r}" y2="${bottom}"/><line x1="${cx + r}" y1="${top}" x2="${cx + r}" y2="${bottom}"/></g>`;
+  discs.forEach(([label, bg, content], i) => {
+    const cy = top + i * gap;
+    body += `<g class="d" transform="translate(${cx},${cy}) scale(1,${sq})"><g clip-path="url(#disc)"><circle r="${r}" fill="${bg}"/>${content}</g><circle r="${r}" fill="none" stroke="#777" stroke-width="1.6"/><circle r="24" fill="#7ec3dc" stroke="#000" stroke-width="1.6" stroke-dasharray="5 3"/></g>`;
+    body += `<circle cx="${cx + r + 16}" cy="${cy}" r="5.5"/><line x1="${cx + r + 16}" y1="${cy}" x2="${cx + r + 132}" y2="${cy}" stroke="#000" stroke-width="2"/><text x="${cx + r + 146}" y="${cy + 9}" font-size="27" font-weight="700">${esc(label)}</text>`;
+  });
+  body += `<line x1="${cx}" y1="${top}" x2="${cx}" y2="${bottom}" stroke="#000" stroke-width="2.5" stroke-dasharray="9 6"/>`;
+  return sheetSVG(1200, bottom + r * sq + 80, 'LAYERED INTERPRETATION OF TERRAIN AND URBAN FORM', '', body, { titleSize: 31, credit: `Ø ${fmt(2 * R)} m around site (blue marker). ${CREDIT}` });
+}
+let offR = null;
+function renderModelImage(Wpx, Hpx, exag, edges, cols) {
+  const d = S.dem, sm = smoothDEM(), size = Math.max(S.m.widthM, S.m.heightM);
+  if (!offR) { offR = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); offR.outputColorSpace = THREE.SRGBColorSpace; }
+  offR.setPixelRatio(1); offR.setSize(Wpx, Hpx, false); offR.setClearColor('#ffffff', 1);
+  // crisp band texture
+  const [TW, TH] = texSize(), cv = document.createElement('canvas'); cv.width = TW; cv.height = TH;
+  const cx = cv.getContext('2d'), img = cx.createImageData(TW, TH), rgb = cols.map(c => { const q = d3.color(c); return [q.r, q.g, q.b]; });
+  for (let y = 0, p = 0; y < TH; y++) for (let x = 0; x < TW; x++, p += 4) {
+    const v = bilinear(sm.data, d.W, d.H, x / (TW - 1) * (d.W - 1), y / (TH - 1) * (d.H - 1));
+    let k = 0; while (k < cols.length - 1 && v >= edges[k + 1]) k++;
+    img.data.set(v < 0.3 && d.min < 0.3 ? [158, 201, 234, 255] : [...rgb[k], 255], p);
+  }
+  cx.putImageData(img, 0, 0);
+  const b = S.bbox, Pt = (lon, lat) => [(lon - b.w) / (b.e - b.w) * TW, (b.n - lat) / (b.n - b.s) * TH];
+  cx.fillStyle = WATER;
+  for (const w of (S.osm ? S.osm.water : [])) { cx.beginPath(); w.ring.forEach((q, i) => { const [x, y] = Pt(q[0], q[1]); i ? cx.lineTo(x, y) : cx.moveTo(x, y); }); cx.fill(); }
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  const base = Math.max(size * 0.03, (d.max - d.min) * exag * 0.25);
+  const sc = new THREE.Scene(), grp = new THREE.Group(); sc.add(grp);
+  sc.add(new THREE.AmbientLight('#ffffff', 2.1)); const dl = new THREE.DirectionalLight('#ffffff', 1.3); dl.position.set(-size, size * 1.6, size * 0.7); sc.add(dl);
+  const tGeo = terrainSolid(exag, base, { ...d, data: sm.data });
+  grp.add(new THREE.Mesh(tGeo, [new THREE.MeshBasicMaterial({ map: tex }), new THREE.MeshBasicMaterial({ color: '#8b6748' })]));
+  const bGeo = buildingsGeometry(exag);
+  let eGeo = null;
+  if (bGeo) {
+    grp.add(new THREE.Mesh(bGeo, new THREE.MeshLambertMaterial({ color: '#e6e6e6' })));
+    eGeo = new THREE.EdgesGeometry(bGeo, 25); grp.add(new THREE.LineSegments(eGeo, new THREE.LineBasicMaterial({ color: '#8f8f8f' })));
+  }
+  const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, size * 12);
+  cam.position.copy(new THREE.Vector3(0.62, 0.66, 1).normalize().multiplyScalar(size * 4)); cam.lookAt(0, 0, 0); cam.updateMatrixWorld();
+  const box = new THREE.Box3().setFromObject(grp); let mnx = Infinity, mny = Infinity, mxx = -Infinity, mxy = -Infinity;
+  for (let i = 0; i < 8; i++) {
+    const q = new THREE.Vector3(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).applyMatrix4(cam.matrixWorldInverse);
+    mnx = Math.min(mnx, q.x); mxx = Math.max(mxx, q.x); mny = Math.min(mny, q.y); mxy = Math.max(mxy, q.y);
+  }
+  let w = (mxx - mnx) * 1.04, h = (mxy - mny) * 1.04; const asp = Wpx / Hpx; if (w / h < asp) w = h * asp; else h = w / asp;
+  const mx = (mnx + mxx) / 2, my = (mny + mxy) / 2;
+  Object.assign(cam, { left: mx - w / 2, right: mx + w / 2, top: my + h / 2, bottom: my - h / 2 }); cam.updateProjectionMatrix();
+  offR.render(sc, cam);
+  const url = offR.domElement.toDataURL('image/png');
+  [tGeo, bGeo, eGeo].forEach(g => g && g.dispose()); tex.dispose();
+  return url;
+}
+function sheetModel() {
+  const d = S.dem, exag = +$('#exag').value > 1 ? +$('#exag').value : 3;
+  const sea = d.min < 0.3, lo = sea ? 0 : Math.floor(d.min), hi = Math.ceil(d.max);
+  let edges = [...new Set(Array.from({ length: 7 }, (_, k) => Math.round(lo + (hi - lo) * k / 6)))];
+  if (edges.length < 2) edges = [lo, lo + 1];
+  const BAND = ['#cfe3b0', '#e4eaa6', '#f1dd8b', '#efb96a', '#db8b57', '#a95a3b'];
+  const cols = edges.slice(0, -1).map((_, k, a) => BAND[a.length === 1 ? 0 : Math.round(k * 5 / (a.length - 1))]);
+  const W = 1600, H = 1320, url = renderModelImage(W, 1000, exag, edges, cols);
+  const items = [...cols.map((c, k) => [`${edges[k]}–${edges[k + 1]} m`, c, '#fff']), ['water', WATER, '#fff'], ['buildings (true height)', '#e6e6e6', '#999']];
+  const leg = `<text x="1288" y="62" font-size="22">ELEVATION BANDS</text>` + items.map((it, k) => `<rect x="1236" y="${80 + k * 35}" width="46" height="18" fill="${it[1]}" stroke="${it[2]}" stroke-width="2"/><text x="1302" y="${97 + k * 35}" font-size="21">${esc(it[0])}</text>`).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${SF}"><rect width="100%" height="100%" fill="#fff"/>` +
+    `<image x="0" y="230" width="${W}" height="1000" href="${url}" xlink:href="${url}"/>` +
+    `<text x="24" y="124" font-size="40" font-weight="700">TOPOGRAPHY &amp; CONTOUR MODEL</text><text x="24" y="172" font-size="23" fill="#777">${fmt(S.m.widthM / 1000, 2)} km × ${fmt(S.m.heightM / 1000, 2)} km · terrain vertical exaggeration ×${fmt(exag, 1)} (buildings not exaggerated)</text>` +
+    leg + `<text x="${W / 2}" y="${H - 34}" font-size="21" font-style="italic" fill="#777" text-anchor="middle">${CREDIT}</text></svg>`;
+}
+
+async function ensureWide() {
+  const [lon, lat] = sitePoint(), f = +$('#wideX').value / 2;
+  const key = [S.bbox.s, S.bbox.w, S.bbox.n, S.bbox.e, lon, lat, f].join();
+  if (S.wide && S.wide.key === key) return S.wide;
+  const hw = (S.bbox.e - S.bbox.w) * f, hh = (S.bbox.n - S.bbox.s) * f, b = { w: lon - hw, e: lon + hw, s: lat - hh, n: lat + hh };
+  const dem = await buildDEM(b, 320);
+  return S.wide = { key, b, dem, smooth: gaussian(dem.data, dem.W, dem.H, 1.2) };
+}
+const SHEETS = [['building_heights', 'Building heights', sheetBuildings], ['slope_analysis', 'Slope analysis', sheetSlope], ['contour_site', 'Contour heat map — site', sheetContourSite],
+  ['contour_wider_area', 'Contour heat map — wider area', sheetContourWide], ['layered_interpretation', 'Layered interpretation', sheetLayers], ['topography_model', 'Topography & contour model', sheetModel]];
+async function generateSheets(show = true) {
+  if (!S.dem) { setStatus('Generate an area first.'); return false; }
+  setStatus('Fetching wider-area terrain…', 0.05);
+  try { await ensureWide(); } catch (e) { log('Wider area failed: ' + e.message); }
+  S.sheets = [];
+  for (const [i, [id, name, fn]] of SHEETS.entries()) {
+    if (id === 'contour_wider_area' && !S.wide) continue;
+    setStatus(`Drawing ${name}…`, 0.3 + i * 0.11); await sleep(15);
+    try { S.sheets.push({ id, name, svg: fn() }); } catch (e) { console.error(e); log(`${name} failed: ${e.message}`); }
+  }
+  renderGallery();
+  if (show) showTab('sheets');
+  setStatus(`${S.sheets.length} presentation sheets ready — download as SVG (editable) or PNG.`, 1);
+  return true;
+}
+function svgToPng(svg, scale = 2) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })), img = new Image();
+    img.onload = async () => {
+      const cv = document.createElement('canvas'); cv.width = img.naturalWidth * scale; cv.height = img.naturalHeight * scale;
+      const c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height); c.drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url); res(await canvasBlob(cv));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('SVG render failed')); };
+    img.src = url;
+  });
+}
+function renderGallery() {
+  const g = $('#sheetGrid'); g.querySelectorAll('img').forEach(i => URL.revokeObjectURL(i.src)); g.innerHTML = '';
+  $('#sheetEmpty').style.display = S.sheets && S.sheets.length ? 'none' : 'block';
+  for (const sh of S.sheets || []) {
+    const card = document.createElement('div'); card.className = 'sheetcard';
+    const src = URL.createObjectURL(new Blob([sh.svg], { type: 'image/svg+xml' }));
+    card.innerHTML = `<img alt="${esc(sh.name)}" src="${src}"><div class="sb"><b>${esc(sh.name)}</b><button class="btn" data-f="svg">SVG</button><button class="btn" data-f="png">PNG</button></div>`;
+    card.querySelector('img').onclick = () => window.open(src, '_blank');
+    card.querySelector('[data-f=svg]').onclick = () => download(sh.svg, `terrakit_${sh.id}.svg`, 'image/svg+xml');
+    card.querySelector('[data-f=png]').onclick = async () => { setStatus('Rendering PNG…'); download(await svgToPng(sh.svg), `terrakit_${sh.id}.png`); setStatus('PNG saved.'); };
+    g.appendChild(card);
+  }
+}
+async function addSheetsToZip(z) {
+  if (!S.sheets || !S.sheets.length) await generateSheets(false);
+  for (const sh of S.sheets) { z.file(`sheets/${sh.id}.svg`, sh.svg); z.file(`sheets/${sh.id}.png`, await svgToPng(sh.svg)); }
+}
+$('#btnSheets').onclick = async () => { const b = $('#btnSheets'); b.disabled = true; try { await generateSheets(true); } catch (e) { console.error(e); setStatus('Sheets failed: ' + e.message); } finally { b.disabled = false; } };
+$('#btnSheetsZip').onclick = async () => {
+  if (!S.dem) return setStatus('Generate an area first.');
+  const z = new JSZip(); await addSheetsToZip(z); setStatus('Compressing sheets…');
+  download(await z.generateAsync({ type: 'blob' }), 'terrakit_sheets.zip'); setStatus('Sheets zip ready.', 1);
+};
+$('#smooth').addEventListener('input', () => { $('#smoothV').textContent = $('#smooth').value; });
+let siteMarker = null;
+function setSite(ll) {
+  S.site = ll; S.wide = null;
+  if (!ll) { if (siteMarker) map.removeLayer(siteMarker); siteMarker = null; return; }
+  if (siteMarker) siteMarker.setLatLng([ll[1], ll[0]]);
+  else siteMarker = L.circleMarker([ll[1], ll[0]], { radius: 8, color: '#fff', weight: 3, fillColor: '#e0302f', fillOpacity: 1 }).addTo(map);
+}
+$('#btnSite').onclick = () => { showTab('map'); setStatus('Click the map to place the site marker…'); map.once('click', e => { setSite([e.latlng.lng, e.latlng.lat]); setStatus('Site marker placed — create the sheets.'); }); };
+$('#btnSiteReset').onclick = () => { setSite(null); setStatus('Site marker reset to the centre of the area.'); };
+window.__terrakit = { S, exportOne, generate, generateSheets }; window.__svgToPng = svgToPng; window.__setBox = b => { setBBox(b); map.fitBounds(selRect.getBounds()); };
 </script>
 </body>
 </html>
