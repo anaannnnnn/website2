@@ -44,19 +44,19 @@ const LANDUSE_GREEN = { park: 'park', garden: 'garden', pitch: 'pitch', playgrou
  */
 export async function fetchVectorTiles(b) {
   const [{ Pbf, VectorTile }, tpl] = await Promise.all([lib(), template()]);
-  let z = 14, x0, x1, y0, y1;
-  for (; z >= 12; z--) {
-    x0 = Math.floor(lonToX(b.w, z) / 256); x1 = Math.floor(lonToX(b.e, z) / 256); y0 = Math.floor(latToY(b.n, z) / 256); y1 = Math.floor(latToY(b.s, z) / 256);
-    if ((x1 - x0 + 1) * (y1 - y0 + 1) <= 64) break;
-  }
-  if ((x1 - x0 + 1) * (y1 - y0 + 1) > 64) throw new Error('area too large for vector tiles');
+  // always full detail (z14: every street, path and small feature); 400 tiles covers the largest frame
+  const z = 14, x0 = Math.floor(lonToX(b.w, z) / 256), x1 = Math.floor(lonToX(b.e, z) / 256), y0 = Math.floor(latToY(b.n, z) / 256), y1 = Math.floor(latToY(b.s, z) / 256);
+  if ((x1 - x0 + 1) * (y1 - y0 + 1) > 400) throw new Error('area too large for vector tiles');
   const osm = emptyOSM(), out = { osm, buildings: [], water: [], zoom: z, tiles: 0 }, seenB = new Set();
   const jobs = [];
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) jobs.push([tx, ty]);
   let failed = 0;
-  await Promise.all(jobs.map(async ([tx, ty]) => {
+  let next = 0;
+  const worker = async () => { while (next < jobs.length) await one(...jobs[next++]); };   // 8 at a time
+  const one = async (tx, ty) => {
     let buf;
-    try { buf = await tile(tpl.replace('{z}', z).replace('{x}', tx).replace('{y}', ty)); } catch (e) { failed++; return; }
+    const url = tpl.replace('{z}', z).replace('{x}', tx).replace('{y}', ty);
+    try { buf = await tile(url); } catch (e) { failed++; return; } finally { CACHE.delete(url); }   // the browser's HTTP cache keeps them; don't hold raw tiles in memory
     if (!buf) return;
     out.tiles++;
     const t = new VectorTile(new Pbf(new Uint8Array(buf)));
@@ -129,7 +129,8 @@ export async function fetchVectorTiles(b) {
       if (g.type !== 'Point' || !n || !/^(suburb|neighbourhood|quarter|city_block|locality|island|village|town|hamlet)$/.test(pr.class || '')) return;
       if (!osm.places.some(p => p.name === n)) osm.places.push({ lon: g.coordinates[0], lat: g.coordinates[1], name: n, kind: pr.class });
     });
-  }));
+  };
+  await Promise.all(Array.from({ length: 8 }, worker));
   if (failed && !out.tiles) throw new Error('map tiles unavailable');
   out.failed = failed;
   osm.water.push(...out.water);

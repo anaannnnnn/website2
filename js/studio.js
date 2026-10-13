@@ -2,7 +2,6 @@
 import { $, $$, download, esc, fmt, sleep, toast } from './util.js';
 import * as SH from './sheets.js';
 import * as EX from './export.js';
-import { laserModel } from './laser.js';
 
 let ST = null;   // current studio run
 const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
@@ -15,7 +14,7 @@ export async function openStudio(S, H) {
   const c = SH.sheetCtx(M, { paper: S.paper, orient: S.orient, scale, project: t.project, author: t.author });
   const view3d = await import('./view3d.js');
   EX.useTriangulator(view3d.triangulate);
-  const iv = SH.contourIntervalFor(c), laser = H.laser();
+  const iv = SH.contourIntervalFor(c), printScale3D = H.modelScale();
   const jobs = [];
   const add = (pack, title, fn, kind = 'sheet') => jobs.push({ pack, title, fn, kind });
   if (S.packs.has('plans')) {
@@ -40,7 +39,6 @@ export async function openStudio(S, H) {
     if (M.climate && M.climate.wind) add('climate', 'Wind rose', () => SH.windRoseSheet(c));
     if (M.climate) add('climate', 'Climate summary', () => SH.climateSheet(c));
   }
-  if (S.packs.has('model')) add('model', 'Laser-cut boards', () => laserModel(M, laser), 'laser');
 
   const files = [];
   const file = (pack, name, desc, make, type = 'application/octet-stream') => files.push({ pack, name, desc, make, type });
@@ -61,7 +59,7 @@ export async function openStudio(S, H) {
     file('cad', `${base}_model.obj`, '3D model (OBJ, metres) — terrain + buildings + mapped trees', async () => EX_OBJ(view3d, M), 'text/plain');
     file('cad', `${base}_model.glb`, '3D model (glTF binary, metres)', async () => EX_GLB(view3d, M));
   }
-  if (S.packs.has('model')) file('model', `${base}_print_1to${laser.scale}.stl`, `3D-print model at 1:${fmt(laser.scale)} in millimetres (${fmt(M.frame.w * 1000 / laser.scale)} × ${fmt(M.frame.h * 1000 / laser.scale)} mm)`, async () => EX_STL(view3d, M, laser.scale), 'model/stl');
+  if (S.packs.has('cad')) file('cad', `${base}_print_1to${printScale3D}.stl`, `3D-print model (terrain + buildings) at 1:${fmt(printScale3D)} in millimetres (${fmt(M.frame.w * 1000 / printScale3D)} × ${fmt(M.frame.h * 1000 / printScale3D)} mm)`, async () => EX_STL(view3d, M, printScale3D));
   file('info', 'README.txt', 'Coordinate systems, sources and reliability of every file', () => EX.readme(M), 'text/plain');
 
   ST = { S, H, M, c, sheets: [], files, base, view3d, iv };
@@ -74,18 +72,7 @@ export async function openStudio(S, H) {
     await sleep(20);
     try {
       const r = await j.fn();
-      if (j.kind === 'laser') {
-        const out = r.boards.map((b, k) => ({ id: `laser_board_${k + 1}`, title: `Laser board ${k + 1} / ${r.boards.length}`, sub: `${fmt(b.w)} × ${fmt(b.h)} mm · ${b.n} pieces${b.oversize ? ' · piece larger than your board' : ''}`, svg: b.svg, dxf: b.dxf, pack: 'model' }));
-        out[0] && (out[0].note = `Contour step ${fmt(r.interval, 2)} m · ${r.layers} layers · ${r.pieces} pieces · model ${fmt(r.size[0])} × ${fmt(r.size[1])} mm`);
-        // big sites at a large model scale can need hundreds of boards: preview the first ones, ZIP has all
-        const SHOW = 24;
-        fillCards(card, out.slice(0, SHOW));
-        if (out.length > SHOW) {
-          ST.sheets.push(...out.slice(SHOW));
-          toast(`${out.length} laser boards — showing the first ${SHOW}; all are in Download all. A smaller model scale (e.g. 1:${fmt(laser.scale * 2)}) needs fewer.`, 'warn', 8000);
-        }
-        if (r.oversize) toast(`${r.oversize} laser piece(s) are bigger than your board — choose a smaller model scale (e.g. 1:${fmt(laser.scale * 2)}).`, 'warn', 7000);
-      } else if (j.kind === 'multi') {
+      if (j.kind === 'multi') {
         const secs = (r.crops || []).flat().map(cr => ({ id: `section_${cr.n}`, title: `Section ${cr.n}–${cr.n}′`, sub: `${fmt(cr.L)} m · ${cr.sd.dir} · drawing only, 1:${fmt(cr.scale)} · PNG up to 16,000 px`, svg: cr.svg, dxf: cr.dxf, pack: j.pack, section: cr }));
         fillCards(card, secs.concat(r.map((svg, k) => ({ id: `sections_sheet_${k + 1}`, title: r.length > 1 ? `Sections — presentation sheet ${k + 1}` : 'Sections — presentation sheet', sub: `1:${fmt(scale)} @ ${S.paper} with title block`, svg, pack: j.pack }))));
       } else fillCards(card, [{ id: slug(j.title), title: j.title, sub: `${S.paper} ${S.orient} · ${/axonometric|Sun path|Wind|Climate/.test(j.title) ? 'diagram' : '1:' + fmt(scale)}`, svg: r, pack: j.pack }]);
@@ -211,6 +198,7 @@ $('#btnZip').onclick = async () => {
     }
     for (const f of ST.files) { tick(`${f.name}…`); try { await add(`${f.pack}/${f.name}`, await f.make()); } catch (e) { console.error(f.name, e); } }
     for (const s of sheets) { tick(`PDF: ${s.title}…`); try { await add(`${s.pack}/pdf/${ST.base}_${s.id}.pdf`, await EX.sheetPDF(s.svg)); } catch (e) { console.error('pdf', s.id, e); } }
+    if (sheets.length > 1) { b.textContent = 'Combined PDF…'; try { await add(`${ST.base}_drawings.pdf`, await EX.sheetsToPDF(sheets.map(s => s.svg))); } catch (e) { console.error('pdf set', e); } }
     zip.end(); await done;
     const blob = new Blob(parts, { type: 'application/zip' });
     download(blob, `${ST.base}_terrakit.zip`);

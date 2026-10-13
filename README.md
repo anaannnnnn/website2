@@ -2,7 +2,7 @@
 
 Free, accurate site drawings for architecture students, anywhere in the world. Pick a site, frame it on a
 rotatable 3D map at the sheet size and scale you'll print, and get true-scale plans, sections, terrain
-analysis, climate boards, CAD/GIS files, a 3D model and laser-cut contour layers.
+analysis, climate boards, CAD/GIS files and a 3D model.
 
 Everything runs in the browser — no account, no paid server. Host it free on GitHub Pages
 (Settings → Pages → deploy from branch, root folder).
@@ -31,13 +31,11 @@ Everything runs in the browser — no account, no paid server. Host it free on G
      silhouettes, hatched ground.
    - **Terrain analysis**: elevation, slope, aspect, solar exposure, runoff paths, clay axonometric model.
    - **Sun & climate**: sun path, shadow study (solstices/equinox × 9/12/15 h), wind rose, climate summary.
-   - **Physical model**: laser-cut contour layers (contour step = board thickness at model scale,
-     next layer + building footprints engraved, packed on your board size) as SVG/DXF, and a 3D-print STL.
    - **Sections**: each section on its own as a drawing-only PNG (up to 16,000 px, DPI embedded), SVG,
      PDF and **DXF** (1 unit = 1 m, X = distance along the cut, Y = real elevation; true hidden-line,
      cut buildings as solid fills, ground hatch, separate layers), plus a presentation sheet.
    - **CAD / GIS**: 2D site-plan DXF (footprints with heights, labelled contours, streets, water, green,
-     land use, trees, section lines, north arrow), 3D DXF site model (site-aligned *and* real UTM), contour DXF/GeoJSON/KML,
+     land use, trees, section lines, north arrow), 3D-print STL at a chosen scale, 3D DXF site model (site-aligned *and* real UTM), contour DXF/GeoJSON/KML,
      GeoTIFF (EPSG UTM with rotation), ASCII grid, XYZ points, 16-bit heightmap, OBJ, GLB, GeoJSON.
 
 Every sheet is authored in millimetres and exports as **vector PDF**, SVG or PNG, with a title block

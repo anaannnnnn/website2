@@ -33,7 +33,7 @@ function terrainSolid(M, exag, base) {
   g.computeVertexNormals();
   return g;
 }
-/* stacked contour layers, exactly like the laser-cut model */
+/* stacked contour layers, stepped by contour interval */
 function contourLayers(M, exag, iv, base) {
   const d = M.dem, f = M.frame, levels = contourLevels(d.min, d.max, iv), geos = [];
   geos.push(new THREE.BoxGeometry(f.w, Math.max(0.01, base + (levels[0] - d.min) * exag), f.h).translate(0, (-base + (levels[0] - d.min) * exag) / 2, 0));

@@ -15,7 +15,7 @@ const STEPS = ['site', 'frame', 'data', 'sections', 'outputs'];
 const S = {
   step: 'site', site: null, paper: 'A1', orient: 'landscape', scale: 500, custom: null, bearing: 0, center: null,
   layers: { terrain: true, buildings: true, streets: true, water: true, trees: true, climate: true },
-  model: null, stale: false, loading: false, sections: [], selSec: null, depth: 300, packs: new Set(['plans', 'sections', 'terrain', 'climate', 'model', 'cad'])
+  model: null, stale: false, loading: false, sections: [], selSec: null, depth: 300, packs: new Set(['plans', 'sections', 'terrain', 'climate', 'cad'])
 };
 window.TK = S;  // handy for debugging / tests
 
@@ -330,13 +330,13 @@ function buildModel(res) {
     if (!model.buildings.length) layerState('buildings', 'fail', 'No buildings found here (or all servers failed). Retry, or this area may simply have none mapped.');
     else {
       layerState('buildings', 'ok', `<b data-c="${hs.n}">0</b> buildings · <b>${fmt(hs.pct, 0)}%</b> with real heights (${fmt(hs.recorded)} recorded, ${fmt(hs.floors)} from floors) · others use ${defH()} m, marked “~”`,
-        `${esc(model.bsource)}${model.release ? ' ' + esc(model.release) : ''}${res.overture && res.overture.buildings.length && !res.overture.sourcesRead ? ' — footprint origin (OpenStreetMap / Microsoft / Google) is only read for smaller sites, to keep memory low' : srcTxt ? ' — ' + srcTxt : ''}`, hs.pct >= 60 ? 'good' : hs.pct >= 25 ? 'fair' : 'limited');
+        `${esc(model.bsource)}${model.release ? ' ' + esc(model.release) : ''}${res.overture && res.overture.buildings.length && !res.overture.sourcesRead ? ' — footprint origin (OpenStreetMap / Microsoft / Google) could not be read this time' : srcTxt ? ' — ' + srcTxt : ''}`, hs.pct >= 60 ? 'good' : hs.pct >= 25 ? 'fair' : 'limited');
       const el = $('#ly-buildings [data-c]'); if (el) countUp(el, hs.n);
       const bar = document.createElement('div'); bar.className = 'bar'; bar.innerHTML = '<i></i>'; $('#ly-buildings').appendChild(bar); requestAnimationFrame(() => bar.firstChild.style.width = `${hs.pct}%`);
     }
   }
   const src = res.src || {}, vt = res.vt;
-  const vtGaps = vt ? (vt.zoom < 14 ? ` · area too large for full-detail tiles (zoom ${vt.zoom}): minor streets, paths and small features are left out — use a smaller frame for full detail` : '') + (vt.failed ? ` · ${vt.failed} of ${vt.failed + vt.tiles} tiles failed — press Reload for the rest` : '') : '';
+  const vtGaps = vt ? (vt.failed ? ` · ${vt.failed} of ${vt.failed + vt.tiles} tiles failed — press Reload for the rest` : '') : '';
   const srcNote = k => src[k] === 'live' ? 'OpenStreetMap (live, Overpass)' : 'OpenStreetMap via OpenFreeMap tiles (updated weekly)' + vtGaps;
   if (S.layers.streets) {
     if (!src.streets) layerState('streets', 'fail', 'Street data could not be reached — press Retry.');
@@ -434,24 +434,16 @@ const PACKS = [
   ['sections', 'Sections', 'Every section as a true-scale CAD drawing', '<svg viewBox="0 0 24 24"><path d="M2 18h20M4 18v-6h4v6M10 18V8h5v10M17 18v-4h3v4"/></svg>'],
   ['terrain', 'Terrain analysis', 'Elevation, slope, aspect, solar, runoff, wider area', '<svg viewBox="0 0 24 24"><path d="M3 19 9 9l4 6 3-4 5 8z"/></svg>'],
   ['climate', 'Sun & climate', 'Sun path, shadow study, wind rose, climate', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/></svg>'],
-  ['model', 'Physical model', 'Laser-cut contour layers + 3D-print STL', '<svg viewBox="0 0 24 24"><path d="M3 17l9 4 9-4M3 13l9 4 9-4M3 9l9 4 9-4-9-4z"/></svg>'],
-  ['cad', 'CAD / GIS files', 'DXF, GeoTIFF, XYZ, OBJ/GLB, GeoJSON, KML', '<svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z M14 3v6h6M8 13h8M8 17h5"/></svg>']
+  ['cad', 'CAD / GIS files', 'DXF plans & sections, GeoTIFF, XYZ, OBJ/GLB, 3D-print STL, GeoJSON, KML', '<svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z M14 3v6h6M8 13h8M8 17h5"/></svg>']
 ];
 function renderPacks() {
   $('#packs').innerHTML = PACKS.map(([id, t, d, ic], i) => `<button class="pack${S.packs.has(id) ? ' on' : ''}" data-p="${id}" style="animation-delay:${i * 45}ms">${ic}<strong>${t}</strong><small>${d}</small></button>`).join('');
-  $$('#packs .pack').forEach(b => b.onclick = () => { S.packs.has(b.dataset.p) ? S.packs.delete(b.dataset.p) : S.packs.add(b.dataset.p); b.classList.toggle('on'); $('#laserOpts').open = S.packs.has('model'); laserHint(); });
+  $$('#packs .pack').forEach(b => b.onclick = () => { S.packs.has(b.dataset.p) ? S.packs.delete(b.dataset.p) : S.packs.add(b.dataset.p); b.classList.toggle('on'); });
 }
-function laserHint() {
-  if (!S.model) return;
-  const ms = +$('#modelScale').value, t = +$('#board').value, f = S.model.frame, iv = t * ms / 1000;
-  const layers = Math.ceil((S.model.dem.max - S.model.dem.min) / iv) + 1;
-  $('#laserHint').innerHTML = `Model ${fmt(f.w * 1000 / ms)} × ${fmt(f.h * 1000 / ms)} mm · contour step <b>${fmt(iv, 2)} m</b> (= board thickness at 1:${fmt(ms)}) · ≈${fmt(layers)} layers`;
-}
-['#modelScale', '#board'].forEach(id => $(id).addEventListener('input', laserHint));
 $('#btnCreate').onclick = async () => {
   if (!S.packs.size) return toast('Choose at least one pack.', 'warn');
   const { openStudio } = await import('./studio.js');
-  openStudio(S, { frameSize, printScale, title: () => ({ project: $('#tbProject').value || 'Site analysis', author: $('#tbAuthor').value || '', place: S.site.name }), laser: () => ({ scale: +$('#modelScale').value, board: +$('#board').value, sheetW: +$('#laserW').value, sheetH: +$('#laserH').value }), depth: () => S.depth, defH });
+  openStudio(S, { frameSize, printScale, title: () => ({ project: $('#tbProject').value || 'Site analysis', author: $('#tbAuthor').value || '', place: S.site.name }), modelScale: () => +$('#modelScale').value, depth: () => S.depth, defH });
 };
 
 /* ───────────── map tools ───────────── */

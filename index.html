@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>TerraKit — Site Studio</title>
-<meta name="description" content="Free, accurate site drawings for architecture students: true-scale plans, sections, contours, 3D models and laser-cut files from open data, anywhere in the world.">
+<meta name="description" content="Free, accurate site drawings for architecture students: true-scale plans, sections, contours, and 3D models from open data, anywhere in the world.">
 <meta name="theme-color" content="#f5f4f0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M2 26 L11 12 L16 19 L21 9 L30 26 Z' fill='%23ff4f1a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -132,17 +132,10 @@
           <label class="f">Project<input type="text" id="tbProject" placeholder="Site analysis"></label>
           <label class="f">Name / studio<input type="text" id="tbAuthor" placeholder="Your name"></label>
         </details>
-        <details class="more" id="laserOpts">
-          <summary>Physical model</summary>
-          <div class="row gap">
-            <label class="f">Model scale<select id="modelScale"><option>200</option><option>250</option><option selected>500</option><option>1000</option><option>1250</option><option>2000</option><option>2500</option></select></label>
-            <label class="f">Board thickness (mm)<input type="number" id="board" value="2" min="0.5" max="10" step="0.5"></label>
-          </div>
-          <div class="row gap">
-            <label class="f">Sheet W (mm)<input type="number" id="laserW" value="600" min="100" step="10"></label>
-            <label class="f">Sheet H (mm)<input type="number" id="laserH" value="400" min="100" step="10"></label>
-          </div>
-          <p class="hint" id="laserHint"></p>
+        <details class="more">
+          <summary>3D-print model (STL)</summary>
+          <label class="f">Print scale<select id="modelScale"><option>200</option><option>250</option><option selected>500</option><option>1000</option><option>1250</option><option>2000</option><option>2500</option></select></label>
+          <p class="hint">Included with CAD / GIS files.</p>
         </details>
         <button class="btn primary block" id="btnCreate"><span>Create drawings</span></button>
       </section>
@@ -190,7 +183,7 @@
         <div class="model-wrap">
           <div id="viewer"></div>
           <div class="model-panel">
-            <label class="f">Model<select id="mStyle"><option value="smooth">Terrain (smooth)</option><option value="terraced">Contour layers (like a laser-cut model)</option><option value="blocks">Terrain blocks</option></select></label>
+            <label class="f">Model<select id="mStyle"><option value="smooth">Terrain (smooth)</option><option value="terraced">Contour layers (stepped)</option><option value="blocks">Terrain blocks</option></select></label>
             <label class="f">Surface<select id="mHeat"><option value="clay">White clay</option><option value="elevation">Elevation bands</option><option value="slope">Slope</option><option value="aspect">Aspect</option><option value="solar">Solar exposure</option><option value="flow">Runoff paths</option><option value="satellite">Satellite photo (view only)</option></select></label>
             <label class="f">Vertical exaggeration <span class="mono" id="mExagV">1.0×</span><input type="range" id="mExag" min="1" max="5" step="0.5" value="1"></label>
             <label class="f">Sun — date<input type="date" id="mDate"></label>
@@ -220,7 +213,7 @@
         <li><b>Frame</b> — choose sheet + scale; rotate the frame to the street grid. Right-drag (or two-finger twist) rotates the map, <kbd>Ctrl</kbd>-drag tilts it.</li>
         <li><b>Data</b> — terrain, buildings (Overture Maps + OpenStreetMap), streets, water, land use, trees and climate are fetched live. Each card shows the source and how reliable it is.</li>
         <li><b>Sections</b> — A–A′ and B–B′ are added for you; draw more on the map and watch the profile update.</li>
-        <li><b>Drawings</b> — true-scale PDF/SVG sheets, CAD files, 3D models and laser-cut layers.</li>
+        <li><b>Drawings</b> — true-scale PDF/SVG sheets, CAD files and 3D models.</li>
       </ol>
       <p class="hint">Nothing is invented: when a building has no recorded height the drawings mark it, and missing data is reported, not filled in.</p>
       <button class="btn dark" id="helpClose">Got it</button>
