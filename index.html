@@ -74,6 +74,7 @@ main{position:relative;overflow:hidden;background:#06090d}
 #log{font-family:var(--mono);font-size:11px;color:var(--dim);max-height:110px;overflow:auto;white-space:pre-wrap}
 #rainChart svg{width:100%;height:auto;display:block}
 .leaflet-container{background:#0b0f14}
+.secpin{width:26px;height:26px;border-radius:50%;background:#e0302f;color:#fff;font:700 12px/22px Inter,sans-serif;text-align:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .drawing .leaflet-container{cursor:crosshair!important}
 #sheets{position:absolute;inset:0;overflow:auto;display:none;padding:16px;background:#dfe3e8}
 .sheetgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:16px}
@@ -136,7 +137,7 @@ main{position:relative;overflow:hidden;background:#06090d}
           <label><input type="checkbox" id="lyrRoads" checked> Roads & paths</label>
           <label><input type="checkbox" id="lyrRails" checked> Railways</label>
           <label><input type="checkbox" id="lyrWater" checked> Water & rivers</label>
-          <label><input type="checkbox" id="lyrGreen" checked> Parks & forest</label>
+          <label><input type="checkbox" id="lyrGreen" checked> Land use & green</label>
           <label><input type="checkbox" id="lyrTrees" checked> Trees</label>
           <label><input type="checkbox" id="lyrClimate" checked> Rainfall & climate</label>
           <label><input type="checkbox" id="lyrSat"> Satellite texture</label>
@@ -239,10 +240,17 @@ main{position:relative;overflow:hidden;background:#06090d}
     <section class="card">
       <h3><b>05</b> Presentation sheets</h3>
       <div class="body">
-        <div class="hint">Clean, print-ready boards (vector SVG + PNG): building heights, slope analysis, contour heat maps (site + wider area), layered interpretation and a 3D topography & contour model.</div>
+        <div class="hint">Print-ready boards (vector SVG + PNG): building heights, figure-ground, street hierarchy, land use, slope, contour heat maps, layered interpretation, 3D topography model, site sections (also DXF/CSV), sun path, wind rose and climate.</div>
         <div class="row"><button id="btnSite" class="btn grow">📍 Place site marker</button><button id="btnSiteReset" class="btn">Centre</button></div>
         <label class="f">Terrain smoothing (removes DEM noise) <span class="v" id="smoothV">1.5</span><input id="smooth" type="range" min="0" max="5" step="0.5" value="1.5"></label>
         <label class="f">Wider-area extent (× site size)<select id="wideX"><option>3</option><option selected>5</option><option>8</option><option>12</option></select></label>
+        <div class="hint">Sections: A–A′ (west–east) and B–B′ (south–north) through the site are drawn automatically; add your own lines below.</div>
+        <div class="row"><button id="btnSection" class="btn grow">✏️ Draw section line</button><button id="btnSectionReset" class="btn">Reset</button></div>
+        <label class="f">Section views<select id="secView"><option value="straight" selected>Straight true-scale section (rendered, measured) + 2D</option><option value="all">Straight + perspective + aerial + 2D</option><option value="2d">2D drawings only</option></select></label>
+        <label class="f">3D section ground<select id="secGround"><option value="satellite" selected>Satellite imagery</option><option value="map">Map style (roads, parks, water)</option></select></label>
+        <label class="f">Section length for illustrated & true-scale views (centred on site)<select id="illLen"><option value="250">250 m</option><option value="400" selected>400 m</option><option value="600">600 m</option><option value="1000">1 km</option><option value="0">Full line</option></select></label>
+        <div class="checks"><label><input type="checkbox" id="entourage" checked> People, cars, trees & boats</label></div>
+        <label class="f">Section vertical exaggeration (1 = true scale)<input id="secExag" type="number" value="1" min="0.2" max="20" step="0.5"></label>
         <button id="btnSheets" class="btn primary big">Create presentation sheets</button>
         <div class="row"><button id="btnSheetsZip" class="btn grow">⬇ All sheets (.zip: SVG + PNG)</button></div>
       </div>
@@ -327,6 +335,7 @@ const baseSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/service
 const layerCtl = L.control.layers({ 'Streets': baseOSM, 'Topographic': baseTopo, 'Satellite': baseSat }, {}, { position: 'topright' }).addTo(map);
 let selRect = null, heatOverlay = null;
 
+let onAreaChange = () => {};
 function setBBox(b) {
   S.bbox = b;
   const bounds = [[b.s, b.w], [b.n, b.e]];
@@ -336,6 +345,7 @@ function setBBox(b) {
   const km2 = m.widthM * m.heightM / 1e6;
   let warn = '';
   if (km2 > 40) warn = '<br><span class="hint warn">Large area: buildings/roads are skipped above 40 km² to keep the free servers happy (terrain & climate still work).</span>';
+  onAreaChange();
   $('#areaInfo').innerHTML = `${fmt(m.widthM / 1000, 2)} km × ${fmt(m.heightM / 1000, 2)} km · ${fmt(km2, 2)} km²<br><span style="font-family:var(--mono)">${b.s.toFixed(5)}, ${b.w.toFixed(5)} → ${b.n.toFixed(5)}, ${b.e.toFixed(5)}</span>${warn}`;
 }
 function squareAround(lat, lon, km) {
@@ -591,8 +601,9 @@ async function fetchOSM(b, o) {
   if (o.roads) p.push(`way["highway"]${bb};`);
   if (o.rails) p.push(`way["railway"~"^(rail|tram|subway|light_rail|narrow_gauge|monorail|funicular)$"]${bb};`);
   if (o.water) p.push(`way["natural"="water"]${bb};relation["natural"="water"]${bb};way["waterway"]${bb};way["landuse"="reservoir"]${bb};relation["waterway"="riverbank"]${bb};`);
-  if (o.green) p.push(`way["leisure"~"^(park|garden|pitch|golf_course|nature_reserve|playground)$"]${bb};way["landuse"~"^(grass|forest|meadow|recreation_ground|village_green|cemetery|orchard|vineyard|allotments)$"]${bb};way["natural"~"^(wood|scrub|grassland|heath|wetland)$"]${bb};relation["landuse"="forest"]${bb};relation["natural"="wood"]${bb};relation["leisure"="park"]${bb};`);
+  if (o.green) p.push(`way["leisure"~"^(park|garden|pitch|golf_course|nature_reserve|playground)$"]${bb};way["landuse"~"^(grass|forest|meadow|recreation_ground|village_green|cemetery|orchard|vineyard|allotments)$"]${bb};way["natural"~"^(wood|scrub|grassland|heath|wetland)$"]${bb};relation["landuse"="forest"]${bb};relation["natural"="wood"]${bb};relation["leisure"="park"]${bb};way["landuse"]${bb};relation["landuse"]${bb};way["amenity"~"^(school|university|college|kindergarten|hospital|clinic|place_of_worship)$"]${bb};`);
   if (o.trees) p.push(`node["natural"="tree"]${bb};`);
+  if (p.length) p.push(`node["place"~"^(suburb|neighbourhood|quarter|city_block|locality|island|village|town)$"](${b.s - 0.02},${b.w - 0.02},${b.n + 0.02},${b.e + 0.02});`);
   if (!p.length) return emptyOSM();
   const q = `[out:json][timeout:120];(${p.join('')});out geom;`;
   let lastErr;
@@ -606,7 +617,7 @@ async function fetchOSM(b, o) {
   }
   throw new Error('OpenStreetMap servers busy (' + (lastErr && lastErr.message) + ')');
 }
-const emptyOSM = () => ({ buildings: [], roads: [], rails: [], water: [], waterways: [], green: [], trees: [] });
+const emptyOSM = () => ({ buildings: [], roads: [], rails: [], water: [], waterways: [], green: [], landuse: [], trees: [], places: [] });
 const samePt = (a, b) => a[0] === b[0] && a[1] === b[1];
 function joinRings(lines) {
   const pool = lines.map(l => l.slice()), rings = [];
@@ -639,7 +650,7 @@ function parseOSM(js) {
   const isGreen = t => /^(park|garden|pitch|golf_course|nature_reserve|playground)$/.test(t.leisure || '') || /^(grass|forest|meadow|recreation_ground|village_green|cemetery|orchard|vineyard|allotments)$/.test(t.landuse || '') || /^(wood|scrub|grassland|heath|wetland)$/.test(t.natural || '');
   for (const el of js.elements || []) {
     const t = el.tags || {};
-    if (el.type === 'node') { if (t.natural === 'tree') res.trees.push({ lon: el.lon, lat: el.lat, tags: t }); continue; }
+    if (el.type === 'node') { if (t.natural === 'tree') res.trees.push({ lon: el.lon, lat: el.lat, tags: t }); else if (t.place && t.name) res.places.push({ lon: el.lon, lat: el.lat, name: t['name:en'] || t.name }); continue; }
     let rings = [], line = null;
     if (el.type === 'way' && el.geometry) {
       line = el.geometry.filter(Boolean).map(g => [g.lon, g.lat]);
@@ -653,6 +664,7 @@ function parseOSM(js) {
     else if (isWater(t)) rings.forEach(r => res.water.push({ ring: r, tags: t }));
     else if (t.waterway && line) res.waterways.push({ pts: line, tags: t, width: t.waterway === 'river' ? 12 : t.waterway === 'canal' ? 8 : 2.5 });
     else if (isGreen(t)) rings.forEach(r => res.green.push({ ring: r, tags: t, forest: t.landuse === 'forest' || t.natural === 'wood' }));
+    else if (t.landuse || t.amenity) rings.forEach(r => res.landuse.push({ ring: r, tags: t }));
   }
   return res;
 }
@@ -684,10 +696,19 @@ async function fetchClimate(b) {
       daily: d
     };
   });
+  const monthMean = (arr, time) => { const s = new Array(12).fill(0), n = new Array(12).fill(0); time.forEach((t, i) => { if (arr[i] != null) { s[+t.slice(5, 7) - 1] += arr[i]; n[+t.slice(5, 7) - 1]++; } }); return s.map((v, m) => v / (n[m] || 1)); };
+  points.forEach(p => { p.mTemp = monthMean(p.daily.temperature_2m_mean, p.daily.time); p.mTmax = monthMean(p.daily.temperature_2m_max, p.daily.time); p.mTmin = monthMean(p.daily.temperature_2m_min, p.daily.time); });
   const avg = f => points.reduce((a, p) => a + f(p), 0) / points.length;
+  let wind = null;
+  try {
+    const lat0 = ((b.s + b.n) / 2).toFixed(4), lon0 = ((b.w + b.e) / 2).toFixed(4);
+    const wr = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat0}&longitude=${lon0}&start_date=${year}-01-01&end_date=${year}-12-31&hourly=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&timezone=GMT`);
+    if (wr.ok) { const wj = await wr.json(); wind = { spd: wj.hourly.wind_speed_10m, dir: wj.hourly.wind_direction_10m }; }
+  } catch (e) { log('Wind data failed: ' + e.message); }
   return {
     year, points, annual: avg(p => p.annual), temp: avg(p => p.temp), wetDays: avg(p => p.wetDays), maxDay: avg(p => p.maxDay),
-    snow: avg(p => p.snow), et0: avg(p => p.et0), monthly: Array.from({ length: 12 }, (_, m) => avg(p => p.monthly[m]))
+    snow: avg(p => p.snow), et0: avg(p => p.et0), monthly: Array.from({ length: 12 }, (_, m) => avg(p => p.monthly[m])), wind,
+    mTemp: Array.from({ length: 12 }, (_, m) => avg(p => p.mTemp[m])), mTmax: Array.from({ length: 12 }, (_, m) => avg(p => p.mTmax[m])), mTmin: Array.from({ length: 12 }, (_, m) => avg(p => p.mTmin[m]))
   };
 }
 /* inverse-distance interpolation of the climate grid onto the DEM grid */
@@ -1269,6 +1290,7 @@ class DXF {
     const e = this.e; e.push('0', '3DFACE', '8', layer);
     [a, b, c, d].forEach((p, i) => e.push('1' + i, this.n(p[0]), '2' + i, this.n(p[1]), '3' + i, this.n(p[2])));
   }
+  text(layer, p, h, str) { this.e.push('0', 'TEXT', '8', layer, '10', this.n(p[0]), '20', this.n(p[1]), '30', this.n(p[2] || 0), '40', this.n(h), '1', String(str).replace(/[\r\n]/g, ' ')); }
   circle(layer, p, r) { this.e.push('0', 'CIRCLE', '8', layer, '10', this.n(p[0]), '20', this.n(p[1]), '30', this.n(p[2]), '40', this.n(r)); }
   toString() {
     const out = ['0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1009', '0', 'ENDSEC',
@@ -1543,8 +1565,8 @@ function scaleBar(x, y, ppm, target) {
   for (let k = 0; k < 4; k++) out += `<rect x="${r1(x + 32 + k * seg)}" y="${y + 56}" width="${r1(seg)}" height="15" fill="${k % 2 ? '#fff' : '#000'}" stroke="#000" stroke-width="1.5"/>`;
   return out + `<text x="${x + 32}" y="${y + 42}" font-size="20" text-anchor="middle">0</text><text x="${r1(x + 32 + px)}" y="${y + 42}" font-size="20" text-anchor="middle">${L >= 1000 ? L / 1000 + ' km' : L + ' m'}</text>`;
 }
-function legendBox(xr, yb, title, items) { // anchored at bottom-right corner
-  const w = 300, h = 58 + items.length * 34, x = xr - w, y = yb - h;
+function legendBox(xr, yb, title, items, w = 300) { // anchored at bottom-right corner
+  const h = 58 + items.length * 34, x = xr - w, y = yb - h;
   return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff" fill-opacity=".9" stroke="#ccc"/><text x="${x + w / 2}" y="${y + 34}" font-size="23" text-anchor="middle">${esc(title)}</text>` +
     items.map((it, k) => `<rect x="${x + 14}" y="${y + 50 + k * 34}" width="44" height="18" fill="${it[1]}" stroke="#555" stroke-width="1.5"/><text x="${x + 72}" y="${y + 66 + k * 34}" font-size="21">${esc(it[0])}</text>`).join('');
 }
@@ -1725,17 +1747,35 @@ async function ensureWide() {
   const dem = await buildDEM(b, 320);
   return S.wide = { key, b, dem, smooth: gaussian(dem.data, dem.W, dem.H, 1.2) };
 }
-const SHEETS = [['building_heights', 'Building heights', sheetBuildings], ['slope_analysis', 'Slope analysis', sheetSlope], ['contour_site', 'Contour heat map — site', sheetContourSite],
-  ['contour_wider_area', 'Contour heat map — wider area', sheetContourWide], ['layered_interpretation', 'Layered interpretation', sheetLayers], ['topography_model', 'Topography & contour model', sheetModel]];
+function sheetList() {
+  const L = [['building_heights', 'Building heights', sheetBuildings], ['figure_ground', 'Figure-ground', sheetFigureGround], ['street_hierarchy', 'Street hierarchy', sheetStreets],
+    ['land_use', 'Land use, green & blue', sheetLandUse], ['slope_analysis', 'Slope analysis', sheetSlope], ['contour_site', 'Contour heat map — site', sheetContourSite],
+    ['contour_wider_area', 'Contour heat map — wider area', sheetContourWide], ['layered_interpretation', 'Layered interpretation', sheetLayers], ['topography_model', 'Topography & contour model', sheetModel]];
+  const secs = getSections();
+  for (let i = 0; i < secs.length; i += 2) { const pair = secs.slice(i, i + 2); L.push([`sections_illustrated_${pair.map(p => p.n).join('')}`, `Illustrated sections ${pair.map(p => `${p.n}–${p.n}'`).join(' & ')}`, () => sheetIllustrated(pair)]); }
+  const sv = $('#secView').value;
+  for (const sc of getSections()) {
+    if (sv !== '2d') L.push([`section_${sc.n}_true_scale`, `Section ${sc.n}–${sc.n}' · straight, true scale`, () => sheetSectionView(sc, 'straight')]);
+    if (sv === 'all') L.push([`section_${sc.n}_perspective`, `Section ${sc.n}–${sc.n}' · 3D perspective`, () => sheetSectionView(sc, 'eye')]);
+    if (sv === 'all') L.push([`section_${sc.n}_aerial`, `Section ${sc.n}–${sc.n}' · 3D aerial`, () => sheetSectionView(sc, 'aerial')]);
+    L.push([`section_${sc.n}`, `Section ${sc.n}–${sc.n}' · 2D drawing`, () => sheetSection(sc),
+      [{ label: 'DXF', name: `section_${sc.n}.dxf`, make: () => sectionDXF(sc) }, { label: 'CSV', name: `section_${sc.n}_profile.csv`, make: () => sectionCSV(sc) }]]);
+  }
+  L.push(['sun_path', 'Sun path diagram', sheetSunPath]);
+  if (S.climate && S.climate.wind) L.push(['wind_rose', 'Wind rose', sheetWindRose]);
+  if (S.climate) L.push(['climate', 'Climate summary', sheetClimate]);
+  return L;
+}
 async function generateSheets(show = true) {
   if (!S.dem) { setStatus('Generate an area first.'); return false; }
   setStatus('Fetching wider-area terrain…', 0.05);
   try { await ensureWide(); } catch (e) { log('Wider area failed: ' + e.message); }
   S.sheets = [];
-  for (const [i, [id, name, fn]] of SHEETS.entries()) {
+  const list = sheetList();
+  for (const [i, [id, name, fn, extra]] of list.entries()) {
     if (id === 'contour_wider_area' && !S.wide) continue;
-    setStatus(`Drawing ${name}…`, 0.3 + i * 0.11); await sleep(15);
-    try { S.sheets.push({ id, name, svg: fn() }); } catch (e) { console.error(e); log(`${name} failed: ${e.message}`); }
+    setStatus(`Drawing ${name}…`, 0.2 + i * 0.75 / list.length); await sleep(15);
+    try { S.sheets.push({ id, name, svg: await fn(), extra: extra || [] }); } catch (e) { console.error(e); log(`${name} failed: ${e.message}`); }
   }
   renderGallery();
   if (show) showTab('sheets');
@@ -1746,6 +1786,7 @@ function svgToPng(svg, scale = 2) {
   return new Promise((res, rej) => {
     const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })), img = new Image();
     img.onload = async () => {
+      if (img.naturalWidth > 2000) scale = 1;
       const cv = document.createElement('canvas'); cv.width = img.naturalWidth * scale; cv.height = img.naturalHeight * scale;
       const c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height); c.drawImage(img, 0, 0, cv.width, cv.height);
       URL.revokeObjectURL(url); res(await canvasBlob(cv));
@@ -1760,7 +1801,8 @@ function renderGallery() {
   for (const sh of S.sheets || []) {
     const card = document.createElement('div'); card.className = 'sheetcard';
     const src = URL.createObjectURL(new Blob([sh.svg], { type: 'image/svg+xml' }));
-    card.innerHTML = `<img alt="${esc(sh.name)}" src="${src}"><div class="sb"><b>${esc(sh.name)}</b><button class="btn" data-f="svg">SVG</button><button class="btn" data-f="png">PNG</button></div>`;
+    card.innerHTML = `<img alt="${esc(sh.name)}" src="${src}"><div class="sb"><b>${esc(sh.name)}</b><button class="btn" data-f="svg">SVG</button><button class="btn" data-f="png">PNG</button>${sh.extra.map((e, k) => `<button class="btn" data-x="${k}">${e.label}</button>`).join('')}</div>`;
+    card.querySelectorAll('[data-x]').forEach(bt => { const e = sh.extra[+bt.dataset.x]; bt.onclick = () => download(e.make(), `terrakit_${e.name}`, 'text/plain'); });
     card.querySelector('img').onclick = () => window.open(src, '_blank');
     card.querySelector('[data-f=svg]').onclick = () => download(sh.svg, `terrakit_${sh.id}.svg`, 'image/svg+xml');
     card.querySelector('[data-f=png]').onclick = async () => { setStatus('Rendering PNG…'); download(await svgToPng(sh.svg), `terrakit_${sh.id}.png`); setStatus('PNG saved.'); };
@@ -1769,7 +1811,7 @@ function renderGallery() {
 }
 async function addSheetsToZip(z) {
   if (!S.sheets || !S.sheets.length) await generateSheets(false);
-  for (const sh of S.sheets) { z.file(`sheets/${sh.id}.svg`, sh.svg); z.file(`sheets/${sh.id}.png`, await svgToPng(sh.svg)); }
+  for (const sh of S.sheets) { z.file(`sheets/${sh.id}.svg`, sh.svg); z.file(`sheets/${sh.id}.png`, await svgToPng(sh.svg)); for (const e of sh.extra) z.file(`sheets/${e.name}`, e.make()); }
 }
 $('#btnSheets').onclick = async () => { const b = $('#btnSheets'); b.disabled = true; try { await generateSheets(true); } catch (e) { console.error(e); setStatus('Sheets failed: ' + e.message); } finally { b.disabled = false; } };
 $('#btnSheetsZip').onclick = async () => {
@@ -1780,13 +1822,863 @@ $('#btnSheetsZip').onclick = async () => {
 $('#smooth').addEventListener('input', () => { $('#smoothV').textContent = $('#smooth').value; });
 let siteMarker = null;
 function setSite(ll) {
-  S.site = ll; S.wide = null;
+  S.site = ll; S.wide = null; drawSections();
   if (!ll) { if (siteMarker) map.removeLayer(siteMarker); siteMarker = null; return; }
   if (siteMarker) siteMarker.setLatLng([ll[1], ll[0]]);
   else siteMarker = L.circleMarker([ll[1], ll[0]], { radius: 8, color: '#fff', weight: 3, fillColor: '#e0302f', fillOpacity: 1 }).addTo(map);
 }
 $('#btnSite').onclick = () => { showTab('map'); setStatus('Click the map to place the site marker…'); map.once('click', e => { setSite([e.latlng.lng, e.latlng.lat]); setStatus('Site marker placed — create the sheets.'); }); };
 $('#btnSiteReset').onclick = () => { setSite(null); setStatus('Site marker reset to the centre of the area.'); };
+/* ───────────────────────── section drawings ───────────────────────── */
+const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+const secLayer = L.layerGroup().addTo(map);
+function defaultSections() {
+  const [lon, lat] = sitePoint(), b = S.bbox;
+  return [{ n: 'A', a: [b.w, lat], b: [b.e, lat] }, { n: 'B', a: [lon, b.s], b: [lon, b.n] }];
+}
+const getSections = () => S.sections || defaultSections();
+function drawSections() {
+  secLayer.clearLayers(); if (!S.bbox) return;
+  for (const s of getSections()) {
+    L.polyline([[s.a[1], s.a[0]], [s.b[1], s.b[0]]], { color: '#e0302f', weight: 2.5, dashArray: '10 6', interactive: false }).addTo(secLayer);
+    for (const [p, t] of [[s.a, s.n], [s.b, s.n + "'"]])
+      L.marker([p[1], p[0]], { interactive: false, icon: L.divIcon({ className: '', html: `<div class="secpin">${t}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }) }).addTo(secLayer);
+  }
+}
+onAreaChange = drawSections; drawSections();
+$('#btnSection').onclick = () => {
+  showTab('map'); const pts = [];
+  setStatus('Section: click the START point on the map…');
+  const pick = e => {
+    pts.push([e.latlng.lng, e.latlng.lat]);
+    if (pts.length === 1) { setStatus('Section: click the END point…'); map.once('click', pick); return; }
+    const list = getSections(), n = LETTERS[list.length] || 'S' + (list.length + 1);
+    S.sections = [...list, { n, a: pts[0], b: pts[1] }]; drawSections();
+    setStatus(`Section ${n}–${n}' added — press Create presentation sheets to draw it.`);
+  };
+  map.once('click', pick);
+};
+$('#btnSectionReset').onclick = () => { S.sections = null; drawSections(); setStatus("Sections reset to A–A' (west–east) and B–B' (south–north) through the site."); };
+
+const dot2 = (p, A, v) => (p[0] - A[0]) * v[0] + (p[1] - A[1]) * v[1];
+function lineCrossings(ring, A, u, n) {      // along-distances where the infinite section line crosses a closed ring
+  const ds = [];
+  for (let k = 0; k < ring.length - 1; k++) {
+    const P = ring[k], Q = ring[k + 1], sp = dot2(P, A, n), sq = dot2(Q, A, n);
+    if ((sp > 0) === (sq > 0)) continue;
+    const t = sp / (sp - sq);
+    ds.push(dot2([P[0] + t * (Q[0] - P[0]), P[1] + t * (Q[1] - P[1])], A, u));
+  }
+  return ds.sort((a, b) => a - b);
+}
+function insideIntervals(ds, L) { const out = []; for (let k = 0; k + 1 < ds.length; k += 2) { const a = Math.max(0, ds[k]), b = Math.min(L, ds[k + 1]); if (b > a) out.push([a, b]); } return out; }
+const bearingName = deg => ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round(((deg % 360) + 360) % 360 / 45) % 8];
+function sectionData(sec) {
+  const A = toLocal(...sec.a), B = toLocal(...sec.b), L = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1;
+  const u = [(B[0] - A[0]) / L, (B[1] - A[1]) / L], n = [-u[1], u[0]];      // looking toward the left of A→B
+  const sm = smoothDEM(), d = S.dem;
+  const zAt = (x, y) => bilinear(sm.data, d.W, d.H, (x + S.m.widthM / 2) / d.dx, (S.m.heightM / 2 - y) / d.dy);
+  const zAlong = s => zAt(A[0] + u[0] * s, A[1] + u[1] * s);
+  const N = clamp(Math.round(L / (d.dx / 3)), 200, 1500), profile = [];
+  for (let k = 0; k <= N; k++) { const s = L * k / N; profile.push([s, zAlong(s)]); }
+  const o = S.osm || emptyOSM(), defH = +$('#defH').value || 9, depth = Math.min(250, Math.max(60, L * 0.3));
+  const cuts = [], beyond = [], trees = [], water = [], roads = [];
+  for (const bd of o.buildings) {
+    const ring = bd.ring.map(p => toLocal(p[0], p[1])), h = bd.h || defH;
+    const iv = insideIntervals(lineCrossings(ring, A, u, n), L);
+    if (iv.length) {
+      const vb = Math.min(...ring.map(p => zAt(p[0], p[1])));
+      for (const [d0, d1] of iv) { const base = vb; cuts.push({ d0, d1, base, top: base + h, known: !!bd.h, h, name: bd.tags['name:en'] || bd.tags.name, tags: bd.tags }); }
+      continue;
+    }
+    let omin = Infinity, amin = Infinity, amax = -Infinity, base = Infinity;
+    for (const p of ring) { omin = Math.min(omin, dot2(p, A, n)); const a = dot2(p, A, u); amin = Math.min(amin, a); amax = Math.max(amax, a); base = Math.min(base, zAt(p[0], p[1])); }
+    if (omin > 0 && omin < depth && amax > 0 && amin < L) beyond.push({ d0: Math.max(0, amin), d1: Math.min(L, amax), base, top: base + h, dist: omin, tags: bd.tags });
+  }
+  for (const t of o.trees) {
+    const p = toLocal(t.lon, t.lat), ox = dot2(p, A, n), ax = dot2(p, A, u);
+    if (ax < 0 || ax > L || ox < -6 || ox > depth * 0.6) continue;
+    trees.push({ d: ax, z: zAt(p[0], p[1]), h: parseFloat(t.tags.height) || 8, dist: ox });
+  }
+  for (const w of o.water) for (const [d0, d1] of insideIntervals(lineCrossings(w.ring.map(p => toLocal(p[0], p[1])), A, u, n), L)) water.push({ d0, d1 });
+  for (const r of o.roads) {
+    const pts = r.pts.map(p => toLocal(p[0], p[1]));
+    for (let k = 0; k < pts.length - 1; k++) {
+      const P = pts[k], Q = pts[k + 1], sp = dot2(P, A, n), sq = dot2(Q, A, n);
+      if ((sp > 0) === (sq > 0)) continue;
+      const t = sp / (sp - sq), s = dot2([P[0] + t * (Q[0] - P[0]), P[1] + t * (Q[1] - P[1])], A, u);
+      if (s < 0 || s > L) continue;
+      const name = r.tags.name || r.tags.ref; if (!name) continue;
+      if (!roads.some(q => q.name === name && Math.abs(q.d - s) < 25)) roads.push({ d: s, name, width: r.width });
+    }
+  }
+  let zmin = Infinity, zmax = -Infinity;
+  for (const p of profile) { zmin = Math.min(zmin, p[1]); zmax = Math.max(zmax, p[1]); }
+  for (const c of cuts.concat(beyond)) zmax = Math.max(zmax, c.top);
+  for (const t of trees) zmax = Math.max(zmax, t.z + t.h);
+  const view = bearingName(Math.atan2(n[0], n[1]) / D2R);
+  return { A, B, u, n, L, profile, cuts, beyond, trees, water, roads, zmin, zmax, depth, view, zAlong };
+}
+function keyPlan(x, y, size, hl) {
+  const b = S.bbox, m = S.m, sc = size / Math.max(m.widthM, m.heightM), w = m.widthM * sc, h = m.heightM * sc, ox = x + (size - w) / 2, oy = y + (size - h) / 2;
+  const P = (lon, lat) => [ox + (lon - b.w) / (b.e - b.w) * w, oy + (b.n - lat) / (b.n - b.s) * h], ctx = { P }, o = S.osm || emptyOSM();
+  let out = `<text x="${x}" y="${y - 10}" font-size="18" font-weight="700" letter-spacing="1">KEY PLAN</text><defs><clipPath id="kp"><rect x="${r1(ox)}" y="${r1(oy)}" width="${r1(w)}" height="${r1(h)}"/></clipPath></defs>`;
+  out += `<g clip-path="url(#kp)"><rect x="${r1(ox)}" y="${r1(oy)}" width="${r1(w)}" height="${r1(h)}" fill="#f4f4f2"/><g fill="${WATER}">${svgPolys(ctx, o.water, () => '')}</g><g fill="#bdbdbd">${svgPolys(ctx, o.buildings, () => '')}</g>`;
+  for (const s of getSections()) {
+    const on = s.n === hl.n, [ax, ay] = P(...s.a), [bx, by] = P(...s.b), col = on ? '#e0302f' : '#9a9a9a';
+    out += `<line x1="${r1(ax)}" y1="${r1(ay)}" x2="${r1(bx)}" y2="${r1(by)}" stroke="${col}" stroke-width="${on ? 3 : 1.5}" stroke-dasharray="${on ? '' : '6 4'}"/>`;
+    if (on) {
+      const L = Math.hypot(bx - ax, by - ay) || 1, vx = -(by - ay) / L, vy = (bx - ax) / L;   // screen-space left normal = view direction
+      for (const [px, py] of [[ax, ay], [bx, by]]) out += `<path d="M${r1(px)},${r1(py)} L${r1(px + vx * 22)},${r1(py + vy * 22)}" stroke="${col}" stroke-width="3"/><path d="M${r1(px + vx * 30)},${r1(py + vy * 30)} L${r1(px + vx * 18 - vy * 7)},${r1(py + vy * 18 + vx * 7)} L${r1(px + vx * 18 + vy * 7)},${r1(py + vy * 18 - vx * 7)}Z" fill="${col}"/>`;
+    }
+  }
+  out += `</g><rect x="${r1(ox)}" y="${r1(oy)}" width="${r1(w)}" height="${r1(h)}" fill="none" stroke="#000" stroke-width="1.5"/>`;
+  for (const s of getSections()) for (const [p, t] of [[s.a, s.n], [s.b, s.n + "'"]]) {
+    const [px, py] = P(...p), on = s.n === hl.n;
+    out += `<circle cx="${r1(clamp(px, ox, ox + w))}" cy="${r1(clamp(py, oy, oy + h))}" r="12" fill="${on ? '#e0302f' : '#777'}" stroke="#fff" stroke-width="2"/><text x="${r1(clamp(px, ox, ox + w))}" y="${r1(clamp(py, oy, oy + h) + 5)}" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">${t}</text>`;
+  }
+  return out + `<text x="${r1(ox + w - 8)}" y="${r1(oy + 22)}" font-size="15" font-weight="700" text-anchor="end">N ↑</text>`;
+}
+function niceStep(range, maxTicks) { return [0.5, 1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000].find(s => range / s <= maxTicks) || 5000; }
+function sheetSection(sec) {
+  const sd = sectionData(sec), exag = Math.max(0.2, +$('#secExag').value || 1), PW = 1900, x0 = 110, PWd = 1640;
+  const pad = Math.max(4, (sd.zmax - sd.zmin) * 0.12);
+  let sx = PWd / sd.L, sz = sx * exag;
+  const zstep = niceStep(sd.zmax + pad - sd.zmin, 6);
+  const zb = Math.floor((sd.zmin - pad) / zstep) * zstep, ztop = sd.zmax + pad;
+  let plotH = (ztop - zb) * sz;
+  if (plotH > 900) { const f = 900 / plotH; sx *= f; sz *= f; plotH = 900; }
+  plotH = Math.max(plotH, 200);
+  const top = 420, yBase = top + plotH, X = s => x0 + s * sx, Y = z => yBase - (z - zb) * sz, Xe = X(sd.L);
+  const zs = niceStep(plotH / sz, 7);
+  let body = `<defs><pattern id="earth" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)"><rect width="12" height="12" fill="#eadfd2"/><line x1="0" y1="0" x2="0" y2="12" stroke="#a88a6a" stroke-width="1.6"/></pattern><clipPath id="sec"><rect x="${x0}" y="${top - 40}" width="${r1(Xe - x0)}" height="${r1(plotH + 80)}"/></clipPath></defs>`;
+  // level lines
+  for (let z = Math.ceil(zb / zs) * zs; z <= zb + plotH / sz + 1e-6; z += zs)
+    body += `<line x1="${x0 - 12}" y1="${r1(Y(z))}" x2="${r1(Xe + 12)}" y2="${r1(Y(z))}" stroke="#d6d6d6" stroke-width="1" stroke-dasharray="6 6"/><text x="${x0 - 18}" y="${r1(Y(z) + 6)}" font-size="17" text-anchor="end" fill="#555">${Math.abs(z) < 1e-9 ? '±0' : (z > 0 ? '+' : '') + fmt(z, zs < 1 ? 1 : 0)}</text>`;
+  body += `<g clip-path="url(#sec)">`;
+  // buildings beyond (far first, lighter)
+  const far = sd.beyond.slice().sort((a, b) => b.dist - a.dist);
+  for (const bb of far) {
+    const t = clamp(bb.dist / sd.depth, 0, 1), g = Math.round(214 + 30 * t);
+    body += `<rect x="${r1(X(bb.d0))}" y="${r1(Y(bb.top))}" width="${r1(Math.max(1, (bb.d1 - bb.d0) * sx))}" height="${r1(Math.max(1, (bb.top - bb.base) * sz))}" fill="rgb(${g},${g},${g})" stroke="#9a9a9a" stroke-width="0.8"/>`;
+  }
+  // trees behind the cut plane
+  const tree = (t, front) => { const cx = X(t.d), gy = Y(t.z), th = t.h * sz, cr = Math.max(4, t.h * 0.33 * sx); return `<line x1="${r1(cx)}" y1="${r1(gy)}" x2="${r1(cx)}" y2="${r1(gy - th * 0.55)}" stroke="#6b5a45" stroke-width="2"/><ellipse cx="${r1(cx)}" cy="${r1(gy - th + cr * (sz / sx))}" rx="${r1(cr)}" ry="${r1(cr * Math.max(0.6, sz / sx))}" fill="${front ? '#cfe5c4' : '#e3efdc'}" fill-opacity=".9" stroke="#4f8a46" stroke-width="1.2"/>`; };
+  body += sd.trees.filter(t => t.dist > 6).map(t => tree(t, false)).join('');
+  // ground poché
+  const prof = sd.profile.map(p => `${r1(X(p[0]))},${r1(Y(p[1]))}`).join(' ');
+  body += `<polygon points="${prof} ${r1(Xe)},${r1(yBase + 34)} ${x0},${r1(yBase + 34)}" fill="url(#earth)"/>`;
+  for (const w of sd.water) {
+    const lvl = Math.min(sd.zAlong(w.d0), sd.zAlong(w.d1)), seg = sd.profile.filter(p => p[0] >= w.d0 && p[0] <= w.d1);
+    body += `<polygon points="${r1(X(w.d0))},${r1(Y(lvl))} ${seg.map(p => `${r1(X(p[0]))},${r1(Y(Math.min(p[1], lvl)))}`).join(' ')} ${r1(X(w.d1))},${r1(Y(lvl))}" fill="${WATER}" stroke="#4a8cc2" stroke-width="1.5"/>`;
+  }
+  body += `<polyline points="${prof}" fill="none" stroke="#111" stroke-width="3" stroke-linejoin="round"/>`;
+  // cut buildings (poché) + height tags
+  let lastLabel = -Infinity;
+  for (const c of sd.cuts.slice().sort((a, b) => a.d0 - b.d0)) {
+    const x = X(c.d0), w = Math.max(1.5, (c.d1 - c.d0) * sx);
+    body += `<rect x="${r1(x)}" y="${r1(Y(c.top))}" width="${r1(w)}" height="${r1((c.top - c.base) * sz + 3)}" fill="#262626" stroke="#000" stroke-width="1"/>`;
+    if (w > 14 && x + w / 2 - lastLabel > 46) { lastLabel = x + w / 2; body += `<text x="${r1(x + w / 2)}" y="${r1(Y(c.top) - 7)}" font-size="13" text-anchor="middle" fill="#333">${c.known ? '' : '~'}${fmt(c.h, 0)} m</text>`; }
+  }
+  body += sd.trees.filter(t => t.dist <= 6).map(t => tree(t, true)).join('');
+  // street crossings
+  for (const r of sd.roads.filter(r => r.width >= 4)) {
+    const x = X(r.d), gy = Y(sd.zAlong(r.d));
+    body += `<line x1="${r1(x)}" y1="${r1(gy - 4)}" x2="${r1(x)}" y2="${r1(gy - 30)}" stroke="#e0302f" stroke-width="1.5"/><text transform="translate(${r1(x + 5)},${r1(gy - 34)}) rotate(-90)" font-size="13" fill="#b02020">${esc(String(r.name).slice(0, 28))}</text>`;
+  }
+  body += '</g>';
+  // section markers & distance ruler
+  for (const [x, t] of [[x0, sec.n], [Xe, sec.n + "'"]]) body += `<line x1="${r1(x)}" y1="${top - 30}" x2="${r1(x)}" y2="${r1(yBase + 34)}" stroke="#e0302f" stroke-width="1.5" stroke-dasharray="4 4"/><circle cx="${r1(x)}" cy="${top - 52}" r="20" fill="#e0302f"/><text x="${r1(x)}" y="${top - 45}" font-size="20" font-weight="700" fill="#fff" text-anchor="middle">${t}</text>`;
+  const ds = niceStep(sd.L, 10), ry = yBase + 62;
+  body += `<line x1="${x0}" y1="${ry}" x2="${r1(Xe)}" y2="${ry}" stroke="#000" stroke-width="2"/>`;
+  for (let s = 0; s <= sd.L + 1e-6; s += ds) body += `<line x1="${r1(X(s))}" y1="${ry}" x2="${r1(X(s))}" y2="${ry + 10}" stroke="#000" stroke-width="2"/><text x="${r1(X(s))}" y="${ry + 32}" font-size="16" text-anchor="middle">${s >= 1000 ? fmt(s / 1000, 1) + ' km' : fmt(s) + ' m'}</text>`;
+  // legend
+  const items = [['#262626', 'Building in section (cut)'], ['#dcdcdc', 'Building in elevation (beyond)'], ['url(#earth)', 'Ground (DEM)'], ['#cfe5c4', 'Trees'], [WATER, 'Water']];
+  body += items.map((it, k) => `<rect x="${24 + (k % 3) * 380}" y="${124 + Math.floor(k / 3) * 36}" width="40" height="20" fill="${it[0]}" stroke="#555"/><text x="${74 + (k % 3) * 380}" y="${140 + Math.floor(k / 3) * 36}" font-size="19">${it[1]}</text>`).join('');
+  body += `<text x="24" y="232" font-size="18" fill="#555">Heights: OSM height or levels × 3.5 m; "~" = default ${fmt(+$('#defH').value || 9)} m where unknown. Elevations in metres above sea level.</text>`;
+  body += keyPlan(PW - 310, 36, 260, sec);
+  const H = ry + 110;
+  return sheetSVG(PW, H, `SECTION ${sec.n}–${sec.n}'`, `${fmt(sd.L)} m long · looking ${sd.view} · horizontal 1:1, vertical ×${fmt(exag, 1)} · ${sd.cuts.length} buildings cut, ${sd.beyond.length} in elevation`, body);
+}
+function sectionDXF(sec) {
+  const sd = sectionData(sec), dx = new DXF();
+  [['SECTION_GROUND', 3], ['SECTION_CUT', 7], ['SECTION_BEYOND', 8], ['TREES', 94], ['WATER', 5], ['LABELS', 1]].forEach(l => dx.layer(...l));
+  dx.poly('SECTION_GROUND', sd.profile.map(p => [p[0], p[1], 0]), false);
+  for (const c of sd.cuts) dx.poly('SECTION_CUT', [[c.d0, c.base, 0], [c.d1, c.base, 0], [c.d1, c.top, 0], [c.d0, c.top, 0]], true);
+  for (const b of sd.beyond) dx.poly('SECTION_BEYOND', [[b.d0, b.base, 0], [b.d1, b.base, 0], [b.d1, b.top, 0], [b.d0, b.top, 0]], true);
+  for (const t of sd.trees) dx.circle('TREES', [t.d, t.z + t.h * 0.65, 0], t.h * 0.35);
+  for (const w of sd.water) dx.poly('WATER', [[w.d0, sd.zAlong(w.d0), 0], [w.d1, sd.zAlong(w.d1), 0]], false);
+  for (const r of sd.roads) dx.text('LABELS', [r.d, sd.zAlong(r.d) + 3, 0], 2, r.name);
+  dx.text('LABELS', [0, sd.zmax + 10, 0], 5, `SECTION ${sec.n}-${sec.n}'`);
+  return dx.toString();
+}
+function sectionCSV(sec) {
+  const sd = sectionData(sec), out = ['distance_m,lon,lat,elevation_m'];
+  for (const [s, z] of sd.profile) { const x = sd.A[0] + sd.u[0] * s, y = sd.A[1] + sd.u[1] * s; out.push(`${s.toFixed(2)},${(S.m.lon0 + x / S.m.mLon).toFixed(7)},${(S.m.lat0 + y / S.m.mLat).toFixed(7)},${z.toFixed(2)}`); }
+  return out.join('\n');
+}
+
+/* ───────────────────────── more map & architecture boards ───────────────────────── */
+function mapSheet(title, sub, draw, { bg = '#fff', legend = null, legendW = 300 } = {}) {
+  const b = S.bbox, x0 = 24, y0 = 100, { FW, FH, ppm } = frameLayout(b, 1410, 1400), ctx = mkCtx(b, S.dem, frameP(b, x0, y0, FW, FH));
+  let body = clipFrame(x0, y0, FW, FH) + `<g clip-path="url(#fr)"><rect x="${x0}" y="${y0}" width="${FW}" height="${FH}" fill="${bg}"/>${draw(ctx, ppm)}</g>` + frameBorder(x0, y0, FW, FH);
+  body += northArrow(x0 + FW - 155, y0 + 15) + scaleBar(x0 + 40, y0 + FH - 120, ppm, FW * 0.2);
+  if (legend && legend[1].length) body += legendBox(x0 + FW - 12, y0 + FH - 12, legend[0], legend[1], legendW);
+  return sheetSVG(x0 + FW + 24, y0 + FH + 90, title, sub, body);
+}
+const ringArea = ring => { let a = 0; for (let k = 0; k < ring.length - 1; k++) a += ring[k][0] * ring[k + 1][1] - ring[k + 1][0] * ring[k][1]; return Math.abs(a) / 2; };
+function sheetFigureGround() {
+  const o = S.osm || emptyOSM(), b = S.bbox;
+  const inside = o.buildings.filter(x => { const c = x.ring[0]; return c[0] >= b.w && c[0] <= b.e && c[1] >= b.s && c[1] <= b.n; });
+  const built = inside.reduce((a, x) => a + ringArea(x.ring.map(p => toLocal(p[0], p[1]))), 0), site = S.m.widthM * S.m.heightM;
+  return mapSheet('FIGURE-GROUND', `${fmt(o.buildings.length)} buildings · built coverage ≈ ${fmt(built / site * 100, 1)}% of the ${fmt(site / 1e6, 2)} km² area`,
+    ctx => `<g fill="#111">${svgPolys(ctx, o.buildings, () => '')}</g>`);
+}
+const STREET_CLASSES = [
+  [/^(motorway|trunk)(_link)?$/, 'Motorway / trunk', '#b2182b', 6], [/^primary(_link)?$/, 'Primary', '#ef6548', 5], [/^secondary(_link)?$/, 'Secondary', '#f4a442', 4],
+  [/^tertiary(_link)?$/, 'Tertiary', '#5f5f5f', 3], [/^(residential|unclassified|living_street)$/, 'Local / residential', '#959595', 2], [/^(service|track)$/, 'Service', '#bdbdbd', 1.3],
+  [/^(footway|path|pedestrian|steps|cycleway|bridleway|corridor)$/, 'Pedestrian / cycle', '#2f7fd0', 1.3]];
+function sheetStreets() {
+  const o = S.osm || emptyOSM(), km = new Array(STREET_CLASSES.length).fill(0), groups = STREET_CLASSES.map(() => []);
+  for (const r of o.roads) {
+    const k = STREET_CLASSES.findIndex(c => c[0].test(r.tags.highway)); if (k < 0) continue;
+    groups[k].push(r);
+    for (let i = 1; i < r.pts.length; i++) { const a = toLocal(...r.pts[i - 1]), q = toLocal(...r.pts[i]); km[k] += Math.hypot(a[0] - q[0], a[1] - q[1]) / 1000; }
+  }
+  const legend = STREET_CLASSES.map((c, k) => [`${c[1]} · ${fmt(km[k], 1)} km`, c[2]]).filter((_, k) => groups[k].length);
+  return mapSheet('STREET HIERARCHY', `${fmt(km.reduce((a, b) => a + b, 0), 1)} km of streets and paths, classified by OSM highway type.`, ctx =>
+    `<g fill="#e6e6e6">${svgPolys(ctx, o.buildings, () => '')}</g>` +
+    STREET_CLASSES.map((c, k) => k).reverse().map(k => `<g fill="none" stroke="${STREET_CLASSES[k][2]}" stroke-width="${STREET_CLASSES[k][3]}" stroke-linecap="round" stroke-linejoin="round"${k === 6 ? ' stroke-dasharray="5 4"' : ''}>${groups[k].map(r => `<polyline points="${ptsStr(ctx, r.pts)}"/>`).join('')}</g>`).join('') +
+    `<g fill="none" stroke="#333" stroke-width="2" stroke-dasharray="8 5">${o.rails.map(r => `<polyline points="${ptsStr(ctx, r.pts)}"/>`).join('')}</g>`,
+    { bg: '#fafafa', legend: ['Street hierarchy', o.rails.length ? [...legend, ['Railway / tram', '#333']] : legend], legendW: 360 });
+}
+const LU = { residential: ['Residential', '#f3dfc2'], commercial: ['Commercial / office', '#f2b6b6'], retail: ['Retail', '#f5a6c9'], industrial: ['Industrial', '#d9c6e8'],
+  education: ['Education', '#fff1a8'], religious: ['Religious', '#d8d0b8'], construction: ['Construction', '#c9b79c'], railway: ['Railway land', '#d0d0d0'],
+  farmland: ['Agriculture', '#eef0c6'], health: ['Health', '#f7c8a0'], other: ['Other land use', '#ececec'] };
+function luClass(t) {
+  const l = t.landuse, a = t.amenity;
+  if (/^(school|university|college|kindergarten)$/.test(a || '') || l === 'education') return 'education';
+  if (/^(hospital|clinic)$/.test(a || '')) return 'health';
+  if (a === 'place_of_worship' || l === 'religious') return 'religious';
+  if (/^(farmland|farmyard|greenhouse_horticulture)$/.test(l || '')) return 'farmland';
+  return LU[l] ? l : 'other';
+}
+function greenClass(g) {
+  const t = g.tags;
+  if (t.landuse === 'forest' || t.natural === 'wood') return ['Forest / woodland', '#7fb069'];
+  if (t.leisure === 'pitch' || t.leisure === 'golf_course') return ['Sports & recreation', '#a8d5a2'];
+  if (/^(park|garden|playground|nature_reserve)$/.test(t.leisure || '')) return ['Park / garden', '#b9dc9a'];
+  if (t.landuse === 'cemetery') return ['Cemetery', '#c7d9b7'];
+  return ['Grass / meadow / scrub', '#d6ebbd'];
+}
+function sheetLandUse() {
+  const o = S.osm || emptyOSM(), used = new Map();
+  const lu = o.landuse.map(x => { const c = LU[luClass(x.tags)]; used.set(c[0], c[1]); return { ...x, c: c[1] }; });
+  const gr = o.green.map(x => { const c = greenClass(x); used.set(c[0], c[1]); return { ...x, c: c[1] }; });
+  if (o.water.length || o.waterways.length) used.set('Water', WATER);
+  if (o.trees.length) used.set(`Trees (${fmt(o.trees.length)})`, '#2f7d32');
+  const order = (a, b) => ringArea(b.ring) - ringArea(a.ring);
+  return mapSheet('LAND USE, GREEN & BLUE', `${fmt(lu.length)} land-use areas, ${fmt(gr.length)} green spaces, ${fmt(o.water.length + o.waterways.length)} water features (OpenStreetMap).`, (ctx, ppm) =>
+    svgPolys(ctx, lu.sort(order), x => `fill="${x.c}"`) + svgPolys(ctx, gr.sort(order), x => `fill="${x.c}"`) +
+    `<g fill="${WATER}">${svgPolys(ctx, o.water, () => '')}</g><g fill="none" stroke="${WATER}" stroke-linecap="round">${o.waterways.map(w => `<polyline points="${ptsStr(ctx, w.pts)}" stroke-width="${r1(Math.max(1.5, w.width * ppm))}"/>`).join('')}</g>` +
+    `<g fill="none" stroke="#fff" stroke-width="1.6">${(o.roads || []).filter(r => r.width >= 4).map(r => `<polyline points="${ptsStr(ctx, r.pts)}"/>`).join('')}</g>` +
+    `<g fill="#fff" fill-opacity=".35" stroke="#6f6f6f" stroke-width="0.6">${svgPolys(ctx, o.buildings, () => '')}</g>` +
+    `<g fill="#2f7d32" fill-opacity=".85">${o.trees.map(t => { const [x, y] = ctx.P(t.lon, t.lat); return `<circle cx="${r1(x)}" cy="${r1(y)}" r="${r1(Math.max(2, 2.5 * ppm))}"/>`; }).join('')}</g>`,
+    { bg: '#f7f7f5', legend: ['Land use', [...used.entries()]], legendW: 360 });
+}
+function sheetSunPath() {
+  const [lon, lat] = sitePoint(), W = 1300, cx = 650, cy = 760, R = 520, year = new Date().getUTCFullYear();
+  const pos = (mo, dd, h) => sunPosition(Date.UTC(year, mo, dd) + (h - lon / 15) * 3600000, lat, lon);
+  const XY = p => { const r = R * (90 - p.alt / D2R) / 90; return [cx + r * Math.sin(p.az), cy - r * Math.cos(p.az)]; };
+  let body = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="#fbfaf7" stroke="#000" stroke-width="2"/>`;
+  for (const a of [15, 30, 45, 60, 75]) { const r = R * (90 - a) / 90; body += `<circle cx="${cx}" cy="${cy}" r="${r1(r)}" fill="none" stroke="#cfcfcf" stroke-width="1"/><text x="${cx + 6}" y="${r1(cy - r - 4)}" font-size="15" fill="#888">${a}°</text>`; }
+  for (let az = 0; az < 360; az += 15) {
+    const a = az * D2R, big = az % 90 === 0;
+    body += `<line x1="${cx}" y1="${cy}" x2="${r1(cx + R * Math.sin(a))}" y2="${r1(cy - R * Math.cos(a))}" stroke="#dcdcdc" stroke-width="${big ? 1.4 : 0.8}"/>`;
+    const lbl = big ? 'NESW'[az / 90] : az + '°';
+    body += `<text x="${r1(cx + (R + 30) * Math.sin(a))}" y="${r1(cy - (R + 30) * Math.cos(a) + 7)}" font-size="${big ? 26 : 15}" font-weight="${big ? 700 : 400}" text-anchor="middle" fill="${big ? '#000' : '#777'}">${lbl}</text>`;
+  }
+  const DATES = [[11, 21, '21 Dec', '#2c7bb6', 3.5], [0, 21, '', '#b7b7b7', 1.2], [1, 21, '', '#b7b7b7', 1.2], [2, 20, '20 Mar / 22 Sep', '#1a9850', 3.5], [3, 21, '', '#b7b7b7', 1.2], [4, 21, '', '#b7b7b7', 1.2], [5, 21, '21 Jun', '#d7191c', 3.5]];
+  for (const [mo, dd, , col, w] of DATES) {
+    let seg = [], segs = [];
+    for (let h = 0; h <= 24.001; h += 0.1) { const p = pos(mo, dd, h); if (p.alt > 0) seg.push(XY(p)); else if (seg.length) { segs.push(seg); seg = []; } }
+    if (seg.length) segs.push(seg);
+    body += segs.map(sg => `<polyline points="${sg.map(q => r1(q[0]) + ',' + r1(q[1])).join(' ')}" fill="none" stroke="${col}" stroke-width="${w}"/>`).join('');
+  }
+  for (let h = 4; h <= 20; h++) {
+    const pts = DATES.map(([mo, dd]) => pos(mo, dd, h)).filter(p => p.alt > 0).map(XY);
+    if (pts.length < 2) continue;
+    body += `<polyline points="${pts.map(q => r1(q[0]) + ',' + r1(q[1])).join(' ')}" fill="none" stroke="#666" stroke-width="1" stroke-dasharray="4 4"/>`;
+    const p = pos(5, 21, h); if (p.alt > 0) { const [x, y] = XY(p); body += `<circle cx="${r1(x)}" cy="${r1(y)}" r="4" fill="#d7191c"/><text x="${r1(x)}" y="${r1(y - 10)}" font-size="15" text-anchor="middle" fill="#333">${h}:00</text>`; }
+  }
+  const [mx, my] = XY(sunPosition(Date.now(), lat, lon));
+  const rows = [[11, 21, '21 Dec'], [2, 20, '20 Mar'], [5, 21, '21 Jun'], [8, 22, '22 Sep']].map(([mo, dd, n]) => {
+    let rise = null, set = null, maxAlt = -90;
+    for (let m = 0; m <= 1440; m++) { const a = pos(mo, dd, m / 60).alt / D2R; if (a > maxAlt) maxAlt = a; if (a > -0.83 && rise === null) rise = m; if (a > -0.83) set = m; }
+    const hm = m => m == null ? '–' : `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    return [n, hm(rise), hm(set), rise == null ? '0 h' : `${fmt((set - rise) / 60, 1)} h`, `${fmt(maxAlt, 1)}°`];
+  });
+  const ty = cy + R + 100;
+  body += ['Date', 'Sunrise', 'Sunset', 'Daylight', 'Max altitude'].map((h, k) => `<text x="${150 + k * 230}" y="${ty}" font-size="19" font-weight="700">${h}</text>`).join('');
+  rows.forEach((r, i) => { body += r.map((v, k) => `<text x="${150 + k * 230}" y="${ty + 38 * (i + 1)}" font-size="19">${v}</text>`).join(''); });
+  const ly = 118;
+  body += [['21 Jun (summer solstice N)', '#d7191c'], ['20 Mar / 22 Sep (equinox)', '#1a9850'], ['21 Dec (winter solstice N)', '#2c7bb6'], ['21st of other months', '#b7b7b7']].map((it, k) => `<line x1="${24 + k * 320}" y1="${ly + 18}" x2="${64 + k * 320}" y2="${ly + 18}" stroke="${it[1]}" stroke-width="4"/><text x="${72 + k * 320}" y="${ly + 24}" font-size="16">${it[0]}</text>`).join('');
+  return sheetSVG(W, ty + 38 * 5 + 50, 'SUN PATH DIAGRAM', `${Math.abs(lat).toFixed(5)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(5)}° ${lon >= 0 ? 'E' : 'W'} · polar projection (centre = overhead) · times in local solar time`, body, { credit: 'Solar geometry computed for the site (NOAA approximation). Sunrise/sunset include refraction.' });
+}
+function sheetWindRose() {
+  const wd = S.climate.wind, BINS = [0.5, 2, 4, 6, 8, 11, Infinity], COLS = ['#c6dbef', '#6baed6', '#3182bd', '#08519c', '#54278f', '#2d004b'];
+  const counts = Array.from({ length: 16 }, () => new Array(6).fill(0));
+  let calm = 0, total = 0, sum = 0;
+  for (let i = 0; i < wd.spd.length; i++) {
+    const s = wd.spd[i], d = wd.dir[i]; if (s == null || d == null) continue;
+    total++; sum += s; if (s < BINS[0]) { calm++; continue; }
+    counts[Math.round(d / 22.5) % 16][BINS.findIndex((b, k) => k > 0 && s < b) - 1]++;
+  }
+  const pct = counts.map(r => r.map(c => c / total * 100)), tot = pct.map(r => r.reduce((a, b) => a + b, 0));
+  const maxP = Math.max(...tot, 1), ring = niceStep(maxP, 5), maxR = Math.ceil(maxP / ring) * ring;
+  const W = 1300, cx = 640, cy = 760, R = 500, rr = p => 40 + (R - 40) * p / maxR, pt = (r, a) => [r1(cx + r * Math.sin(a)), r1(cy - r * Math.cos(a))];
+  let body = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="#fbfbfb" stroke="#000" stroke-width="2"/>`;
+  for (let p = ring; p <= maxR + 1e-9; p += ring) body += `<circle cx="${cx}" cy="${cy}" r="${r1(rr(p))}" fill="none" stroke="#d0d0d0"/><text x="${cx + 6}" y="${r1(cy - rr(p) - 5)}" font-size="15" fill="#777">${fmt(p, ring < 1 ? 1 : 0)}%</text>`;
+  const NAMES = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  for (let k = 0; k < 16; k++) {
+    const a = k * 22.5 * D2R, [lx, ly] = pt(R + 30, a);
+    body += `<line x1="${cx}" y1="${cy}" x2="${pt(R, a)[0]}" y2="${pt(R, a)[1]}" stroke="#e2e2e2"/><text x="${lx}" y="${r1(ly + 7)}" font-size="${k % 4 ? 15 : 24}" font-weight="${k % 4 ? 400 : 700}" text-anchor="middle">${NAMES[k]}</text>`;
+    let acc = 0;
+    for (let b = 0; b < 6; b++) {
+      const p = pct[k][b]; if (p <= 0) continue;
+      const r0 = rr(acc), r2 = rr(acc + p), a0 = a - 10.5 * D2R, a1 = a + 10.5 * D2R; acc += p;
+      body += `<path d="M${pt(r0, a0)} L${pt(r2, a0)} A${r1(r2)},${r1(r2)} 0 0 1 ${pt(r2, a1)} L${pt(r0, a1)} A${r1(r0)},${r1(r0)} 0 0 0 ${pt(r0, a0)}Z" fill="${COLS[b]}" stroke="#fff" stroke-width="0.8"/>`;
+    }
+  }
+  body += `<circle cx="${cx}" cy="${cy}" r="38" fill="#fff" stroke="#999"/><text x="${cx}" y="${cy - 2}" font-size="15" text-anchor="middle">calm</text><text x="${cx}" y="${cy + 18}" font-size="15" text-anchor="middle">${fmt(calm / total * 100, 1)}%</text>`;
+  const lbl = ['0.5–2', '2–4', '4–6', '6–8', '8–11', '> 11'];
+  body += `<text x="24" y="128" font-size="19" font-weight="700">Wind speed (m/s)</text>` + lbl.map((t, k) => `<rect x="${24 + k * 150}" y="142" width="36" height="20" fill="${COLS[k]}"/><text x="${68 + k * 150}" y="158" font-size="17">${t}</text>`).join('');
+  const prev = tot.indexOf(Math.max(...tot));
+  body += `<text x="24" y="${cy + R + 90}" font-size="20">Prevailing wind from <tspan font-weight="700">${NAMES[prev]}</tspan> (${fmt(tot[prev], 1)}% of hours) · mean speed ${fmt(sum / total, 1)} m/s · ${fmt(total)} hourly records</text>`;
+  return sheetSVG(W, cy + R + 150, 'WIND ROSE', `Hourly 10 m wind at the site, ${S.climate.year} (Open-Meteo ERA5) · bars show the direction the wind blows FROM`, body, { credit: 'Data: Open-Meteo ERA5 reanalysis (CC-BY 4.0)' });
+}
+function sheetClimate() {
+  const c = S.climate, W = 1560, x0 = 130, y0 = 190, cw = 1270, ch = 640, M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const rs = niceStep(Math.max(...c.monthly, 1), 6), rmax = Math.max(rs, Math.ceil(Math.max(...c.monthly, 1) / rs) * rs);
+  const tlo = Math.floor(Math.min(...c.mTmin) / 5) * 5, thi = Math.ceil(Math.max(...c.mTmax) / 5) * 5 || tlo + 5;
+  const bw = cw / 12, Yr = v => y0 + ch - v / rmax * ch, Yt = v => y0 + ch - (v - tlo) / (thi - tlo) * ch, Xm = k => x0 + bw * (k + 0.5);
+  let body = '';
+  for (let v = 0; v <= rmax + 1e-9; v += rs) body += `<line x1="${x0}" y1="${r1(Yr(v))}" x2="${x0 + cw}" y2="${r1(Yr(v))}" stroke="#e3e3e3"/><text x="${x0 - 12}" y="${r1(Yr(v) + 6)}" font-size="17" text-anchor="end" fill="#2166ac">${fmt(v)}</text>`;
+  for (let v = tlo; v <= thi; v += 5) body += `<text x="${x0 + cw + 12}" y="${r1(Yt(v) + 6)}" font-size="17" fill="#b2182b">${v}°</text>`;
+  body += `<polygon points="${c.mTmax.map((v, k) => `${r1(Xm(k))},${r1(Yt(v))}`).join(' ')} ${c.mTmin.map((v, k) => `${r1(Xm(k))},${r1(Yt(v))}`).reverse().join(' ')}" fill="#f4a582" fill-opacity=".35"/>`;
+  body += c.monthly.map((v, k) => `<rect x="${r1(x0 + bw * k + bw * 0.18)}" y="${r1(Yr(v))}" width="${r1(bw * 0.64)}" height="${r1(Yr(0) - Yr(v))}" fill="#4a90d9"/><text x="${r1(Xm(k))}" y="${r1(Yr(v) - 8)}" font-size="15" text-anchor="middle" fill="#2166ac">${fmt(v)}</text><text x="${r1(Xm(k))}" y="${y0 + ch + 30}" font-size="18" text-anchor="middle">${M[k]}</text>`).join('');
+  body += `<polyline points="${c.mTemp.map((v, k) => `${r1(Xm(k))},${r1(Yt(v))}`).join(' ')}" fill="none" stroke="#b2182b" stroke-width="3.5"/>` + c.mTemp.map((v, k) => `<circle cx="${r1(Xm(k))}" cy="${r1(Yt(v))}" r="5" fill="#b2182b"/>`).join('');
+  body += `<line x1="${x0}" y1="${y0 + ch}" x2="${x0 + cw}" y2="${y0 + ch}" stroke="#000" stroke-width="2"/>`;
+  body += `<text transform="translate(50,${y0 + ch / 2}) rotate(-90)" font-size="19" text-anchor="middle" fill="#2166ac">Rainfall (mm / month)</text><text transform="translate(${x0 + cw + 80},${y0 + ch / 2}) rotate(90)" font-size="19" text-anchor="middle" fill="#b2182b">Temperature (°C) — mean line, min–max band</text>`;
+  const stats = [['Annual rainfall', `${fmt(c.annual)} mm`], ['Wet days (≥ 1 mm)', fmt(c.wetDays)], ['Wettest day', `${fmt(c.maxDay, 1)} mm`], ['Snowfall', `${fmt(c.snow, 1)} cm`], ['Mean temperature', `${fmt(c.temp, 1)} °C`], ['Evapotranspiration', `${fmt(c.et0)} mm`]];
+  const sy = y0 + ch + 90;
+  body += stats.map((s, k) => `<text x="${x0 + (k % 3) * 440}" y="${sy + Math.floor(k / 3) * 70}" font-size="17" fill="#777">${s[0]}</text><text x="${x0 + (k % 3) * 440}" y="${sy + 32 + Math.floor(k / 3) * 70}" font-size="26" font-weight="700">${s[1]}</text>`).join('');
+  return sheetSVG(W, sy + 190, 'CLIMATE SUMMARY', `Rainfall and temperature at the site, ${c.year} (Open-Meteo ERA5, ~10–25 km resolution).`, body, { credit: 'Data: Open-Meteo ERA5 reanalysis (CC-BY 4.0)' });
+}
+/* ───────────────────────── rendered section perspectives ───────────────────────── */
+const hash01 = v => { let h = 2166136261; const s = String(v); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967295; };
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const FACADE = ['#efe9df', '#e6dccb', '#f4f1ea', '#d9d4cc', '#eadbc4', '#e9e2d6', '#dcd0bd', '#e2d6c6', '#f0e6d6'];
+const TOWER = ['#b9c7d3', '#a9b8c6', '#c9d3dc', '#9fb0bf', '#d2d9df'];
+const ROOF = ['#b8b4ad', '#a9a59f', '#c7c2b9', '#9d9993', '#bdb3a3', '#cfcac2'];
+function pointInRing(x, y, ring) { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const a = ring[i], b = ring[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; }
+let facadeTex = null, hatchTex = null;
+function getFacadeTex() {
+  if (facadeTex) return facadeTex;
+  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128; const c = cv.getContext('2d');
+  c.fillStyle = '#ffffff'; c.fillRect(0, 0, 128, 128);
+  c.fillStyle = '#d8d8d8'; c.fillRect(0, 118, 128, 10);                       // floor slab band
+  const g = c.createLinearGradient(0, 22, 0, 104); g.addColorStop(0, '#5d7286'); g.addColorStop(0.5, '#3a4a5a'); g.addColorStop(1, '#2c3844');
+  c.fillStyle = g; c.fillRect(22, 22, 84, 82);                                  // glazing
+  c.fillStyle = 'rgba(255,255,255,.18)'; c.beginPath(); c.moveTo(22, 22); c.lineTo(70, 22); c.lineTo(22, 70); c.fill(); // reflection
+  c.strokeStyle = '#9a9a9a'; c.lineWidth = 3; c.strokeRect(22, 22, 84, 82); c.beginPath(); c.moveTo(64, 22); c.lineTo(64, 104); c.stroke();
+  c.fillStyle = '#bdbdbd'; c.fillRect(18, 104, 92, 5);                           // sill
+  facadeTex = new THREE.CanvasTexture(cv); facadeTex.wrapS = facadeTex.wrapT = THREE.RepeatWrapping; facadeTex.colorSpace = THREE.SRGBColorSpace; facadeTex.anisotropy = 8;
+  return facadeTex;
+}
+function getHatchTex() {
+  if (hatchTex) return hatchTex;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64; const c = cv.getContext('2d');
+  c.fillStyle = '#4b3c2f'; c.fillRect(0, 0, 64, 64); c.strokeStyle = '#8a735d'; c.lineWidth = 7;
+  for (let k = -64; k < 128; k += 16) { c.beginPath(); c.moveTo(k, 64); c.lineTo(k + 64, 0); c.stroke(); }
+  hatchTex = new THREE.CanvasTexture(cv); hatchTex.wrapS = hatchTex.wrapT = THREE.RepeatWrapping; hatchTex.colorSpace = THREE.SRGBColorSpace;
+  return hatchTex;
+}
+/* buildings with real footprints, window-textured walls (UV in metres: 3.2 m bays × 3.5 m floors) and roofs */
+function detailedBuildings(zFn) {
+  const o = S.osm; if (!o || !o.buildings.length) return null;
+  const defH = +$('#defH').value || 9, b = S.bbox, zmin = S.dem.min, col = new THREE.Color();
+  const wp = [], wn = [], wu = [], wc = [], rp = [], rn = [], rc = [];
+  for (const bd of o.buildings) {
+    let cx = 0, cy = 0; for (const p of bd.ring) { cx += p[0]; cy += p[1]; } cx /= bd.ring.length; cy /= bd.ring.length;
+    if (cx < b.w || cx > b.e || cy < b.s || cy > b.n) continue;
+    let loc = bd.ring.slice(0, -1).map(p => toLocal(p[0], p[1]));
+    if (loc.length < 3) continue;
+    let a2 = 0; for (let k = 0; k < loc.length; k++) { const p = loc[k], q = loc[(k + 1) % loc.length]; a2 += p[0] * q[1] - q[0] * p[1]; }
+    if (Math.abs(a2) / 2 < 4) continue;
+    if (a2 < 0) loc = loc.reverse();
+    const h = bd.h || defH, base = Math.min(...loc.map(p => zFn(p[0], p[1]))), y0 = base - zmin - 0.8, y1 = base - zmin + h;
+    const r = hash01(bd.ring[0][0] * 1e7 + bd.ring[0][1]);
+    col.set(h > 40 ? TOWER[Math.floor(r * TOWER.length)] : FACADE[Math.floor(r * FACADE.length)]);
+    let per = 0;
+    for (let k = 0; k < loc.length; k++) {
+      const P = loc[k], Q = loc[(k + 1) % loc.length], dx = Q[0] - P[0], dy = Q[1] - P[1], len = Math.hypot(dx, dy);
+      if (len < 0.05) continue;
+      const nx = dy / len, nz = dx / len, u0 = per / 3.2, u1 = (per + len) / 3.2, v1 = (y1 - y0) / 3.5; per += len;
+      const V = [[P[0], y0, -P[1], u0, 0], [Q[0], y0, -Q[1], u1, 0], [Q[0], y1, -Q[1], u1, v1], [P[0], y1, -P[1], u0, v1]];
+      for (const i of [0, 1, 2, 0, 2, 3]) { wp.push(V[i][0], V[i][1], V[i][2]); wn.push(nx, 0, nz); wu.push(V[i][3], V[i][4]); wc.push(col.r, col.g, col.b); }
+    }
+    col.set(ROOF[Math.floor(hash01(r) * ROOF.length)]);
+    for (const t of THREE.ShapeUtils.triangulateShape(loc.map(p => new THREE.Vector2(p[0], p[1])), [])) {
+      let [i, j, k] = t; const A = loc[i], B = loc[j], C = loc[k];
+      if ((B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0]) < 0) [j, k] = [k, j];
+      for (const q of [i, j, k]) { rp.push(loc[q][0], y1, -loc[q][1]); rn.push(0, 1, 0); rc.push(col.r, col.g, col.b); }
+    }
+  }
+  const mk = (p, n, c, u) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(n, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(c, 3)); if (u) g.setAttribute('uv', new THREE.Float32BufferAttribute(u, 2)); return g; };
+  return wp.length ? { walls: mk(wp, wn, wc, wu), roofs: mk(rp, rn, rc) } : null;
+}
+/* OSM trees plus planted trees filling parks and woods */
+function sectionTreeList(zFn, realOnly = false) {
+  const o = S.osm || emptyOSM(), b = S.bbox, list = [], rnd = mulberry32(1234);
+  for (const t of o.trees) { if (t.lon < b.w || t.lon > b.e || t.lat < b.s || t.lat > b.n) continue; const [x, y] = toLocal(t.lon, t.lat); list.push([x, y, parseFloat(t.tags.height) || 7 + rnd() * 5]); }
+  for (const g of (realOnly ? [] : o.green)) {
+    const ring = g.ring.map(p => toLocal(p[0], p[1])), area = ringArea(ring);
+    const forest = g.forest, n = Math.min(forest ? 900 : 250, Math.floor(area / (forest ? 70 : 220)));
+    let xs = ring.map(p => p[0]), ys = ring.map(p => p[1]); const x0 = Math.max(Math.min(...xs), -S.m.widthM / 2), x1 = Math.min(Math.max(...xs), S.m.widthM / 2), y0 = Math.max(Math.min(...ys), -S.m.heightM / 2), y1 = Math.min(Math.max(...ys), S.m.heightM / 2);
+    for (let k = 0, tries = 0; k < n && tries < n * 4; tries++) { const x = x0 + rnd() * (x1 - x0), y = y0 + rnd() * (y1 - y0); if (pointInRing(x, y, ring)) { list.push([x, y, (forest ? 10 : 7) + rnd() * 6]); k++; } }
+    if (list.length > 6000) break;
+  }
+  return list.slice(0, 6000).map(([x, y, h]) => ({ x, y, h, z: zFn(x, y) - S.dem.min }));
+}
+async function groundTexture(style) {
+  const [TW, TH] = texSize(), cv = document.createElement('canvas'); cv.width = TW; cv.height = TH; const c = cv.getContext('2d');
+  if (style === 'satellite') {
+    try { await ensureSatellite(); } catch (e) { log('Satellite failed: ' + e.message); }
+    if (S.sat && S.sat.failed < 3) { c.drawImage(S.sat.cv, S.sat.sx, S.sat.sy, S.sat.sw, S.sat.sh, 0, 0, TW, TH); return cv; }
+    log('Satellite imagery incomplete — using map-style ground');
+  }
+  const { W, H } = S.dem, img = c.createImageData(TW, TH);
+  for (let y = 0, p = 0; y < TH; y++) for (let x = 0; x < TW; x++, p += 4) {
+    const f = 0.82 + 0.25 * bilinear(S.der.shade, W, H, x / (TW - 1) * (W - 1), y / (TH - 1) * (H - 1));
+    img.data[p] = Math.min(255, 233 * f); img.data[p + 1] = Math.min(255, 227 * f); img.data[p + 2] = Math.min(255, 216 * f); img.data[p + 3] = 255;
+  }
+  c.putImageData(img, 0, 0);
+  const b = S.bbox, o = S.osm || emptyOSM(), ppm = TW / S.m.widthM, P = (lon, lat) => [(lon - b.w) / (b.e - b.w) * TW, (b.n - lat) / (b.n - b.s) * TH];
+  const path = pts => { c.beginPath(); pts.forEach((q, i) => { const [x, y] = P(q[0], q[1]); i ? c.lineTo(x, y) : c.moveTo(x, y); }); };
+  for (const l of o.landuse) { path(l.ring); c.fillStyle = 'rgba(214,205,190,.35)'; c.fill(); }
+  for (const g of o.green) { path(g.ring); c.fillStyle = g.forest ? '#6f9a55' : '#9fc27c'; c.fill(); }
+  for (const w of o.water) { path(w.ring); c.fillStyle = '#6fa6d3'; c.fill(); }
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  for (const w of o.waterways) { path(w.pts); c.strokeStyle = '#6fa6d3'; c.lineWidth = Math.max(1, w.width * ppm); c.stroke(); }
+  const roads = o.roads.slice().sort((a, q) => a.width - q.width);
+  for (const r of roads) { path(r.pts); c.strokeStyle = r.width <= 2 ? '#d9d2c3' : '#cfcac0'; c.lineWidth = Math.max(1, (r.width + 3) * ppm); c.stroke(); }   // pavements
+  for (const r of roads) { if (r.width <= 2) continue; path(r.pts); c.strokeStyle = r.width >= 8 ? '#6f7275' : '#86898c'; c.lineWidth = Math.max(1, r.width * ppm); c.stroke(); }
+  for (const r of roads) { if (r.width < 8) continue; path(r.pts); c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = Math.max(0.6, 0.25 * ppm); c.setLineDash([3 * ppm, 3 * ppm]); c.stroke(); c.setLineDash([]); }
+  for (const r of o.rails) { path(r.pts); c.strokeStyle = '#5a534c'; c.lineWidth = Math.max(1, 3 * ppm); c.stroke(); }
+  return cv;
+}
+async function renderSectionView(sec, mode, Wpx, Hpx) {
+  const sd = sectionData(sec), sm = smoothDEM(), d = S.dem, zmin = d.min, size = Math.max(S.m.widthM, S.m.heightM);
+  const zFn = (x, y) => bilinear(sm.data, d.W, d.H, (x + S.m.widthM / 2) / d.dx, (S.m.heightM / 2 - y) / d.dy);
+  if (!offR) { offR = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); offR.outputColorSpace = THREE.SRGBColorSpace; }
+  offR.setPixelRatio(1); offR.setSize(Wpx, Hpx, false);
+  offR.shadowMap.enabled = true; offR.shadowMap.type = THREE.PCFSoftShadowMap; offR.localClippingEnabled = true;
+  offR.toneMapping = THREE.ACESFilmicToneMapping; offR.toneMappingExposure = 1.05;
+  const [A, u, n, L] = [sd.A, sd.u, sd.n, sd.L];
+  const W3 = (x, y, z) => new THREE.Vector3(x, z, -y);                                        // local metres → world
+  const plane = new THREE.Plane(new THREE.Vector3(n[0], 0, -n[1]), -(n[0] * A[0] + n[1] * A[1])); // keeps what lies beyond the cut
+  const clip = [plane], disposables = [];
+  const scene = new THREE.Scene();
+  const sky = document.createElement('canvas'); sky.width = 4; sky.height = 256; const sg = sky.getContext('2d'), gr = sg.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#8fb8df'); gr.addColorStop(0.65, '#dfe9f1'); gr.addColorStop(1, '#f3f1ec'); sg.fillStyle = gr; sg.fillRect(0, 0, 4, 256);
+  const skyTex = new THREE.CanvasTexture(sky); skyTex.colorSpace = THREE.SRGBColorSpace; scene.background = skyTex; disposables.push(skyTex);
+  scene.add(new THREE.HemisphereLight('#e4eef8', '#7a6a55', 1.25));
+  const sun = new THREE.DirectionalLight('#fff3df', 2.9); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+  const dt = $('#sunDate').valueAsDate || new Date(), hr = +$('#sunHour').value;
+  let sp = sunPosition(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()) + (hr - S.m.lon0 / 15) * 3600000, S.m.lat0, S.m.lon0);
+  if (sp.alt < 0.2) sp = { alt: 0.6, az: 225 * D2R };
+  sun.position.set(Math.sin(sp.az) * Math.cos(sp.alt), Math.sin(sp.alt), -Math.cos(sp.az) * Math.cos(sp.alt)).multiplyScalar(size * 1.5);
+  const scam = sun.shadow.camera; scam.left = scam.bottom = -size * 0.75; scam.right = scam.top = size * 0.75; scam.near = 1; scam.far = size * 4; sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.4;
+  scene.add(sun, sun.target);
+  // terrain (true scale) with draped ground texture
+  const baseT = mode === 'straight' ? Math.max(6, (sd.zmax - sd.zmin) * 0.15) : Math.max(12, (sd.zmax - sd.zmin) * 0.35), gtex = new THREE.CanvasTexture(await groundTexture($('#secGround').value));
+  gtex.colorSpace = THREE.SRGBColorSpace; gtex.anisotropy = 16; disposables.push(gtex);
+  const tg = terrainSolid(1, baseT, { ...d, data: sm.data }); disposables.push(tg);
+  const terr = new THREE.Mesh(tg, [new THREE.MeshStandardMaterial({ map: gtex, roughness: 1, clippingPlanes: clip }), new THREE.MeshStandardMaterial({ color: '#7d6550', roughness: 1, clippingPlanes: clip })]);
+  terr.receiveShadow = true; scene.add(terr);
+  // buildings
+  const bg = detailedBuildings(zFn);
+  if (bg) {
+    const walls = new THREE.Mesh(bg.walls, new THREE.MeshStandardMaterial({ map: getFacadeTex(), vertexColors: true, roughness: 0.75, metalness: 0.05, clippingPlanes: clip }));
+    const roofs = new THREE.Mesh(bg.roofs, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, clippingPlanes: clip }));
+    for (const m of [walls, roofs]) { m.castShadow = m.receiveShadow = true; scene.add(m); }
+    disposables.push(bg.walls, bg.roofs);
+  }
+  // trees
+  const trees = sectionTreeList(zFn, mode === 'straight');
+  if (trees.length) {
+    const crownG = new THREE.IcosahedronGeometry(1, 1), trunkG = new THREE.CylinderGeometry(0.16, 0.24, 1, 6); trunkG.translate(0, 0.5, 0);
+    const crowns = new THREE.InstancedMesh(crownG, new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true, clippingPlanes: clip }), trees.length);
+    const trunks = new THREE.InstancedMesh(trunkG, new THREE.MeshStandardMaterial({ color: '#6b5641', roughness: 1, clippingPlanes: clip }), trees.length);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), c = new THREE.Color(), GREENS = ['#4f7f3a', '#5e8f45', '#6c9a4c', '#47733a', '#7aa457'];
+    trees.forEach((t, i) => {
+      const r = t.h * 0.3, rr = hash01(i * 7.13);
+      m4.compose(new THREE.Vector3(t.x, t.z + t.h * 0.64, -t.y), q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rr * 6.28), new THREE.Vector3(r, r * 1.15, r)); crowns.setMatrixAt(i, m4);
+      crowns.setColorAt(i, c.set(GREENS[Math.floor(rr * GREENS.length)]));
+      m4.compose(new THREE.Vector3(t.x, t.z - 0.3, -t.y), q.identity(), new THREE.Vector3(1, t.h * 0.5, 1)); trunks.setMatrixAt(i, m4);
+    });
+    crowns.castShadow = trunks.castShadow = true; crowns.receiveShadow = true; scene.add(crowns, trunks); disposables.push(crownG, trunkG);
+  }
+  // section cut caps (poché) — ground hatch and solid building cuts, drawn exactly in the section plane
+  const off = 0.05, toW = (s, yv) => W3(A[0] + u[0] * s - n[0] * off, A[1] + u[1] * s - n[1] * off, yv);
+  const capShape = new THREE.Shape([...sd.profile.map(p => new THREE.Vector2(p[0], p[1] - zmin)), new THREE.Vector2(L, -baseT), new THREE.Vector2(0, -baseT)]);
+  const capG = new THREE.ShapeGeometry(capShape), cp = capG.attributes.position, uv = [];
+  const hs = Math.max(2, L / 70); for (let i = 0; i < cp.count; i++) { const s = cp.getX(i), yv = cp.getY(i), w = toW(s, yv); cp.setXYZ(i, w.x, w.y, w.z); uv.push(s / hs, yv / hs); }
+  capG.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); capG.computeVertexNormals(); disposables.push(capG);
+  scene.add(new THREE.Mesh(capG, new THREE.MeshBasicMaterial({ map: getHatchTex(), side: THREE.DoubleSide })));
+  const cutPos = [];
+  for (const cu of sd.cuts) {
+    const y0 = cu.base - zmin - 0.8, y1 = cu.top - zmin, q4 = [toW(cu.d0, y0), toW(cu.d1, y0), toW(cu.d1, y1), toW(cu.d0, y1)];
+    for (const i of [0, 1, 2, 0, 2, 3]) cutPos.push(q4[i].x, q4[i].y - 0.0, q4[i].z);
+  }
+  if (cutPos.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(cutPos, 3)); disposables.push(g); scene.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: '#141414', side: THREE.DoubleSide }))); }
+  const wPos = [], toW2 = (s, yv) => W3(A[0] + u[0] * s - n[0] * off * 2, A[1] + u[1] * s - n[1] * off * 2, yv);
+  for (const w of sd.water) {
+    const lvl = Math.min(sd.zAlong(w.d0), sd.zAlong(w.d1)) - zmin, seg = sd.profile.filter(p => p[0] > w.d0 && p[0] < w.d1).map(p => [p[0], Math.min(p[1] - zmin, lvl)]);
+    const pts = [[w.d0, lvl], ...seg, [w.d1, lvl]];
+    for (let k = 0; k < pts.length - 1; k++) { const a = pts[k], b = pts[k + 1]; const q = [toW2(a[0], lvl), toW2(b[0], lvl), toW2(b[0], b[1]), toW2(a[0], a[1])]; for (const i of [0, 1, 2, 0, 2, 3]) wPos.push(q[i].x, q[i].y, q[i].z); }
+  }
+  if (wPos.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(wPos, 3)); disposables.push(g); scene.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: '#6fa6d3', side: THREE.DoubleSide }))); }
+  const edge = new THREE.BufferGeometry().setFromPoints(sd.profile.map(p => toW(p[0], p[1] - zmin))); disposables.push(edge);
+  scene.add(new THREE.Line(edge, new THREE.LineBasicMaterial({ color: '#111' })));
+  // camera
+  const ztop = sd.zmax - zmin, mid = L / 2, gm = sd.zAlong(mid) - zmin, aspect = Wpx / Hpx, fov = 30;
+  const hh = Math.atan(Math.tan(fov / 2 * D2R) * aspect), D = (L * 0.54) / Math.tan(hh), M = [A[0] + u[0] * mid, A[1] + u[1] * mid];
+  let cam, pxPerM = null;
+  if (mode === 'straight') {
+    // orthographic, level camera looking straight along the section normal: true 1:1 scale in both directions
+    let yB = -baseT - 1, yT = ztop + Math.max(4, ztop * 0.08), halfW = L / 2 * 1.12;
+    Hpx = Math.round(clamp(Wpx * (yT - yB) / (2 * halfW), 380, 1400));
+    const ratio = Wpx / Hpx;
+    if (2 * halfW / (yT - yB) > ratio) yT = yB + 2 * halfW / ratio; else halfW = (yT - yB) * ratio / 2;
+    offR.setSize(Wpx, Hpx, false);
+    const back = size * 1.5, cy = (yT + yB) / 2;
+    cam = new THREE.OrthographicCamera(-halfW, halfW, (yT - yB) / 2, -(yT - yB) / 2, 1, back + size * 3);
+    cam.position.copy(W3(M[0] - n[0] * back, M[1] - n[1] * back, cy)); cam.lookAt(W3(M[0], M[1], cy)); cam.updateMatrixWorld();
+    scene.fog = new THREE.Fog('#e6edf2', back + sd.depth * 0.4, back + size * 1.6);
+    pxPerM = Wpx / (2 * halfW);
+  } else {
+    cam = new THREE.PerspectiveCamera(fov, aspect, Math.max(0.5, D / 200), D * 6 + size * 2);
+    const pitch = (mode === 'aerial' ? 30 : 6) * D2R, back = mode === 'aerial' ? D * 0.8 : D;
+    cam.position.copy(W3(M[0] - n[0] * back, M[1] - n[1] * back, gm + ztop * 0.3 + back * Math.tan(pitch)));
+    cam.lookAt(W3(M[0], M[1], gm));
+    // frame tightly: the cut face (top to base) plus the far edge of the model beyond the cut
+    const far = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sy]) => [sx * S.m.widthM / 2, sy * S.m.heightM / 2]).filter(p => dot2(p, A, n) > 1);
+    const fitPts = [[0, -baseT], [L, -baseT], [0, ztop], [L, ztop]].map(([s, yv]) => toW(s, yv));
+    for (const p of far) fitPts.push(W3(p[0], p[1], zFn(p[0], p[1]) - zmin), W3(p[0], p[1], ztop * 0.8));
+    for (let it = 0; it < 4; it++) {
+      cam.updateMatrixWorld();
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const p of fitPts) { const v = p.clone().applyMatrix4(cam.matrixWorldInverse); if (v.z > -0.1) continue; const tx = v.x / -v.z, ty = v.y / -v.z; x0 = Math.min(x0, tx); x1 = Math.max(x1, tx); y0 = Math.min(y0, ty); y1 = Math.max(y1, ty); }
+      if (!Number.isFinite(x0)) break;
+      cam.lookAt(cam.localToWorld(new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, -1)));
+      if (it === 2) { Hpx = Math.round(clamp(Wpx * (y1 - y0) / (x1 - x0) * 1.25, 560, 1500)); cam.aspect = Wpx / Hpx; offR.setSize(Wpx, Hpx, false); }
+      cam.fov = 2 * Math.atan(Math.max((y1 - y0) / 2 * 1.12, (x1 - x0) / 2 / cam.aspect * 1.1)) / D2R; cam.updateProjectionMatrix();
+    }
+    cam.updateMatrixWorld();
+    scene.fog = new THREE.Fog('#e6edf2', D * 1.05, D + size * 1.8);
+  }
+  offR.render(scene, cam);
+  const url = offR.domElement.toDataURL('image/png');
+  scene.traverse(o => { if (o.material) [].concat(o.material).forEach(m => m.dispose()); });
+  disposables.forEach(x => x.dispose());
+  offR.shadowMap.enabled = false; offR.localClippingEnabled = false; offR.toneMapping = THREE.NoToneMapping;
+  const project = (s, z) => { const v = toW(s, z - zmin).project(cam); return [(v.x + 1) / 2 * Wpx, (1 - v.y) / 2 * Hpx, v.z < 1]; };
+  return { url, project, sd, trees: trees.length, H: Hpx, pxPerM };
+}
+async function sheetSectionView(sec0, mode) {
+  const sec = mode === 'straight' ? trimSection(sec0, +$('#illLen').value || 0) : sec0;
+  const W = 2400, top = 150, r = await renderSectionView(sec, mode, W, 1150), sd = r.sd, IH = r.H;
+  let body = `<image x="0" y="${top}" width="${W}" height="${IH}" href="${r.url}"/>`;
+  const halo = 'paint-order="stroke" stroke="#fff" stroke-width="5" stroke-linejoin="round"';
+  const zs = niceStep(sd.zmax - sd.zmin + 10, 6);
+  for (let z = Math.ceil((sd.zmin - 5) / zs) * zs; z <= sd.zmax + 1e-6; z += zs) {
+    const [x, y, ok] = r.project(0, z); if (!ok || y < 10 || y > IH - 10 || x < 60) continue;
+    body += `<line x1="${r1(x - 34)}" y1="${r1(top + y)}" x2="${r1(x - 4)}" y2="${r1(top + y)}" stroke="#111" stroke-width="2"/><text x="${r1(x - 40)}" y="${r1(top + y + 7)}" font-size="20" text-anchor="end" ${halo}>${Math.abs(z) < 1e-9 ? '±0' : (z > 0 ? '+' : '') + fmt(z, zs < 1 ? 1 : 0)} m</text>`;
+  }
+  for (const [s, t] of [[0, sec.n], [sd.L, sec.n + "'"]]) {
+    const [x, y, ok] = r.project(s, sd.zAlong(s) + (sd.zmax - sd.zmin) * 0.5 + 12); if (!ok) continue;
+    const cx = clamp(x, 40, W - 40), cy = clamp(top + y, top + 40, top + IH - 40);
+    body += `<circle cx="${r1(cx)}" cy="${r1(cy)}" r="26" fill="#e0302f" stroke="#fff" stroke-width="3"/><text x="${r1(cx)}" y="${r1(cy + 9)}" font-size="26" font-weight="700" fill="#fff" text-anchor="middle">${t}</text>`;
+  }
+  let extraH = 0;
+  if (mode === 'straight') {
+    // measured annotations: distance ruler, building height dimensions, street gridlines, print scale
+    const ry = top + IH + 26, ds = niceStep(sd.L, 12);
+    body += `<line x1="${r1(r.project(0, sd.zmin)[0])}" y1="${ry}" x2="${r1(r.project(sd.L, sd.zmin)[0])}" y2="${ry}" stroke="#111" stroke-width="2"/>`;
+    for (let s = 0; s <= sd.L + 1e-6; s += ds) { const x = r.project(s, sd.zmin)[0]; body += `<line x1="${r1(x)}" y1="${ry}" x2="${r1(x)}" y2="${ry + 10}" stroke="#111" stroke-width="2"/><text x="${r1(x)}" y="${ry + 30}" font-size="16" text-anchor="middle">${fmt(s)} m</text>`; }
+    let last = -1e9;
+    for (const c of sd.cuts.slice().sort((a, b) => a.d1 - b.d1)) {
+      const [xb, yb] = r.project(c.d1, c.base), [, yt] = r.project(c.d1, c.top), x = xb + 7;
+      if ((c.d1 - c.d0) * r.pxPerM < 6 || x - last < 30 || yb - yt < 22) continue; last = x;
+      body += `<g stroke="#c0392b" stroke-width="1.4"><line x1="${r1(x)}" y1="${r1(top + yt)}" x2="${r1(x)}" y2="${r1(top + yb)}"/><line x1="${r1(x - 5)}" y1="${r1(top + yt)}" x2="${r1(x + 5)}" y2="${r1(top + yt)}"/><line x1="${r1(x - 5)}" y1="${r1(top + yb)}" x2="${r1(x + 5)}" y2="${r1(top + yb)}"/></g><text transform="translate(${r1(x + 15)},${r1(top + (yt + yb) / 2)}) rotate(-90)" font-size="14" text-anchor="middle" fill="#c0392b" paint-order="stroke" stroke="#fff" stroke-width="4">${c.known ? '' : '~'}${c.h.toFixed(1)} m</text>`;
+    }
+    for (const rd of sd.roads) {
+      const [x, y] = r.project(rd.d, sd.zAlong(rd.d)); if (x < 20 || x > W - 20) continue;
+      body += `<line x1="${r1(x)}" y1="${top + 8}" x2="${r1(x)}" y2="${r1(top + y)}" stroke="#555" stroke-width="1" stroke-dasharray="5 5"/><text transform="translate(${r1(x - 5)},${top + 14}) rotate(90)" font-size="14" fill="#333" paint-order="stroke" stroke="#fff" stroke-width="4">${esc(String(rd.name).slice(0, 30))}</text>`;
+    }
+    const nice = [100, 200, 250, 500, 1000, 1250, 2000, 2500, 5000, 10000], scaleAt = mm => { const raw = 1000 / (r.pxPerM * mm / W); return nice.find(v => v >= raw * 0.9) || Math.round(raw); };
+    const known = sd.cuts.filter(c => c.known).length;
+    body += `<text x="24" y="${ry + 140}" font-size="17">Orthographic, horizontal and vertical at the same scale (1:1) · ${fmt(r.pxPerM, 2)} px per metre · ≈ 1:${fmt(scaleAt(841))} when the sheet is printed at A1 width, ≈ 1:${fmt(scaleAt(420))} at A3.</text>`;
+    body += `<text x="24" y="${ry + 168}" font-size="16" fill="#555">Ground: DEM ${fmt(S.dem.dx, 1)} m grid (zoom ${S.dem.zoom}), smoothed σ ${fmt(+$('#smooth').value * S.dem.dx, 1)} m — typical vertical accuracy ±2–10 m. Buildings: OSM footprints; ${known} of ${sd.cuts.length} cut buildings have recorded height/levels, "~" = default ${fmt(+$('#defH').value || 9)} m. Elevations are metres above sea level.</text>`;
+    extraH = 190;
+  }
+  const kp = 220;
+  body += keyPlan(W - kp - 30, top + IH + 50 + extraH, kp, sec);
+  const items = [['#141414', 'Building cut (poché)'], ['url(#earthS)', 'Ground cut'], ['#e6dccb', 'Buildings beyond (OSM footprints & heights)'], ['#5e8f45', mode === 'straight' ? `Trees mapped in OSM (${fmt(r.trees)})` : `Trees (${fmt(r.trees)})`], ['#6fa6d3', 'Water']];
+  body += `<defs><pattern id="earthS" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(-45)"><rect width="12" height="12" fill="#4b3c2f"/><line x1="0" y1="0" x2="0" y2="12" stroke="#7a6450" stroke-width="3"/></pattern></defs>`;
+  let lx = 24; const legY = mode === 'straight' ? top + IH + 120 : top + IH + 26;
+  body += items.map(it => { const out = `<rect x="${lx}" y="${legY}" width="44" height="22" fill="${it[0]}" stroke="#555"/><text x="${lx + 56}" y="${legY + 18}" font-size="19">${esc(it[1])}</text>`; lx += 100 + it[1].length * 10.5; return out; }).join('');
+  const kind = mode === 'straight' ? 'TRUE-SCALE SECTION ELEVATION' : mode === 'aerial' ? 'SECTIONAL AERIAL VIEW' : 'SECTION PERSPECTIVE';
+  return sheetSVG(W, top + IH + kp + 90 + extraH, `SECTION ${sec.n}–${sec.n}' · ${kind}`,
+    mode === 'straight' ? `${fmt(sd.L)} m cut, looking ${sd.view} · orthographic straight elevation, true scale 1:1 (no exaggeration) · real data only: DEM terrain, OSM buildings & mapped trees` : `${fmt(sd.L)} m cut, looking ${sd.view} · true-scale terrain, OSM building footprints & heights, ${fmt(sd.cuts.length)} buildings cut · perspective view — use the straight section for measurements`, body,
+    { titleSize: 34, credit: 'Data: OpenStreetMap contributors, AWS Terrain Tiles' + ($('#secGround').value === 'satellite' ? ', imagery © Esri' : '') });
+}
+/* ───────────────────────── illustrated architectural sections ───────────────────────── */
+/* window of the section line centred on the site; if the line crosses water, the window is stretched to run from the site out to (and across) the nearest water */
+function trimSection(sec, len) {
+  const A = toLocal(...sec.a), B = toLocal(...sec.b), L = Math.hypot(B[0] - A[0], B[1] - A[1]);
+  if (!len || L <= len) return sec;
+  const u = [(B[0] - A[0]) / L, (B[1] - A[1]) / L], n = [-u[1], u[0]], ss = clamp(dot2(toLocal(...sitePoint()), A, u), 0, L);
+  let lo = ss - len / 2, hi = ss + len / 2;
+  const wat = [];
+  for (const w of (S.osm ? S.osm.water : [])) wat.push(...insideIntervals(lineCrossings(w.ring.map(p => toLocal(p[0], p[1])), A, u, n), L));
+  if (wat.length) {
+    const near = wat.reduce((a, w) => Math.min(Math.abs(w[0] - ss), Math.abs(w[1] - ss)) < Math.min(Math.abs(a[0] - ss), Math.abs(a[1] - ss)) ? w : a);
+    const span = Math.min(near[1] - near[0], len * 0.6);
+    if (near[0] >= ss) { lo = Math.min(lo, ss - len * 0.2); hi = Math.max(hi, near[0] + span + len * 0.08); }
+    else if (near[1] <= ss) { hi = Math.max(hi, ss + len * 0.2); lo = Math.min(lo, near[1] - span - len * 0.08); }
+    if (hi - lo > 1400) { const c = (lo + hi) / 2; lo = c - 700; hi = c + 700; }
+  }
+  if (lo < 0) { hi -= lo; lo = 0; } if (hi > L) { lo -= hi - L; hi = L; } lo = Math.max(0, lo);
+  const ll = s => [S.m.lon0 + (A[0] + u[0] * s) / S.m.mLon, S.m.lat0 + (A[1] + u[1] * s) / S.m.mLat];
+  return { n: sec.n, a: ll(lo), b: ll(hi) };
+}
+const isMosque = t => t && (t.building === 'mosque' || (t.amenity === 'place_of_worship' && (!t.religion || t.religion === 'muslim')));
+const isChurch = t => t && (t.building === 'church' || t.building === 'cathedral' || (t.amenity === 'place_of_worship' && t.religion === 'christian'));
+const CAR_COLS = ['#f4f4f2', '#c9ccd1', '#7d8790', '#b23b3b', '#2f4f6f', '#e8e2d0'];
+function ilDefs() {
+  return `<pattern id="pMade" patternUnits="userSpaceOnUse" width="14" height="14"><rect width="14" height="14" fill="#dcc7a8"/><circle cx="3" cy="4" r="1.3" fill="#a88d6a"/><circle cx="10" cy="10" r="1" fill="#a88d6a"/><path d="M8 3 l3 1" stroke="#a88d6a"/></pattern>
+<pattern id="pSand" patternUnits="userSpaceOnUse" width="10" height="10"><rect width="10" height="10" fill="#f0e3aa"/><circle cx="2" cy="3" r=".9" fill="#c7b46f"/><circle cx="7" cy="8" r=".9" fill="#c7b46f"/></pattern>
+<pattern id="pCap" patternUnits="userSpaceOnUse" width="22" height="10"><rect width="22" height="10" fill="#d3c49d"/><path d="M0 5 h9 M13 5 h7" stroke="#9e8e66" stroke-width="1.2"/></pattern>
+<pattern id="pRock" patternUnits="userSpaceOnUse" width="30" height="16"><rect width="30" height="16" fill="#bcac91"/><path d="M0 8 H30 M10 0 V8 M24 8 V16" stroke="#8d7d63" stroke-width="1.1"/></pattern>
+<pattern id="pSoil" patternUnits="userSpaceOnUse" width="12" height="12"><rect width="12" height="12" fill="#c8ad86"/><path d="M2 9 l2-2 M8 4 l2-2" stroke="#8f7553"/></pattern>
+<pattern id="pClay" patternUnits="userSpaceOnUse" width="16" height="8"><rect width="16" height="8" fill="#e2d1a6"/><path d="M1 4 h6" stroke="#b39c66"/></pattern>
+<linearGradient id="gWater" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9daee"/><stop offset="1" stop-color="#7fb1d4"/></linearGradient>`;
+}
+function stratigraphy(coastal) {
+  return coastal
+    ? [{ id: 'made', name: 'Made ground (fill)', fill: 'url(#pMade)', sw: '#dcc7a8', depth: 2.5, rel: 'ground', landOnly: true }, { id: 'sand', name: 'Marine sand & silt', fill: 'url(#pSand)', sw: '#f0e3aa', bottom: -9 }, { id: 'cap', name: 'Caprock', fill: 'url(#pCap)', sw: '#d3c49d', bottom: -13 }, { id: 'rock', name: 'Sandstone bedrock', fill: 'url(#pRock)', sw: '#bcac91', bottom: -Infinity }]
+    : [{ id: 'soil', name: 'Topsoil / made ground', fill: 'url(#pSoil)', sw: '#c8ad86', depth: 1.5, rel: 'ground', landOnly: true }, { id: 'clay', name: 'Clay / silt / sand', fill: 'url(#pClay)', sw: '#e2d1a6', depth: 8, rel: 'ground' }, { id: 'weath', name: 'Weathered rock', fill: 'url(#pCap)', sw: '#d3c49d', depth: 14, rel: 'ground' }, { id: 'rock', name: 'Bedrock', fill: 'url(#pRock)', sw: '#bcac91', bottom: -Infinity }];
+}
+function nearestPlace(lon, lat, maxM = 2500) {
+  let best = null, bd = maxM;
+  for (const p of (S.osm && S.osm.places) || []) { const a = toLocal(p.lon, p.lat), b = toLocal(lon, lat), d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (d < bd) { bd = d; best = p.name; } }
+  return best;
+}
+/* one illustrated section block; returns {svg, height} */
+function illustratedBlock(sec0, x0, y0, width, title) {
+  const sec = trimSection(sec0, +$('#illLen').value || 0), sd = sectionData(sec), o = S.osm || emptyOSM(), ent = $('#entourage').checked;
+  const L = sd.L, coastal = S.dem.min < 6;
+  // water bodies on the line, with level and a synthesised bed where the DEM is flat water
+  const waters = sd.water.map(w => ({ ...w, level: Math.min(sd.zAlong(w.d0), sd.zAlong(w.d1)) }));
+  for (const w of waters) { w.level = coastal ? Math.max(0, Math.min(w.level, 1)) : w.level; }
+  const bed = s => {
+    let z = sd.zAlong(s);
+    for (const w of waters) if (s >= w.d0 && s <= w.d1) {
+      const seg = sd.profile.filter(p => p[0] >= w.d0 && p[0] <= w.d1), rng = seg.length ? Math.max(...seg.map(p => p[1])) - Math.min(...seg.map(p => p[1])) : 0;
+      if (rng < 1.2) { const Dp = clamp((w.d1 - w.d0) * 0.025, 1.5, 7); z = w.level - 0.6 - Dp * Math.sin(Math.PI * (s - w.d0) / (w.d1 - w.d0)); }
+      else z = Math.min(z, w.level - 0.3);
+    }
+    return z;
+  };
+  const inWater = s => waters.some(w => s >= w.d0 && s <= w.d1);
+  const datum = waters.length ? waters[0].level : (coastal ? 0 : null);
+  const NS = 360, prof = Array.from({ length: NS + 1 }, (_, k) => { const s = L * k / NS; return [s, bed(s)]; });
+  const zGroundMin = Math.min(...prof.map(p => p[1]));
+  const zBot = Math.min(zGroundMin, datum ?? zGroundMin) - (coastal ? 20 : 22);
+  const zTop = Math.max(sd.zmax, ...prof.map(p => p[1])) + 6;
+  const plotW = width - 120, maxH = 640;
+  let sx = plotW / L, exag = Math.max(1, +$('#secExag').value || 1);
+  if ((zTop - zBot) * sx * exag > maxH) sx = maxH / ((zTop - zBot) * exag);
+  const sz = sx * exag, dW = L * sx, X0 = x0 + 90 + (plotW - dW) / 2, X = s => X0 + s * sx;
+  const labelBand = 150, plotTop = y0 + labelBand, Y = z => plotTop + (zTop - z) * sz, yBot = Y(zBot);
+  let g = `<defs><clipPath id="ilc${sec.n}"><rect x="${r1(X0)}" y="${r1(plotTop - 20)}" width="${r1(dW)}" height="${r1(yBot - plotTop + 20)}"/></clipPath></defs>`;
+  // ── strata
+  const layers = stratigraphy(coastal), wav = (s, k) => 0.7 * Math.sin(s / 37 + k) + 0.45 * Math.sin(s / 91 + 2 * k);
+  let upper = prof.map(p => [p[0], p[1]]);
+  const strata = [];
+  layers.forEach((ly, k) => {
+    const lower = prof.map(([s, zg], i) => {
+      let z = ly.bottom === -Infinity ? zBot : ly.rel === 'ground' ? zg - ly.depth + (ly.landOnly ? 0 : wav(s, k)) : (datum ?? zGroundMin) + ly.bottom + wav(s, k);
+      if (ly.landOnly && inWater(s)) z = upper[i][1];
+      return [s, Math.min(upper[i][1], Math.max(z, zBot))];
+    });
+    const pts = upper.map(p => `${r1(X(p[0]))},${r1(Y(p[1]))}`).concat(lower.slice().reverse().map(p => `${r1(X(p[0]))},${r1(Y(p[1]))}`)).join(' ');
+    strata.push(`<polygon points="${pts}" fill="${ly.fill}" stroke="#8b7a60" stroke-width="0.8"/>`);
+    const mid = lower.map((p, i) => [p[0], (p[1] + upper[i][1]) / 2]), lbl = mid[Math.round(NS * (0.5 + 0.1 * k))];
+    const thick = upper[Math.round(NS * (0.5 + 0.1 * k))][1] - lower[Math.round(NS * (0.5 + 0.1 * k))][1];
+    if (thick * sz > 16) strata.push(`<text x="${r1(X(lbl[0]))}" y="${r1(Y(lbl[1]) + 6)}" font-size="16" font-weight="700" text-anchor="middle" fill="#4a3d2c">${esc(ly.name.toUpperCase())}</text>`);
+    upper = lower;
+  });
+  g += `<g clip-path="url(#ilc${sec.n})">`;
+  // ── buildings beyond (elevation), far first
+  const elevBuilding = (b, cut) => {
+    const x = X(b.d0), w = Math.max(2, (b.d1 - b.d0) * sx), yb = Y(b.base), yt = Y(b.top), floors = Math.max(1, Math.round((b.top - b.base) / 3.5));
+    const shade = cut ? '' : (() => { const t = clamp(b.dist / sd.depth, 0, 1); return `fill-opacity="${r1(1 - 0.45 * t)}"`; })();
+    let s = `<rect x="${r1(x)}" y="${r1(yt)}" width="${r1(w)}" height="${r1(yb - yt)}" fill="#e2d4bc" ${shade} stroke="#8a7b66" stroke-width="0.9"/>`;
+    const fh = (yb - yt) / floors;
+    if (fh > 7 && w > 14) for (let f = 0; f < floors; f++) {
+      const wy = yb - (f + 1) * fh + fh * 0.28, nW = Math.max(1, Math.floor(w / Math.max(8, 3.2 * sx)));
+      for (let k = 0; k < nW; k++) { const cw = w / nW; s += `<rect x="${r1(x + k * cw + cw * 0.25)}" y="${r1(wy)}" width="${r1(cw * 0.5)}" height="${r1(fh * 0.42)}" fill="#b8c4ca" ${shade} stroke="#7d7466" stroke-width="0.5"/>`; }
+    }
+    if (isMosque(b.tags)) {
+      const dr = Math.min(w * 0.3, 9 * sx), cx = x + w / 2;
+      s += `<path d="M${r1(cx - dr)},${r1(yt)} A${r1(dr)},${r1(dr * Math.min(1.3, sz / sx))} 0 0 1 ${r1(cx + dr)},${r1(yt)}Z" fill="#e8dcc6" stroke="#8a7b66"/><line x1="${r1(cx)}" y1="${r1(yt - dr * Math.min(1.3, sz / sx))}" x2="${r1(cx)}" y2="${r1(yt - dr * Math.min(1.3, sz / sx) - 2.5 * sz)}" stroke="#8a7b66" stroke-width="1.5"/>`;
+      const mh = (b.top - b.base) * 1.7 + 12, mx = x + Math.min(w - 4 * sx, w * 0.12), mw = Math.max(4, 3 * sx);
+      s += `<rect x="${r1(mx)}" y="${r1(Y(b.base + mh))}" width="${r1(mw)}" height="${r1(Y(b.base) - Y(b.base + mh))}" fill="#eadfca" stroke="#8a7b66"/><rect x="${r1(mx - mw * 0.3)}" y="${r1(Y(b.base + mh * 0.8))}" width="${r1(mw * 1.6)}" height="${r1(Math.max(2, 0.8 * sz))}" fill="#d6c7ab" stroke="#8a7b66"/><path d="M${r1(mx)},${r1(Y(b.base + mh))} L${r1(mx + mw / 2)},${r1(Y(b.base + mh + 6))} L${r1(mx + mw)},${r1(Y(b.base + mh))}Z" fill="#d6c7ab" stroke="#8a7b66"/>`;
+    } else if (isChurch(b.tags)) {
+      const cx = x + w * 0.2; s += `<path d="M${r1(cx - 3 * sx)},${r1(yt)} L${r1(cx)},${r1(yt - 14 * sz)} L${r1(cx + 3 * sx)},${r1(yt)}Z" fill="#e2d4bc" stroke="#8a7b66"/>`;
+    }
+    return s;
+  };
+  g += sd.beyond.slice().sort((a, b) => b.dist - a.dist).filter(b => b.dist < sd.depth * 0.8).map(b => elevBuilding(b, false)).join('');
+  // ── ground & water
+  g += strata.join('');
+  for (const w of waters) {
+    const seg = prof.filter(p => p[0] >= w.d0 && p[0] <= w.d1);
+    g += `<polygon points="${r1(X(w.d0))},${r1(Y(w.level))} ${seg.map(p => `${r1(X(p[0]))},${r1(Y(Math.min(p[1], w.level)))}`).join(' ')} ${r1(X(w.d1))},${r1(Y(w.level))}" fill="url(#gWater)" stroke="#4f8fbf" stroke-width="1.2"/>`;
+    for (let s = w.d0 + 4; s < w.d1 - 4; s += Math.max(6, 18 / sx)) g += `<path d="M${r1(X(s))},${r1(Y(w.level) + 7)} q${r1(3)},-3 ${r1(6)},0 t${r1(6)},0" fill="none" stroke="#ffffff" stroke-opacity=".7"/>`;
+  }
+  g += `<polyline points="${prof.filter(p => !inWater(p[0])).length ? prof.map(p => `${r1(X(p[0]))},${r1(Y(p[1]))}`).join(' ') : ''}" fill="none" stroke="#3d362e" stroke-width="2.2"/>`;
+  // ── roads in section: asphalt band, kerbs, cars, lamps, people
+  const crossings = [];
+  for (const r of o.roads) {
+    const pts = r.pts.map(p => toLocal(p[0], p[1]));
+    for (let k = 0; k < pts.length - 1; k++) {
+      const P = pts[k], Q = pts[k + 1], sp = dot2(P, sd.A, sd.n), sq = dot2(Q, sd.A, sd.n);
+      if ((sp > 0) === (sq > 0)) continue;
+      const t = sp / (sp - sq), s = dot2([P[0] + t * (Q[0] - P[0]), P[1] + t * (Q[1] - P[1])], sd.A, sd.u);
+      if (s < 0 || s > L || inWater(s)) continue;
+      const cosA = Math.abs(((Q[0] - P[0]) * sd.u[0] + (Q[1] - P[1]) * sd.u[1]) / (Math.hypot(Q[0] - P[0], Q[1] - P[1]) || 1)), wAlong = Math.min(r.width / Math.max(0.25, Math.sqrt(1 - cosA * cosA)), r.width * 3);
+      if (!crossings.some(c => Math.abs(c.s - s) < 3)) crossings.push({ s, w: wAlong, r });
+    }
+  }
+  let rnd = mulberry32(sec.n.charCodeAt(0) * 97);
+  const person = (s, z, h = 1.75) => `<g transform="translate(${r1(X(s))},${r1(Y(z))}) scale(${r1(sx * 10) / 10},${r1(-sz * 10) / 10})" fill="none" stroke="#3d362e" stroke-width="1.2" vector-effect="non-scaling-stroke"><path d="M-0.18,0 L0,0.9 L0.18,0 M0,0.9 L0,1.42 M-0.25,1.15 L0.25,1.2" vector-effect="non-scaling-stroke"/><circle cx="0" cy="${h - 0.14}" r="0.15" fill="#3d362e" vector-effect="non-scaling-stroke"/></g>`;
+  const car = (s, z, dir) => { const c = CAR_COLS[Math.floor(rnd() * CAR_COLS.length)]; return `<g transform="translate(${r1(X(s))},${r1(Y(z))}) scale(${r1(sx * dir * 100) / 100},${r1(-sz * 100) / 100})"><path d="M0,0.35 L0,0.85 L0.9,0.95 L1.5,1.45 L3.2,1.45 L3.85,0.95 L4.5,0.85 L4.5,0.35 Z" fill="${c}" stroke="#3d362e" stroke-width="1" vector-effect="non-scaling-stroke"/><path d="M1.65,1.32 L3.1,1.32 L3.55,0.98 L1.2,0.98Z" fill="#9fb4c2" stroke="#3d362e" stroke-width=".6" vector-effect="non-scaling-stroke"/><circle cx="0.95" cy="0.32" r="0.32" fill="#2b2b2b"/><circle cx="3.6" cy="0.32" r="0.32" fill="#2b2b2b"/></g>`; };
+  const lamp = (s, z, dir) => `<g fill="none" stroke="#5a5650" stroke-width="1.6"><line x1="${r1(X(s))}" y1="${r1(Y(z))}" x2="${r1(X(s))}" y2="${r1(Y(z + 8))}"/><path d="M${r1(X(s))},${r1(Y(z + 8))} q${r1(dir * 1.2 * sx)},${r1(-0.6 * sz)} ${r1(dir * 2 * sx)},${r1(0.1 * sz)}"/></g><ellipse cx="${r1(X(s + dir * 2))}" cy="${r1(Y(z + 7.9))}" rx="${r1(Math.max(2, 0.5 * sx))}" ry="2" fill="#f4e6a6" stroke="#5a5650"/>`;
+  const tree = (s, z, h) => { const r = h * 0.24; return `<g><line x1="${r1(X(s))}" y1="${r1(Y(z))}" x2="${r1(X(s))}" y2="${r1(Y(z + h * 0.5))}" stroke="#6b5641" stroke-width="${r1(Math.max(1.5, 0.35 * sx))}"/>${[[0, 0.68, 1], [-0.55, 0.58, 0.75], [0.55, 0.6, 0.8], [0.1, 0.84, 0.7]].map(([dx, dy, k]) => `<ellipse cx="${r1(X(s + dx * r))}" cy="${r1(Y(z + h * dy))}" rx="${r1(r * k * sx)}" ry="${r1(r * k * sz * 0.85)}" fill="#9cbf7f" fill-opacity=".92" stroke="#5f8a4a" stroke-width="0.9"/>`).join('')}</g>`; };
+  let ents = '';
+  for (const c of crossings) {
+    const zg = sd.zAlong(c.s), w = c.w, x1 = c.s - w / 2, x2 = c.s + w / 2;
+    if (c.r.width >= 4) {
+      g += `<rect x="${r1(X(x1))}" y="${r1(Y(zg) - 1)}" width="${r1(w * sx)}" height="${r1(Math.max(3, 0.35 * sz))}" fill="#4a4a4a"/>`;
+      if (ent) {
+        const lanes = Math.max(1, Math.round(w / 3.6));
+        for (let k = 0; k < Math.min(lanes, 6); k++) if (rnd() < 0.7) ents += car(x1 + k * w / lanes + 0.2, zg, 1);
+        if (c.r.width >= 6) ents += lamp(x1 - 1, zg, 1) + lamp(x2 + 1, zg, -1);
+        if (rnd() < 0.8) ents += person(x2 + 2.2, zg);
+      }
+    } else if (ent && rnd() < 0.7) ents += person(c.s, zg) + (rnd() < 0.5 ? person(c.s + 0.9, zg, 1.6) : '');
+  }
+  // trees: OSM trees close to the cut, plus planting in green spaces the line crosses
+  if (ent) {
+    for (const t of sd.trees.filter(t => t.dist < 40)) ents += tree(t.d, sd.zAlong(t.d), t.h);
+    for (const gsp of o.green) for (const [d0, d1] of insideIntervals(lineCrossings(gsp.ring.map(p => toLocal(p[0], p[1])), sd.A, sd.u, sd.n), L))
+      for (let s = d0 + 4; s < d1 - 3; s += 9 + rnd() * 6) ents += tree(s, sd.zAlong(s), 7 + rnd() * 5);
+    for (const w of waters) if (w.d1 - w.d0 > 60) for (let s = w.d0 + 25; s < w.d1 - 30; s += 70 + rnd() * 60) {
+      const bx = s, by = w.level, k = rnd() < 0.5 ? 1 : -1, hl = 20;
+      ents += `<g transform="translate(${r1(X(bx))},${r1(Y(by))}) scale(${r1(sx * k * 100) / 100},${r1(-sz * 100) / 100})"><path d="M-${hl / 2},1.4 L-${hl / 2 - 2.5},-0.9 L${hl / 2 - 2},-0.9 L${hl / 2},2 Z" fill="#9a6b45" stroke="#4b3a2a" stroke-width="1" vector-effect="non-scaling-stroke"/><line x1="-1" y1="1" x2="-1" y2="15" stroke="#4b3a2a" stroke-width="1.4" vector-effect="non-scaling-stroke"/><line x1="5" y1="1" x2="5" y2="11" stroke="#4b3a2a" stroke-width="1.2" vector-effect="non-scaling-stroke"/><path d="M-1,14 L-8,3 L-1,3Z" fill="#f2ead8" stroke="#4b3a2a" stroke-width=".8" vector-effect="non-scaling-stroke"/><path d="M5,10 L0.5,3 L5,3Z" fill="#f2ead8" stroke="#4b3a2a" stroke-width=".8" vector-effect="non-scaling-stroke"/><path d="M-${hl / 2},1.4 L-1,15 L${hl / 2},2" fill="none" stroke="#4b3a2a" stroke-width=".5" vector-effect="non-scaling-stroke"/></g>`;
+    }
+  }
+  // ── buildings cut by the section: walls, slabs, rear windows, foundations
+  for (const c of sd.cuts.slice().sort((a, b) => a.d0 - b.d0)) {
+    const x = X(c.d0), w = Math.max(2, (c.d1 - c.d0) * sx), yb = Y(c.base), yt = Y(c.top), floors = Math.max(1, Math.round(c.h / 3.5)), fh = (yb - yt) / floors;
+    const wt = Math.max(2.5, 0.3 * sx), st = Math.max(2.5, 0.3 * sz);
+    if (floors >= 5) { const nP = Math.max(2, Math.round(w / Math.max(10, 6 * sx))); for (let k = 0; k < nP; k++) { const px = x + w * (k + 0.5) / nP; g += `<line x1="${r1(px)}" y1="${r1(yb)}" x2="${r1(px)}" y2="${r1(Y(c.base - Math.min(18, 4 + floors * 0.8)))}" stroke="#6a6258" stroke-width="${r1(Math.max(2, 0.6 * sx))}"/>`; } g += `<rect x="${r1(x - wt)}" y="${r1(yb)}" width="${r1(w + 2 * wt)}" height="${r1(Math.max(4, 1.2 * sz))}" fill="#8f877c" stroke="#3d362e"/>`; }
+    else g += `<rect x="${r1(x - wt)}" y="${r1(yb)}" width="${r1(w + 2 * wt)}" height="${r1(Math.max(3, 0.8 * sz))}" fill="#8f877c" stroke="#3d362e"/>`;
+    g += `<rect x="${r1(x)}" y="${r1(yt)}" width="${r1(w)}" height="${r1(yb - yt)}" fill="#f6efe2"/>`;
+    if (fh > 6 && w > 12) for (let f = 0; f < floors; f++) {
+      const fy = yb - (f + 1) * fh, nW = Math.max(1, Math.floor(w / Math.max(16, 4.5 * sx)));
+      for (let k = 0; k < nW; k++) { const cw = w / nW; g += `<rect x="${r1(x + k * cw + cw * 0.3)}" y="${r1(fy + fh * 0.3)}" width="${r1(cw * 0.4)}" height="${r1(fh * 0.42)}" fill="#dfe6e8" stroke="#a49b8e" stroke-width="0.6"/>`; }
+      if (w > 60 && fh > 14) { const px = x + w * (0.35 + 0.3 * hash01(c.d0 + f)); g += `<line x1="${r1(px)}" y1="${r1(fy + st)}" x2="${r1(px)}" y2="${r1(fy + fh)}" stroke="#7b7266" stroke-width="1.4"/>`; }
+      if (ent && f === 0 && fh > 9 && rnd() < 0.6) g += person(c.d0 + (c.d1 - c.d0) * (0.3 + 0.4 * rnd()), c.base);
+    }
+    for (let f = 0; f <= floors; f++) g += `<rect x="${r1(x)}" y="${r1(yb - f * fh - (f ? st / 2 : 0))}" width="${r1(w)}" height="${r1(st)}" fill="#3d362e"/>`;
+    g += `<rect x="${r1(x)}" y="${r1(yt)}" width="${r1(wt)}" height="${r1(yb - yt)}" fill="#3d362e"/><rect x="${r1(x + w - wt)}" y="${r1(yt)}" width="${r1(wt)}" height="${r1(yb - yt)}" fill="#3d362e"/>`;
+    g += `<rect x="${r1(x)}" y="${r1(yt - Math.max(3, 1 * sz))}" width="${r1(wt)}" height="${r1(Math.max(3, 1 * sz))}" fill="#3d362e"/><rect x="${r1(x + w - wt)}" y="${r1(yt - Math.max(3, 1 * sz))}" width="${r1(wt)}" height="${r1(Math.max(3, 1 * sz))}" fill="#3d362e"/>`;
+    if (isMosque(c.tags)) { const dr = Math.min(w * 0.3, 9 * sx), cx = x + w / 2; g += `<path d="M${r1(cx - dr)},${r1(yt)} A${r1(dr)},${r1(dr)} 0 0 1 ${r1(cx + dr)},${r1(yt)}" fill="#f6efe2" stroke="#3d362e" stroke-width="${r1(st)}"/>`; }
+  }
+  g += ents + '</g>';
+  // ── datum, level marks, gridlines & labels
+  const lvlStep = niceStep(zTop - zBot, 7);
+  for (let z = Math.ceil(zBot / lvlStep) * lvlStep; z <= zTop; z += lvlStep) g += `<line x1="${r1(X0 - 14)}" y1="${r1(Y(z))}" x2="${r1(X0)}" y2="${r1(Y(z))}" stroke="#3d362e" stroke-width="1.2"/><text x="${r1(X0 - 18)}" y="${r1(Y(z) + 5)}" font-size="14" text-anchor="end" fill="#3d362e">${Math.abs(z) < 1e-9 ? '±0.00' : (z > 0 ? '+' : '') + z.toFixed(2)}</text>`;
+  if (datum != null) g += `<line x1="${r1(X0)}" y1="${r1(Y(datum))}" x2="${r1(X0 + dW)}" y2="${r1(Y(datum))}" stroke="#2f6f9f" stroke-width="1" stroke-dasharray="10 5"/><path d="M${r1(X0 + 14)},${r1(Y(datum) - 14)} l8,12 l8,-12z" fill="#2f6f9f"/><text x="${r1(X0 + 34)}" y="${r1(Y(datum) - 4)}" font-size="14" fill="#2f6f9f">${waters.length ? 'W.L.' : 'M.S.L.'} ${datum >= 0 ? '+' : ''}${datum.toFixed(2)}</text>`;
+  // gridline candidates: ends, named roads, water, named / large buildings
+  const marks = [{ s: 0, label: '' }];
+  for (const c of crossings) if (c.r.width >= 6 || c.r.tags.name) marks.push({ s: c.s, label: (c.r.tags.name || c.r.tags.ref || (c.r.width >= 8 ? 'MAIN ROAD' : 'LANE')) });
+  for (const w of waters) { const nm = (o.water.find(x => x.tags.name && insideIntervals(lineCrossings(x.ring.map(p => toLocal(p[0], p[1])), sd.A, sd.u, sd.n), L).length) || {}).tags; marks.push({ s: w.d0, label: '' }, { s: (w.d0 + w.d1) / 2, label: nm ? (nm['name:en'] || nm.name) : 'WATER BODY', water: true }); }
+  for (const c of sd.cuts) if (c.name || isMosque(c.tags) || (c.d1 - c.d0) > L * 0.08) marks.push({ s: (c.d0 + c.d1) / 2, label: c.name || (isMosque(c.tags) ? 'MOSQUE' : `BUILDING (${Math.round(c.h)} m)`) });
+  marks.push({ s: L, label: '' });
+  marks.sort((a, b) => a.s - b.s);
+  const kept = []; for (const m of marks) if (!kept.length || (X(m.s) - X(kept[kept.length - 1].s)) > 120) kept.push(m);
+  // fill long gaps with district / place names
+  for (let i = 0; i < kept.length - 1; i++) {
+    const a = kept[i], b = kept[i + 1];
+    if (X(b.s) - X(a.s) > 420) { const sm = (a.s + b.s) / 2, x = sd.A[0] + sd.u[0] * sm, y = sd.A[1] + sd.u[1] * sm, nm = nearestPlace(S.m.lon0 + x / S.m.mLon, S.m.lat0 + y / S.m.mLat); if (nm) { kept.splice(i + 1, 0, { s: sm, label: nm, place: true }); i++; } }
+  }
+  const GL = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; let gi = 0;
+  for (const m of kept) {
+    const x = X(m.s), tag = m.s === 0 ? bearingName(Math.atan2(-sd.u[0], -sd.u[1]) / D2R).replace(/-/g, ' ').replace(/(\w)\w*\s?(\w)?\w*/, (q, a, b) => (a + (b || '')).toUpperCase()) : m.s === L ? bearingName(Math.atan2(sd.u[0], sd.u[1]) / D2R).replace(/-/g, ' ').replace(/(\w)\w*\s?(\w)?\w*/, (q, a, b) => (a + (b || '')).toUpperCase()) : String(++gi);
+    g += `<line x1="${r1(x)}" y1="${r1(y0 + 34)}" x2="${r1(x)}" y2="${r1(yBot)}" stroke="#8c8478" stroke-width="1" stroke-dasharray="6 6"/><circle cx="${r1(x)}" cy="${y0 + 18}" r="16" fill="#f6f1e6" stroke="#3d362e" stroke-width="1.4"/><text x="${r1(x)}" y="${y0 + 23}" font-size="13" text-anchor="middle" fill="#3d362e">${esc(tag)}</text>`;
+    if (m.label) {
+      const words = String(m.label).toUpperCase().split(/\s+/), lines = []; let cur = '';
+      for (const wd of words) { if ((cur + ' ' + wd).trim().length > 18 && cur) { lines.push(cur); cur = wd; } else cur = (cur + ' ' + wd).trim(); }
+      if (cur) lines.push(cur);
+      g += lines.slice(0, 3).map((ln, k) => `<text x="${r1(x)}" y="${y0 + 62 + k * 21}" font-size="17" font-weight="${m.place ? 400 : 700}" text-anchor="middle" fill="#3d362e" paint-order="stroke" stroke="#f6f1e6" stroke-width="4">${esc(ln)}</text>`).join('');
+    }
+  }
+  g += `<text x="${x0}" y="${r1(yBot + 40)}" font-size="22" font-weight="700" fill="#2b2620">${esc(title)}</text>`;
+  g += `<text x="${x0}" y="${r1(yBot + 64)}" font-size="15" fill="#6b6256">${fmt(L)} m · horizontal 1:1${exag > 1.05 ? `, vertical ×${exag.toFixed(1)}` : ''} · looking ${sd.view} · ${sd.cuts.length} buildings cut · ground strata indicative (not from a site investigation)</text>`;
+  return { svg: g, height: yBot + 80 - y0, layers, sx, coastal };
+}
+function sheetIllustrated(secs) {
+  const W = 2600, panelW = 330, x0 = 50, dw = W - panelW - 90;
+  let y = 60, body = '', info = null;
+  const dirName = sec => { const A = toLocal(...sec.a), B = toLocal(...sec.b), d = Math.atan2(B[0] - A[0], B[1] - A[1]) / D2R; return `${bearingName(d + 180).toUpperCase()} TO ${bearingName(d).toUpperCase()}`; };
+  secs.forEach((sec, i) => {
+    const kind = i === 0 ? 'LONGITUDINAL SECTION' : 'TRANSVERSE SECTION';
+    const blk = illustratedBlock(sec, x0, y, dw, `SECTION ${sec.n}–${sec.n}': ${kind} (${dirName(sec)})`);
+    body += blk.svg; y += blk.height + 40; info = info || blk;
+  });
+  const H = Math.max(y + 30, 1100), px = W - panelW - 30;
+  // border with grid references
+  let frame = `<rect x="14" y="14" width="${W - 28}" height="${H - 28}" fill="none" stroke="#3d362e" stroke-width="2"/><rect x="26" y="26" width="${W - 52}" height="${H - 52}" fill="none" stroke="#3d362e" stroke-width="1"/>`;
+  for (let k = 1; k <= 8; k++) { const fx = 26 + (W - 52) * (k - 0.5) / 8; frame += `<text x="${r1(fx)}" y="23" font-size="11" text-anchor="middle" fill="#3d362e">${k}</text><text x="${r1(fx)}" y="${H - 16}" font-size="11" text-anchor="middle" fill="#3d362e">${k}</text>`; if (k < 8) frame += `<line x1="${r1(26 + (W - 52) * k / 8)}" y1="14" x2="${r1(26 + (W - 52) * k / 8)}" y2="26" stroke="#3d362e"/>`; }
+  for (let k = 0; k < 4; k++) { const fy = 26 + (H - 52) * (k + 0.5) / 4; frame += `<text x="20" y="${r1(fy)}" font-size="11" text-anchor="middle" fill="#3d362e">${'ABCD'[k]}</text><text x="${W - 20}" y="${r1(fy)}" font-size="11" text-anchor="middle" fill="#3d362e">${'ABCD'[k]}</text>`; }
+  // material legend
+  const leg = [...info.layers.map(l => [l.fill, l.name]), ['url(#gWater)', 'Water'], ['#3d362e', 'Structure in section (walls, slabs)'], ['#f6efe2', 'Interior space (cut)'], ['#e2d4bc', 'Buildings beyond (elevation)'], ['#9cbf7f', 'Trees & planting'], ['#4a4a4a', 'Road surface'], ['#8f877c', 'Foundations / piles']];
+  let pnl = `<rect x="${px}" y="60" width="${panelW}" height="${54 + leg.length * 30}" fill="#fbf8f1" stroke="#3d362e"/><text x="${px + 14}" y="88" font-size="17" font-weight="700">MATERIAL LEGEND</text>` + leg.map((l, k) => `<rect x="${px + 14}" y="${104 + k * 30}" width="40" height="20" fill="${l[0]}" stroke="#5a5248"/><text x="${px + 64}" y="${119 + k * 30}" font-size="14">${esc(l[1])}</text>`).join('');
+  // title block
+  const ty = H - 470, [lon, lat] = sitePoint(), place = nearestPlace(lon, lat, 5000) || 'SELECTED SITE';
+  pnl += `<rect x="${px}" y="${ty}" width="${panelW}" height="420" fill="#fbf8f1" stroke="#3d362e"/>` + keyPlan(px + 45, ty + 40, 240, secs[0]).replace(/KEY PLAN/, 'KEY PLAN');
+  pnl += `<line x1="${px}" y1="${ty + 300}" x2="${px + panelW}" y2="${ty + 300}" stroke="#3d362e"/><text x="${px + panelW / 2}" y="${ty + 328}" font-size="18" font-weight="700" text-anchor="middle">TECHNICAL SECTION DRAWINGS</text><text x="${px + panelW / 2}" y="${ty + 352}" font-size="15" text-anchor="middle">${esc(place.toUpperCase())}</text><text x="${px + panelW / 2}" y="${ty + 374}" font-size="14" text-anchor="middle">${Math.abs(lat).toFixed(6)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(6)}° ${lon >= 0 ? 'E' : 'W'}</text><text x="${px + panelW / 2}" y="${ty + 396}" font-size="13" fill="#6b6256" text-anchor="middle">${new Date().toISOString().slice(0, 10)} · TerraKit</text>`;
+  const L0 = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000].filter(v => v * info.sx <= 280).pop() || 5, bl = L0 * info.sx;
+  pnl += `<g transform="translate(${px + 20},${ty - 60})">${[0, 1, 2, 3].map(k => `<rect x="${r1(k * bl / 4)}" y="0" width="${r1(bl / 4)}" height="9" fill="${k % 2 ? '#fff' : '#3d362e'}" stroke="#3d362e"/>`).join('')}<text x="0" y="-6" font-size="13">0</text><text x="${r1(bl)}" y="-6" font-size="13" text-anchor="middle">${L0} m</text><text x="${r1(bl / 2)}" y="28" font-size="13" text-anchor="middle">SCALE (HORIZONTAL)</text></g>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${SF}"><defs>${ilDefs()}</defs><rect width="100%" height="100%" fill="#f6f1e6"/>${frame}${body}${pnl}<text x="${x0}" y="${H - 34}" font-size="14" font-style="italic" fill="#6b6256">Data: OpenStreetMap contributors (ODbL), AWS Terrain Tiles. People, vehicles, boats and ground strata are illustrative.</text></svg>`;
+}
 window.__terrakit = { S, exportOne, generate, generateSheets }; window.__svgToPng = svgToPng; window.__setBox = b => { setBBox(b); map.fitBounds(selRect.getBounds()); };
 </script>
 </body>
