@@ -8,6 +8,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { bilinear, clamp, latToY, lonToX, sunPosition } from './geo.js';
 import { lut, percentiles, contourLevels, CMAPS } from './analysis.js';
 import { fetchMosaic } from './data/dem.js';
+import { buildContext } from './context3d.js';
 
 export const triangulate = ring => THREE.ShapeUtils.triangulateShape(ring.map(p => new THREE.Vector2(p[0], p[1])), []);
 
@@ -143,7 +144,7 @@ export function createViewer(host) {
   controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.49;
   scene.add(new THREE.HemisphereLight('#ffffff', '#b9b2a6', 1.4));
   const sun = new THREE.DirectionalLight('#fff6e8', 2.6); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096); scene.add(sun, sun.target);
-  let model = null, need = true, first = true;
+  let model = null, ctx = null, need = true, first = true;
   const resize = () => { const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); need = true; };
   new ResizeObserver(resize).observe(host);
   controls.addEventListener('change', () => { need = true; });
@@ -152,11 +153,13 @@ export function createViewer(host) {
     async show(M, o) {
       const tex = o.style === 'smooth' ? await surfaceTexture(M, o.surface) : null;
       if (model) { scene.remove(model.root); model.root.traverse(x => { x.geometry && x.geometry.dispose(); }); }
+      if (ctx) { scene.remove(ctx); ctx.traverse(x => { x.geometry && x.geometry.dispose(); }); ctx = null; }
       model = buildScene(M, o, tex || {}); scene.add(model.root);
+      if (o.context && Object.values(o.context).some(Boolean)) { ctx = buildContext(M, o); scene.add(ctx); }
       const s = model.size, d = sunDir(M, o.date, o.hour);
       sun.position.copy(d.multiplyScalar(s * 1.5)); const sc = sun.shadow.camera; sc.left = sc.bottom = -s * 0.75; sc.right = sc.top = s * 0.75; sc.near = 1; sc.far = s * 4; sc.updateProjectionMatrix(); sun.shadow.bias = -0.0004; sun.shadow.normalBias = s / 3000;
       scene.background = new THREE.Color('#eef1f4');
-      if (first) { camera.near = s / 2000; camera.far = s * 30; camera.position.set(-s * 0.45, s * 0.55, s * 0.75); controls.target.set(0, (M.dem.max - M.dem.min) * 0.3, 0); camera.updateProjectionMatrix(); first = false; }
+      if (first) { camera.near = s / 2000; camera.far = s * 30; /* context ring extends beyond the site */ camera.position.set(-s * 0.45, s * 0.55, s * 0.75); controls.target.set(0, (M.dem.max - M.dem.min) * 0.3, 0); camera.updateProjectionMatrix(); first = false; }
       resize(); need = true;
       return tex && tex.legend;
     },

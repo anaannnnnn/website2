@@ -174,13 +174,14 @@ let viewer = null;
 async function show3D() {
   if (!ST) return;
   if (!viewer) { viewer = ST.view3d.createViewer($('#viewer')); if (!$('#mDate').value) $('#mDate').valueAsDate = new Date(); }
-  const o = { style: $('#mStyle').value, surface: $('#mHeat').value, exag: +$('#mExag').value, buildings: $('#mBuild').checked, base: $('#mBase').checked, iv: Math.max(ST.iv, (ST.M.dem.max - ST.M.dem.min) / 30), date: $('#mDate').valueAsDate || new Date(), hour: +$('#mTime').value };
+  const o = { style: $('#mStyle').value, surface: $('#mHeat').value, exag: +$('#mExag').value, buildings: $('#mBuild').checked, base: $('#mBase').checked, iv: Math.max(ST.iv, (ST.M.dem.max - ST.M.dem.min) / 30), date: $('#mDate').valueAsDate || new Date(), hour: +$('#mTime').value, context: Object.fromEntries($$('[data-ctx]').map(c => [c.dataset.ctx, c.checked])) };
   try {
     const lg = await viewer.show(ST.M, o);
     $('#mLegend').innerHTML = lg ? `<div class="hint">${esc(lg.label)}</div><div class="grad" style="background:linear-gradient(90deg,${lg.colors.join(',')})"></div><div class="ends"><span>${fmt(lg.lo, 1)}</span><span>${fmt(lg.hi, 1)}</span></div>` : '';
   } catch (e) { console.error(e); toast('3D failed: ' + e.message, 'err'); }
 }
 ['#mStyle', '#mHeat', '#mExag', '#mBuild', '#mBase', '#mDate', '#mTime'].forEach(id => $(id).addEventListener('change', show3D));
+$$('[data-ctx]').forEach(c => c.addEventListener('change', show3D));
 $('#mExag').addEventListener('input', () => { $('#mExagV').textContent = (+$('#mExag').value).toFixed(1) + '×'; });
 $('#mTime').addEventListener('input', () => { const h = +$('#mTime').value; $('#mTimeV').textContent = `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round(h % 1 * 60)).padStart(2, '0')}`; });
 $$('.model-panel [data-m]').forEach(b => b.onclick = async () => {

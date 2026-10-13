@@ -286,3 +286,6 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
   #toasts{top:64px;bottom:auto}
   .drawer-head .mono{font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
+.ctx{border:1px solid var(--line,#ddd);border-radius:10px;margin:10px 0;padding:6px 12px}
+.ctx legend{font-size:12px;font-weight:700;padding:0 6px}
+.ctx .checks{flex-direction:column;gap:6px;margin:4px 0}
