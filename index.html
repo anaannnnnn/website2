@@ -593,29 +593,72 @@ function flowAccumulation(dem, weights) {
 }
 
 /* ───────────────────────── OpenStreetMap features ───────────────────────── */
-const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
-async function fetchOSM(b, o) {
-  const bb = `(${b.s},${b.w},${b.n},${b.e})`;
-  const p = [];
-  if (o.buildings) p.push(`way["building"]${bb};relation["building"]["type"="multipolygon"]${bb};`);
-  if (o.roads) p.push(`way["highway"]${bb};`);
-  if (o.rails) p.push(`way["railway"~"^(rail|tram|subway|light_rail|narrow_gauge|monorail|funicular)$"]${bb};`);
-  if (o.water) p.push(`way["natural"="water"]${bb};relation["natural"="water"]${bb};way["waterway"]${bb};way["landuse"="reservoir"]${bb};relation["waterway"="riverbank"]${bb};`);
-  if (o.green) p.push(`way["leisure"~"^(park|garden|pitch|golf_course|nature_reserve|playground)$"]${bb};way["landuse"~"^(grass|forest|meadow|recreation_ground|village_green|cemetery|orchard|vineyard|allotments)$"]${bb};way["natural"~"^(wood|scrub|grassland|heath|wetland)$"]${bb};relation["landuse"="forest"]${bb};relation["natural"="wood"]${bb};relation["leisure"="park"]${bb};way["landuse"]${bb};relation["landuse"]${bb};way["amenity"~"^(school|university|college|kindergarten|hospital|clinic|place_of_worship)$"]${bb};`);
-  if (o.trees) p.push(`node["natural"="tree"]${bb};`);
-  if (p.length) p.push(`node["place"~"^(suburb|neighbourhood|quarter|city_block|locality|island|village|town)$"](${b.s - 0.02},${b.w - 0.02},${b.n + 0.02},${b.e + 0.02});`);
-  if (!p.length) return emptyOSM();
-  const q = `[out:json][timeout:120];(${p.join('')});out geom;`;
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+async function overpass(q, label) {
   let lastErr;
   for (const ep of OVERPASS) {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 70000);
     try {
-      log('OSM: querying ' + new URL(ep).host);
-      const r = await fetch(ep, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+      log(`OSM ${label}: ${new URL(ep).host}`);
+      const r = await fetch(ep, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal });
       if (!r.ok) throw new Error('HTTP ' + r.status);
-      return parseOSM(await r.json());
-    } catch (e) { lastErr = e; log('  ↳ ' + e.message + ', trying next server'); }
+      const js = await r.json();
+      if (js.remark && /error|timed out|out of memory/i.test(js.remark) && !(js.elements || []).length) throw new Error(js.remark.slice(0, 80));
+      return js;
+    } catch (e) { lastErr = e; log(`  ↳ ${e.name === 'AbortError' ? 'timed out' : e.message} — trying next server`); }
+    finally { clearTimeout(timer); }
   }
-  throw new Error('OpenStreetMap servers busy (' + (lastErr && lastErr.message) + ')');
+  throw lastErr || new Error('no server');
+}
+/* live OpenStreetMap data, fetched in small groups so one heavy layer can't block the buildings */
+async function fetchOSM(b, o) {
+  const bb = `(${b.s},${b.w},${b.n},${b.e})`, groups = [];
+  if (o.buildings) groups.push(['buildings', `way["building"]${bb};relation["building"]["type"="multipolygon"]${bb};`]);
+  if (o.roads || o.rails) groups.push(['streets', (o.roads ? `way["highway"]${bb};` : '') + (o.rails ? `way["railway"~"^(rail|tram|subway|light_rail|narrow_gauge|monorail|funicular)$"]${bb};` : '')]);
+  let misc = '';
+  if (o.water) misc += `way["natural"="water"]${bb};relation["natural"="water"]${bb};way["waterway"]${bb};way["landuse"="reservoir"]${bb};relation["waterway"="riverbank"]${bb};`;
+  if (o.green) misc += `way["leisure"~"^(park|garden|pitch|golf_course|nature_reserve|playground)$"]${bb};way["natural"~"^(wood|scrub|grassland|heath|wetland)$"]${bb};relation["landuse"="forest"]${bb};relation["leisure"="park"]${bb};way["landuse"]${bb};way["amenity"~"^(school|university|college|kindergarten|hospital|clinic|place_of_worship)$"]${bb};`;
+  if (o.trees) misc += `node["natural"="tree"]${bb};`;
+  misc += `node["place"~"^(suburb|neighbourhood|quarter|city_block|locality|island|village|town)$"](${b.s - 0.02},${b.w - 0.02},${b.n + 0.02},${b.e + 0.02});`;
+  groups.push(['water, land use & places', misc]);
+  const all = { elements: [] }, failed = [];
+  for (const [label, q] of groups) {
+    try { const js = await overpass(`[out:json][timeout:90];(${q});out geom;`, label); all.elements.push(...(js.elements || [])); }
+    catch (e) { failed.push(label); log(`OSM ${label} failed: ${e.message}`); }
+  }
+  const res = parseOSM(all); res.failed = failed; return res;
+}
+/* OpenFreeMap vector tiles (OpenMapTiles schema, rebuilt weekly from OSM): building footprints with heights + sea/ocean polygons */
+let VTLIB = null;
+async function fetchVectorTiles(b) {
+  if (!VTLIB) {
+    const [P, V] = await Promise.all([import('https://cdn.jsdelivr.net/npm/pbf@3.2.1/+esm'), import('https://cdn.jsdelivr.net/npm/@mapbox/vector-tile@1.3.1/+esm')]);
+    VTLIB = { Pbf: P.default || P.Pbf || P, VectorTile: V.VectorTile || (V.default && V.default.VectorTile) };
+  }
+  const tj = await (await fetch('https://tiles.openfreemap.org/planet')).json(), tpl = tj.tiles[0], z = 14;
+  const x0 = Math.floor(lonToX(b.w, z) / 256), x1 = Math.floor(lonToX(b.e, z) / 256), y0 = Math.floor(latToY(b.n, z) / 256), y1 = Math.floor(latToY(b.s, z) / 256);
+  if ((x1 - x0 + 1) * (y1 - y0 + 1) > 80) throw new Error('area too large for vector tiles');
+  const out = { buildings: [], water: [] }, seen = new Set();
+  const closeRing = r => (r.length && !samePt(r[0], r[r.length - 1]) ? [...r, r[0]] : r);
+  await Promise.all([...Array((x1 - x0 + 1) * (y1 - y0 + 1)).keys()].map(async k => {
+    const tx = x0 + k % (x1 - x0 + 1), ty = y0 + Math.floor(k / (x1 - x0 + 1));
+    const r = await fetch(tpl.replace('{z}', z).replace('{x}', tx).replace('{y}', ty)); if (!r.ok) return;
+    const tile = new VTLIB.VectorTile(new VTLIB.Pbf(new Uint8Array(await r.arrayBuffer())));
+    const polys = f => { const g = f.toGeoJSON(tx, ty, z).geometry; return g.type === 'Polygon' ? [g.coordinates[0]] : g.type === 'MultiPolygon' ? g.coordinates.map(p => p[0]) : []; };
+    const bl = tile.layers.building;
+    if (bl) for (let i = 0; i < bl.length; i++) {
+      const f = bl.feature(i), pr = f.properties;
+      for (const ring of polys(f)) {
+        const key = ring.slice(0, 3).map(p => p[0].toFixed(6) + p[1].toFixed(6)).join();
+        if (seen.has(key)) continue; seen.add(key);
+        const h = +pr.render_height || 0, mh = +pr.render_min_height || 0;
+        out.buildings.push({ ring: closeRing(ring), tags: { building: 'yes', height: String(h), source: 'openfreemap' }, h: Math.max(3, h - mh) || null });
+      }
+    }
+    const wl = tile.layers.water;
+    if (wl) for (let i = 0; i < wl.length; i++) { const f = wl.feature(i); if (!/ocean|sea|river|lake/.test(f.properties.class || '')) continue; for (const ring of polys(f)) out.water.push({ ring: closeRing(ring), tags: { natural: 'water', water: f.properties.class, source: 'openfreemap' } }); }
+  }));
+  return out;
 }
 const emptyOSM = () => ({ buildings: [], roads: [], rails: [], water: [], waterways: [], green: [], landuse: [], trees: [], places: [] });
 const samePt = (a, b) => a[0] === b[0] && a[1] === b[1];
@@ -1134,7 +1177,16 @@ async function generate() {
     const o = { buildings: $('#lyrBuildings').checked, roads: $('#lyrRoads').checked, rails: $('#lyrRails').checked, water: $('#lyrWater').checked, green: $('#lyrGreen').checked, trees: $('#lyrTrees').checked };
     if (Object.values(o).some(Boolean)) {
       if (km2 > 40) log('OSM features skipped: area > 40 km²');
-      else tasks.push(fetchOSM(b, o).then(r => { S.osm = r; log(`OSM: ${r.buildings.length} buildings, ${r.roads.length} roads, ${r.water.length + r.waterways.length} water, ${r.green.length} green, ${r.trees.length} trees`); }).catch(e => log('OSM failed: ' + e.message)));
+      else tasks.push(fetchOSM(b, o).catch(e => { log('OSM failed: ' + e.message); return emptyOSM(); }).then(async r => {
+        try {
+          const vt = await fetchVectorTiles(b);
+          if (o.buildings && !r.buildings.length && vt.buildings.length) { r.buildings = vt.buildings; log(`Buildings from OpenFreeMap tiles: ${vt.buildings.length}`); }
+          if (o.water && vt.water.length) { r.water.push(...vt.water.filter(w => /ocean|sea/.test(w.tags.water) || !r.water.length)); }
+        } catch (e) { log('Vector tiles unavailable: ' + e.message); }
+        S.osm = r;
+        log(`Map data: ${r.buildings.length} buildings, ${r.roads.length} roads, ${r.water.length + r.waterways.length} water, ${r.green.length} green, ${r.trees.length} trees`);
+        if (o.buildings && !r.buildings.length) log('⚠ No buildings found — sections will show terrain only. Try Generate again (servers may be busy) or check the area on the map.');
+      }));
     }
     if ($('#lyrClimate').checked) tasks.push(fetchClimate(b).then(c => { S.climate = c; log(`Climate ${c.year}: ${fmt(c.annual)} mm rain, ${fmt(c.temp, 1)} °C mean`); }).catch(e => log('Climate failed: ' + e.message)));
     if ($('#lyrSat').checked) tasks.push(ensureSatellite().then(() => log('Satellite imagery loaded')).catch(e => log('Satellite failed: ' + e.message)));
@@ -1151,7 +1203,7 @@ async function generate() {
     showTab('3d');
     await rebuild3D();
     renderStats();
-    setStatus(`Done — ${fmt(S.m.widthM / 1000, 2)} × ${fmt(S.m.heightM / 1000, 2)} km site ready. Explore heatmaps or download.`, 1);
+    setStatus(S.osm && !S.osm.buildings.length && $('#lyrBuildings').checked ? '⚠ Done, but no buildings were loaded (map servers busy or none mapped here) — press Generate again to retry.' : `Done — ${fmt(S.m.widthM / 1000, 2)} × ${fmt(S.m.heightM / 1000, 2)} km site ready with ${fmt(S.osm ? S.osm.buildings.length : 0)} buildings. Explore heatmaps or download.`, 1);
   } catch (e) {
     console.error(e); setStatus('Error: ' + e.message, 0); log('Error: ' + e.message);
   } finally { btn.disabled = false; }
@@ -1755,11 +1807,11 @@ function sheetList() {
   for (let i = 0; i < secs.length; i += 2) { const pair = secs.slice(i, i + 2); L.push([`sections_illustrated_${pair.map(p => p.n).join('')}`, `Illustrated sections ${pair.map(p => `${p.n}–${p.n}'`).join(' & ')}`, () => sheetIllustrated(pair)]); }
   const sv = $('#secView').value;
   for (const sc of getSections()) {
+    L.push([`section_${sc.n}`, `Section ${sc.n}–${sc.n}' · CAD line drawing`, () => sheetSection(sc),
+      [{ label: 'DXF', name: `section_${sc.n}.dxf`, make: () => sectionDXF(sc) }, { label: 'CSV', name: `section_${sc.n}_profile.csv`, make: () => sectionCSV(sc) }]]);
     if (sv !== '2d') L.push([`section_${sc.n}_true_scale`, `Section ${sc.n}–${sc.n}' · straight, true scale`, () => sheetSectionView(sc, 'straight')]);
     if (sv === 'all') L.push([`section_${sc.n}_perspective`, `Section ${sc.n}–${sc.n}' · 3D perspective`, () => sheetSectionView(sc, 'eye')]);
     if (sv === 'all') L.push([`section_${sc.n}_aerial`, `Section ${sc.n}–${sc.n}' · 3D aerial`, () => sheetSectionView(sc, 'aerial')]);
-    L.push([`section_${sc.n}`, `Section ${sc.n}–${sc.n}' · 2D drawing`, () => sheetSection(sc),
-      [{ label: 'DXF', name: `section_${sc.n}.dxf`, make: () => sectionDXF(sc) }, { label: 'CSV', name: `section_${sc.n}_profile.csv`, make: () => sectionCSV(sc) }]]);
   }
   L.push(['sun_path', 'Sun path diagram', sheetSunPath]);
   if (S.climate && S.climate.wind) L.push(['wind_rose', 'Wind rose', sheetWindRose]);
@@ -1873,7 +1925,7 @@ function lineCrossings(ring, A, u, n) {      // along-distances where the infini
 }
 function insideIntervals(ds, L) { const out = []; for (let k = 0; k + 1 < ds.length; k += 2) { const a = Math.max(0, ds[k]), b = Math.min(L, ds[k + 1]); if (b > a) out.push([a, b]); } return out; }
 const bearingName = deg => ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round(((deg % 360) + 360) % 360 / 45) % 8];
-function sectionData(sec) {
+function sectionData(sec, depthMax = 250) {
   const A = toLocal(...sec.a), B = toLocal(...sec.b), L = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1;
   const u = [(B[0] - A[0]) / L, (B[1] - A[1]) / L], n = [-u[1], u[0]];      // looking toward the left of A→B
   const sm = smoothDEM(), d = S.dem;
@@ -1881,7 +1933,7 @@ function sectionData(sec) {
   const zAlong = s => zAt(A[0] + u[0] * s, A[1] + u[1] * s);
   const N = clamp(Math.round(L / (d.dx / 3)), 200, 1500), profile = [];
   for (let k = 0; k <= N; k++) { const s = L * k / N; profile.push([s, zAlong(s)]); }
-  const o = S.osm || emptyOSM(), defH = +$('#defH').value || 9, depth = Math.min(250, Math.max(60, L * 0.3));
+  const o = S.osm || emptyOSM(), defH = +$('#defH').value || 9, depth = Math.min(depthMax, Math.max(60, L * 0.3));
   const cuts = [], beyond = [], trees = [], water = [], roads = [];
   for (const bd of o.buildings) {
     const ring = bd.ring.map(p => toLocal(p[0], p[1])), h = bd.h || defH;
@@ -1917,7 +1969,7 @@ function sectionData(sec) {
   for (const c of cuts.concat(beyond)) zmax = Math.max(zmax, c.top);
   for (const t of trees) zmax = Math.max(zmax, t.z + t.h);
   const view = bearingName(Math.atan2(n[0], n[1]) / D2R);
-  return { A, B, u, n, L, profile, cuts, beyond, trees, water, roads, zmin, zmax, depth, view, zAlong };
+  return { A, B, u, n, L, profile, cuts, beyond, trees, water, roads, zmin, zmax, depth, view, zAlong, zAt };
 }
 function keyPlan(x, y, size, hl) {
   const b = S.bbox, m = S.m, sc = size / Math.max(m.widthM, m.heightM), w = m.widthM * sc, h = m.heightM * sc, ox = x + (size - w) / 2, oy = y + (size - h) / 2;
@@ -1940,68 +1992,88 @@ function keyPlan(x, y, size, hl) {
   return out + `<text x="${r1(ox + w - 8)}" y="${r1(oy + 22)}" font-size="15" font-weight="700" text-anchor="end">N ↑</text>`;
 }
 function niceStep(range, maxTicks) { return [0.5, 1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000].find(s => range / s <= maxTicks) || 5000; }
-function sheetSection(sec) {
-  const sd = sectionData(sec), exag = Math.max(0.2, +$('#secExag').value || 1), PW = 1900, x0 = 110, PWd = 1640;
-  const pad = Math.max(4, (sd.zmax - sd.zmin) * 0.12);
-  let sx = PWd / sd.L, sz = sx * exag;
-  const zstep = niceStep(sd.zmax + pad - sd.zmin, 6);
-  const zb = Math.floor((sd.zmin - pad) / zstep) * zstep, ztop = sd.zmax + pad;
-  let plotH = (ztop - zb) * sz;
-  if (plotH > 900) { const f = 900 / plotH; sx *= f; sz *= f; plotH = 900; }
-  plotH = Math.max(plotH, 200);
-  const top = 420, yBase = top + plotH, X = s => x0 + s * sx, Y = z => yBase - (z - zb) * sz, Xe = X(sd.L);
-  const zs = niceStep(plotH / sz, 7);
-  let body = `<defs><pattern id="earth" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)"><rect width="12" height="12" fill="#eadfd2"/><line x1="0" y1="0" x2="0" y2="12" stroke="#a88a6a" stroke-width="1.6"/></pattern><clipPath id="sec"><rect x="${x0}" y="${top - 40}" width="${r1(Xe - x0)}" height="${r1(plotH + 80)}"/></clipPath></defs>`;
-  // level lines
-  for (let z = Math.ceil(zb / zs) * zs; z <= zb + plotH / sz + 1e-6; z += zs)
-    body += `<line x1="${x0 - 12}" y1="${r1(Y(z))}" x2="${r1(Xe + 12)}" y2="${r1(Y(z))}" stroke="#d6d6d6" stroke-width="1" stroke-dasharray="6 6"/><text x="${x0 - 18}" y="${r1(Y(z) + 6)}" font-size="17" text-anchor="end" fill="#555">${Math.abs(z) < 1e-9 ? '±0' : (z > 0 ? '+' : '') + fmt(z, zs < 1 ? 1 : 0)}</text>`;
-  body += `<g clip-path="url(#sec)">`;
-  // buildings beyond (far first, lighter)
-  const far = sd.beyond.slice().sort((a, b) => b.dist - a.dist);
-  for (const bb of far) {
-    const t = clamp(bb.dist / sd.depth, 0, 1), g = Math.round(214 + 30 * t);
-    body += `<rect x="${r1(X(bb.d0))}" y="${r1(Y(bb.top))}" width="${r1(Math.max(1, (bb.d1 - bb.d0) * sx))}" height="${r1(Math.max(1, (bb.top - bb.base) * sz))}" fill="rgb(${g},${g},${g})" stroke="#9a9a9a" stroke-width="0.8"/>`;
+/* architectural CAD-style section: solid poché cut, hidden-line elevation behind (painter's order, line weight by depth),
+   terrain silhouettes behind the cut, hatched ground — true scale */
+function sheetSection(sec0) {
+  const sec = trimSection(sec0, +$('#illLen').value || 0), DEPTH = 450, sd = sectionData(sec, DEPTH);
+  const exag = Math.max(1, +$('#secExag').value || 1), PW = 2200, x0 = 120, PWd = 1760;
+  // terrain silhouettes on lines parallel to the cut, further and further behind it
+  const inside = (x, y) => Math.abs(x) <= S.m.widthM / 2 && Math.abs(y) <= S.m.heightM / 2;
+  const sil = [];
+  for (const d of [25, 60, 110, 180, 280, 420]) {
+    const pts = [];
+    for (let k = 0; k <= 220; k++) { const s = sd.L * k / 220, x = sd.A[0] + sd.u[0] * s + sd.n[0] * d, y = sd.A[1] + sd.u[1] * s + sd.n[1] * d; pts.push(inside(x, y) ? [s, sd.zAt(x, y)] : null); }
+    if (pts.filter(Boolean).length > 20) sil.push({ dist: d, pts });
   }
-  // trees behind the cut plane
-  const tree = (t, front) => { const cx = X(t.d), gy = Y(t.z), th = t.h * sz, cr = Math.max(4, t.h * 0.33 * sx); return `<line x1="${r1(cx)}" y1="${r1(gy)}" x2="${r1(cx)}" y2="${r1(gy - th * 0.55)}" stroke="#6b5a45" stroke-width="2"/><ellipse cx="${r1(cx)}" cy="${r1(gy - th + cr * (sz / sx))}" rx="${r1(cr)}" ry="${r1(cr * Math.max(0.6, sz / sx))}" fill="${front ? '#cfe5c4' : '#e3efdc'}" fill-opacity=".9" stroke="#4f8a46" stroke-width="1.2"/>`; };
-  body += sd.trees.filter(t => t.dist > 6).map(t => tree(t, false)).join('');
-  // ground poché
+  let zmax = sd.zmax, zmin = sd.zmin;
+  for (const si of sil) for (const p of si.pts) if (p) { zmax = Math.max(zmax, p[1]); zmin = Math.min(zmin, p[1]); }
+  const pad = Math.max(4, (zmax - zmin) * 0.1);
+  let sx = PWd / sd.L, sz = sx * exag;
+  const zb = Math.floor((zmin - pad) / 5) * 5, ztop = zmax + pad;
+  let plotH = (ztop - zb) * sz;
+  if (plotH > 950) { const f = 950 / plotH; sx *= f; sz *= f; plotH = 950; }
+  plotH = Math.max(plotH, 220);
+  const top = 400, yBase = top + plotH, X = s => x0 + s * sx, Y = z => yBase - (z - zb) * sz, Xe = X(sd.L), yGround = yBase + 40;
+  const zs = niceStep(plotH / sz, 8), ink = t => { const g = Math.round(25 + 160 * t); return `rgb(${g},${g},${g})`; }, lw = t => r1(1.7 - 1.25 * t);
+  let body = `<defs><pattern id="earthCad" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)"><rect width="10" height="10" fill="#fff"/><line x1="0" y1="0" x2="0" y2="10" stroke="#222" stroke-width="1"/></pattern><clipPath id="sec"><rect x="${x0}" y="${top - 40}" width="${r1(Xe - x0)}" height="${r1(yGround - top + 40)}"/></clipPath></defs>`;
+  for (let z = Math.ceil(zb / zs) * zs; z <= zb + plotH / sz + 1e-6; z += zs)
+    body += `<line x1="${x0 - 14}" y1="${r1(Y(z))}" x2="${x0}" y2="${r1(Y(z))}" stroke="#000" stroke-width="1.2"/><text x="${x0 - 20}" y="${r1(Y(z) + 6)}" font-size="16" text-anchor="end">${Math.abs(z) < 1e-9 ? '±0.00' : (z > 0 ? '+' : '') + z.toFixed(2)}</text>`;
+  body += `<g clip-path="url(#sec)">`;
+  // painter's algorithm: everything behind the cut, far → near, white-filled so nearer objects hide farther lines
+  const items = [];
+  for (const si of sil) {
+    const t = clamp(si.dist / DEPTH, 0, 1);
+    let segs = [], cur = [];
+    for (const p of si.pts) { if (p) cur.push(p); else if (cur.length) { segs.push(cur); cur = []; } }
+    if (cur.length) segs.push(cur);
+    items.push({ dist: si.dist, svg: segs.filter(g => g.length > 2).map(g => { const pl = g.map(p => `${r1(X(p[0]))},${r1(Y(p[1]))}`).join(' '); return `<polygon points="${pl} ${r1(X(g[g.length - 1][0]))},${r1(yGround)} ${r1(X(g[0][0]))},${r1(yGround)}" fill="#fff"/><polyline points="${pl}" fill="none" stroke="${ink(t)}" stroke-width="${lw(t)}"/>`; }).join('') });
+  }
+  for (const bb of sd.beyond) {
+    const t = clamp(bb.dist / DEPTH, 0, 1), x = X(bb.d0), w = Math.max(1, (bb.d1 - bb.d0) * sx), yt = Y(bb.top), h = Math.max(1, (bb.top - bb.base) * sz);
+    let svg = `<rect x="${r1(x)}" y="${r1(yt)}" width="${r1(w)}" height="${r1(h + 2)}" fill="#fff" stroke="${ink(t)}" stroke-width="${lw(t)}"/>`;
+    const floors = Math.round((bb.top - bb.base) / 3.5);
+    if (t < 0.45 && floors > 1 && h / floors > 5 && w > 12) for (let f = 1; f < floors; f++) svg += `<line x1="${r1(x)}" y1="${r1(Y(bb.base + f * 3.5))}" x2="${r1(x + w)}" y2="${r1(Y(bb.base + f * 3.5))}" stroke="${ink(Math.min(1, t + 0.45))}" stroke-width="0.4"/>`;
+    items.push({ dist: bb.dist, svg });
+  }
+  for (const tr of sd.trees.filter(t => t.dist > 4)) {
+    const t = clamp(tr.dist / DEPTH, 0, 1), cx = X(tr.d), gy = Y(tr.z), cr = Math.max(3, tr.h * 0.3 * sx);
+    items.push({ dist: tr.dist, svg: `<line x1="${r1(cx)}" y1="${r1(gy)}" x2="${r1(cx)}" y2="${r1(gy - tr.h * 0.45 * sz)}" stroke="${ink(t)}" stroke-width="${lw(t)}"/><ellipse cx="${r1(cx)}" cy="${r1(Y(tr.z + tr.h * 0.66))}" rx="${r1(cr)}" ry="${r1(tr.h * 0.3 * sz)}" fill="#fff" stroke="${ink(t)}" stroke-width="${lw(t)}"/>` });
+  }
+  body += items.sort((a, b) => b.dist - a.dist).map(i => i.svg).join('');
+  // the cut: hatched ground, water, solid building poché
   const prof = sd.profile.map(p => `${r1(X(p[0]))},${r1(Y(p[1]))}`).join(' ');
-  body += `<polygon points="${prof} ${r1(Xe)},${r1(yBase + 34)} ${x0},${r1(yBase + 34)}" fill="url(#earth)"/>`;
+  body += `<polygon points="${prof} ${r1(Xe)},${r1(yGround)} ${x0},${r1(yGround)}" fill="url(#earthCad)"/>`;
   for (const w of sd.water) {
     const lvl = Math.min(sd.zAlong(w.d0), sd.zAlong(w.d1)), seg = sd.profile.filter(p => p[0] >= w.d0 && p[0] <= w.d1);
-    body += `<polygon points="${r1(X(w.d0))},${r1(Y(lvl))} ${seg.map(p => `${r1(X(p[0]))},${r1(Y(Math.min(p[1], lvl)))}`).join(' ')} ${r1(X(w.d1))},${r1(Y(lvl))}" fill="${WATER}" stroke="#4a8cc2" stroke-width="1.5"/>`;
+    body += `<polygon points="${r1(X(w.d0))},${r1(Y(lvl))} ${seg.map(p => `${r1(X(p[0]))},${r1(Y(Math.min(p[1], lvl)))}`).join(' ')} ${r1(X(w.d1))},${r1(Y(lvl))}" fill="#dcebf5" stroke="#000" stroke-width="1"/><line x1="${r1(X(w.d0))}" y1="${r1(Y(lvl))}" x2="${r1(X(w.d1))}" y2="${r1(Y(lvl))}" stroke="#000" stroke-width="1.2"/>`;
   }
-  body += `<polyline points="${prof}" fill="none" stroke="#111" stroke-width="3" stroke-linejoin="round"/>`;
-  // cut buildings (poché) + height tags
+  body += `<polyline points="${prof}" fill="none" stroke="#000" stroke-width="3.2" stroke-linejoin="round"/>`;
   let lastLabel = -Infinity;
   for (const c of sd.cuts.slice().sort((a, b) => a.d0 - b.d0)) {
     const x = X(c.d0), w = Math.max(1.5, (c.d1 - c.d0) * sx);
-    body += `<rect x="${r1(x)}" y="${r1(Y(c.top))}" width="${r1(w)}" height="${r1((c.top - c.base) * sz + 3)}" fill="#262626" stroke="#000" stroke-width="1"/>`;
-    if (w > 14 && x + w / 2 - lastLabel > 46) { lastLabel = x + w / 2; body += `<text x="${r1(x + w / 2)}" y="${r1(Y(c.top) - 7)}" font-size="13" text-anchor="middle" fill="#333">${c.known ? '' : '~'}${fmt(c.h, 0)} m</text>`; }
+    body += `<rect x="${r1(x)}" y="${r1(Y(c.top))}" width="${r1(w)}" height="${r1((c.top - c.base) * sz + 4)}" fill="#000"/>`;
+    if (w > 10 && x + w / 2 - lastLabel > 44) { lastLabel = x + w / 2; body += `<text x="${r1(x + w / 2)}" y="${r1(Y(c.top) - 8)}" font-size="13" text-anchor="middle">${c.known ? '' : '~'}${c.h.toFixed(1)}</text>`; }
   }
-  body += sd.trees.filter(t => t.dist <= 6).map(t => tree(t, true)).join('');
-  // street crossings
+  for (const tr of sd.trees.filter(t => t.dist <= 4)) { const cx = X(tr.d), cr = Math.max(3, tr.h * 0.3 * sx); body += `<line x1="${r1(cx)}" y1="${r1(Y(tr.z))}" x2="${r1(cx)}" y2="${r1(Y(tr.z + tr.h * 0.45))}" stroke="#000" stroke-width="1.6"/><ellipse cx="${r1(cx)}" cy="${r1(Y(tr.z + tr.h * 0.66))}" rx="${r1(cr)}" ry="${r1(tr.h * 0.3 * sz)}" fill="#fff" stroke="#000" stroke-width="1.6"/>`; }
   for (const r of sd.roads.filter(r => r.width >= 4)) {
     const x = X(r.d), gy = Y(sd.zAlong(r.d));
-    body += `<line x1="${r1(x)}" y1="${r1(gy - 4)}" x2="${r1(x)}" y2="${r1(gy - 30)}" stroke="#e0302f" stroke-width="1.5"/><text transform="translate(${r1(x + 5)},${r1(gy - 34)}) rotate(-90)" font-size="13" fill="#b02020">${esc(String(r.name).slice(0, 28))}</text>`;
+    body += `<line x1="${r1(x)}" y1="${top - 20}" x2="${r1(x)}" y2="${r1(gy)}" stroke="#000" stroke-width="0.7" stroke-dasharray="8 4 2 4"/><text transform="translate(${r1(x - 4)},${top - 14}) rotate(90)" font-size="13" paint-order="stroke" stroke="#fff" stroke-width="4">${esc(String(r.name).slice(0, 32))}</text>`;
   }
   body += '</g>';
-  // section markers & distance ruler
-  for (const [x, t] of [[x0, sec.n], [Xe, sec.n + "'"]]) body += `<line x1="${r1(x)}" y1="${top - 30}" x2="${r1(x)}" y2="${r1(yBase + 34)}" stroke="#e0302f" stroke-width="1.5" stroke-dasharray="4 4"/><circle cx="${r1(x)}" cy="${top - 52}" r="20" fill="#e0302f"/><text x="${r1(x)}" y="${top - 45}" font-size="20" font-weight="700" fill="#fff" text-anchor="middle">${t}</text>`;
-  const ds = niceStep(sd.L, 10), ry = yBase + 62;
-  body += `<line x1="${x0}" y1="${ry}" x2="${r1(Xe)}" y2="${ry}" stroke="#000" stroke-width="2"/>`;
-  for (let s = 0; s <= sd.L + 1e-6; s += ds) body += `<line x1="${r1(X(s))}" y1="${ry}" x2="${r1(X(s))}" y2="${ry + 10}" stroke="#000" stroke-width="2"/><text x="${r1(X(s))}" y="${ry + 32}" font-size="16" text-anchor="middle">${s >= 1000 ? fmt(s / 1000, 1) + ' km' : fmt(s) + ' m'}</text>`;
-  // legend
-  const items = [['#262626', 'Building in section (cut)'], ['#dcdcdc', 'Building in elevation (beyond)'], ['url(#earth)', 'Ground (DEM)'], ['#cfe5c4', 'Trees'], [WATER, 'Water']];
-  body += items.map((it, k) => `<rect x="${24 + (k % 3) * 380}" y="${124 + Math.floor(k / 3) * 36}" width="40" height="20" fill="${it[0]}" stroke="#555"/><text x="${74 + (k % 3) * 380}" y="${140 + Math.floor(k / 3) * 36}" font-size="19">${it[1]}</text>`).join('');
-  body += `<text x="24" y="232" font-size="18" fill="#555">Heights: OSM height or levels × 3.5 m; "~" = default ${fmt(+$('#defH').value || 9)} m where unknown. Elevations in metres above sea level.</text>`;
-  body += keyPlan(PW - 310, 36, 260, sec);
-  const H = ry + 110;
-  return sheetSVG(PW, H, `SECTION ${sec.n}–${sec.n}'`, `${fmt(sd.L)} m long · looking ${sd.view} · horizontal 1:1, vertical ×${fmt(exag, 1)} · ${sd.cuts.length} buildings cut, ${sd.beyond.length} in elevation`, body);
+  for (const [x, t] of [[x0, sec.n], [Xe, sec.n + "'"]]) body += `<line x1="${r1(x)}" y1="${top - 34}" x2="${r1(x)}" y2="${r1(yGround)}" stroke="#000" stroke-width="1" stroke-dasharray="10 4 2 4"/><circle cx="${r1(x)}" cy="${top - 58}" r="22" fill="#fff" stroke="#000" stroke-width="2"/><text x="${r1(x)}" y="${top - 50}" font-size="22" font-weight="700" text-anchor="middle">${t}</text>`;
+  const ds = niceStep(sd.L, 12), ry = yGround + 30;
+  body += `<line x1="${x0}" y1="${ry}" x2="${r1(Xe)}" y2="${ry}" stroke="#000" stroke-width="1.6"/>`;
+  for (let s = 0; s <= sd.L + 1e-6; s += ds) body += `<line x1="${r1(X(s))}" y1="${ry - 6}" x2="${r1(X(s))}" y2="${ry + 6}" stroke="#000" stroke-width="1.6"/><text x="${r1(X(s))}" y="${ry + 28}" font-size="15" text-anchor="middle">${s >= 1000 ? fmt(s / 1000, 2) + ' km' : fmt(s) + ' m'}</text>`;
+  const items2 = [['#000', 'Section cut — buildings'], ['url(#earthCad)', 'Section cut — ground (DEM)'], ['#fff', 'Elevation beyond (line weight fades with distance)'], ['#dcebf5', 'Water']];
+  let lx = 24; body += items2.map(it => { const o = `<rect x="${lx}" y="${120}" width="40" height="20" fill="${it[0]}" stroke="#000"/><text x="${lx + 52}" y="${136}" font-size="18">${esc(it[1])}</text>`; lx += 90 + it[1].length * 9.6; return o; }).join('');
+  const known = sd.cuts.filter(c => c.known).length;
+  body += `<text x="24" y="176" font-size="17" fill="#444">True scale${exag > 1 ? ` (vertical ×${exag})` : ' 1:1'} · ${fmt(sx, 2)} px/m · ≈ 1:${fmt([200, 250, 500, 1000, 1250, 2000, 2500, 5000, 10000].find(v => v >= 1000 / (sx * 841 / PW) * 0.9) || 0)} printed at A1 width · building heights in metres ("~" = default ${fmt(+$('#defH').value || 9)} m; ${known}/${sd.cuts.length} recorded) · elevations m above sea level</text>`;
+  body += `<text x="24" y="204" font-size="17" fill="#444">${S.osm && S.osm.buildings.length ? `${fmt(sd.cuts.length)} buildings cut, ${fmt(sd.beyond.length)} in elevation up to ${DEPTH} m behind the cut` : '⚠ No building data was loaded for this area — press Generate again (map servers may have been busy).'}</text>`;
+  body += keyPlan(PW - 300, 40, 250, sec);
+  return sheetSVG(PW, ry + 100, `SECTION ${sec.n}–${sec.n}'`, `${fmt(sd.L)} m · looking ${sd.view} · architectural section (cut + elevation beyond)`, body);
 }
-function sectionDXF(sec) {
-  const sd = sectionData(sec), dx = new DXF();
+function sectionDXF(sec0) {
+  const sec = trimSection(sec0, +$('#illLen').value || 0), sd = sectionData(sec, 450), dx = new DXF();
   [['SECTION_GROUND', 3], ['SECTION_CUT', 7], ['SECTION_BEYOND', 8], ['TREES', 94], ['WATER', 5], ['LABELS', 1]].forEach(l => dx.layer(...l));
   dx.poly('SECTION_GROUND', sd.profile.map(p => [p[0], p[1], 0]), false);
   for (const c of sd.cuts) dx.poly('SECTION_CUT', [[c.d0, c.base, 0], [c.d1, c.base, 0], [c.d1, c.top, 0], [c.d0, c.top, 0]], true);

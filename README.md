@@ -13,9 +13,12 @@ A single-page web app (`index.html`, no build step) that generates and downloads
 - **Illustrated architectural sections** (A–A′ & B–B′ on one board): ground strata below the water-level datum, water bodies with bed and boats, buildings cut floor-by-floor with slabs, windows and piles, mosques/churches, buildings beyond in elevation, cars, people, trees, street lights, gridlines with place/road/water names, material legend, key plan and title block
 - **True-scale section elevation** (default): orthographic straight view at 1:1, real data only, with measured elevations, distance ruler, building height dimensions, street gridlines and print scale
 - **Rendered 3D section views** (optional): section perspective and sectional aerial view per section — the real area cut open along the line, OSM building footprints with windowed facades and roofs, trees, satellite or map-style ground, sun shadows, poché cut faces, level markers and key plan
+- **CAD line-drawing sections**: solid poché cut, hidden-line elevation of buildings up to 450 m behind (line weight by depth), terrain silhouettes, hatched ground, true scale
 - **Site sections**: A–A′ (west–east) and B–B′ (south–north) through the site plus any line you draw — ground poché, buildings cut and in elevation, trees, water, street names, level datums, key plan; also DXF and CSV profile
 - Automatic repair of terrain-tile dropouts, adjustable smoothing, crisp classed colour bands
 - **Download everything** as one ZIP
+
+Map data is fetched live from OpenStreetMap (Overpass, 4 mirrors, buildings first), with automatic fallback to OpenFreeMap vector tiles (weekly OSM build, building heights + sea polygons) when the servers are busy.
 
 Data: AWS Terrain Tiles (SRTM, 3DEP, EU-DEM…), © OpenStreetMap contributors (ODbL), Open-Meteo ERA5 (CC-BY 4.0), Esri World Imagery.
 
