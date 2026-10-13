@@ -248,6 +248,8 @@ main{position:relative;overflow:hidden;background:#06090d}
         <div class="row"><button id="btnSection" class="btn grow">✏️ Draw section line</button><button id="btnSectionReset" class="btn">Reset</button></div>
         <label class="f">Section views<select id="secView"><option value="both" selected>3D section perspective + aerial + 2D drawing</option><option value="eye">3D section perspective + 2D drawing</option><option value="aerial">3D sectional aerial + 2D drawing</option><option value="2d">2D drawing only</option></select></label>
         <label class="f">3D section ground<select id="secGround"><option value="satellite" selected>Satellite imagery</option><option value="map">Map style (roads, parks, water)</option></select></label>
+        <label class="f">Illustrated section length (centred on site)<select id="illLen"><option value="250">250 m</option><option value="400" selected>400 m</option><option value="600">600 m</option><option value="1000">1 km</option><option value="0">Full line</option></select></label>
+        <div class="checks"><label><input type="checkbox" id="entourage" checked> People, cars, trees & boats</label></div>
         <label class="f">Section vertical exaggeration (1 = true scale)<input id="secExag" type="number" value="1" min="0.2" max="20" step="0.5"></label>
         <button id="btnSheets" class="btn primary big">Create presentation sheets</button>
         <div class="row"><button id="btnSheetsZip" class="btn grow">⬇ All sheets (.zip: SVG + PNG)</button></div>
@@ -601,6 +603,7 @@ async function fetchOSM(b, o) {
   if (o.water) p.push(`way["natural"="water"]${bb};relation["natural"="water"]${bb};way["waterway"]${bb};way["landuse"="reservoir"]${bb};relation["waterway"="riverbank"]${bb};`);
   if (o.green) p.push(`way["leisure"~"^(park|garden|pitch|golf_course|nature_reserve|playground)$"]${bb};way["landuse"~"^(grass|forest|meadow|recreation_ground|village_green|cemetery|orchard|vineyard|allotments)$"]${bb};way["natural"~"^(wood|scrub|grassland|heath|wetland)$"]${bb};relation["landuse"="forest"]${bb};relation["natural"="wood"]${bb};relation["leisure"="park"]${bb};way["landuse"]${bb};relation["landuse"]${bb};way["amenity"~"^(school|university|college|kindergarten|hospital|clinic|place_of_worship)$"]${bb};`);
   if (o.trees) p.push(`node["natural"="tree"]${bb};`);
+  if (p.length) p.push(`node["place"~"^(suburb|neighbourhood|quarter|city_block|locality|island|village|town)$"](${b.s - 0.02},${b.w - 0.02},${b.n + 0.02},${b.e + 0.02});`);
   if (!p.length) return emptyOSM();
   const q = `[out:json][timeout:120];(${p.join('')});out geom;`;
   let lastErr;
@@ -614,7 +617,7 @@ async function fetchOSM(b, o) {
   }
   throw new Error('OpenStreetMap servers busy (' + (lastErr && lastErr.message) + ')');
 }
-const emptyOSM = () => ({ buildings: [], roads: [], rails: [], water: [], waterways: [], green: [], landuse: [], trees: [] });
+const emptyOSM = () => ({ buildings: [], roads: [], rails: [], water: [], waterways: [], green: [], landuse: [], trees: [], places: [] });
 const samePt = (a, b) => a[0] === b[0] && a[1] === b[1];
 function joinRings(lines) {
   const pool = lines.map(l => l.slice()), rings = [];
@@ -647,7 +650,7 @@ function parseOSM(js) {
   const isGreen = t => /^(park|garden|pitch|golf_course|nature_reserve|playground)$/.test(t.leisure || '') || /^(grass|forest|meadow|recreation_ground|village_green|cemetery|orchard|vineyard|allotments)$/.test(t.landuse || '') || /^(wood|scrub|grassland|heath|wetland)$/.test(t.natural || '');
   for (const el of js.elements || []) {
     const t = el.tags || {};
-    if (el.type === 'node') { if (t.natural === 'tree') res.trees.push({ lon: el.lon, lat: el.lat, tags: t }); continue; }
+    if (el.type === 'node') { if (t.natural === 'tree') res.trees.push({ lon: el.lon, lat: el.lat, tags: t }); else if (t.place && t.name) res.places.push({ lon: el.lon, lat: el.lat, name: t['name:en'] || t.name }); continue; }
     let rings = [], line = null;
     if (el.type === 'way' && el.geometry) {
       line = el.geometry.filter(Boolean).map(g => [g.lon, g.lat]);
@@ -1748,6 +1751,8 @@ function sheetList() {
   const L = [['building_heights', 'Building heights', sheetBuildings], ['figure_ground', 'Figure-ground', sheetFigureGround], ['street_hierarchy', 'Street hierarchy', sheetStreets],
     ['land_use', 'Land use, green & blue', sheetLandUse], ['slope_analysis', 'Slope analysis', sheetSlope], ['contour_site', 'Contour heat map — site', sheetContourSite],
     ['contour_wider_area', 'Contour heat map — wider area', sheetContourWide], ['layered_interpretation', 'Layered interpretation', sheetLayers], ['topography_model', 'Topography & contour model', sheetModel]];
+  const secs = getSections();
+  for (let i = 0; i < secs.length; i += 2) { const pair = secs.slice(i, i + 2); L.push([`sections_illustrated_${pair.map(p => p.n).join('')}`, `Illustrated sections ${pair.map(p => `${p.n}–${p.n}'`).join(' & ')}`, () => sheetIllustrated(pair)]); }
   const sv = $('#secView').value;
   for (const sc of getSections()) {
     if (sv === 'both' || sv === 'eye') L.push([`section_${sc.n}_perspective`, `Section ${sc.n}–${sc.n}' · 3D perspective`, () => sheetSectionView(sc, 'eye')]);
@@ -1882,12 +1887,12 @@ function sectionData(sec) {
     const iv = insideIntervals(lineCrossings(ring, A, u, n), L);
     if (iv.length) {
       const vb = Math.min(...ring.map(p => zAt(p[0], p[1])));
-      for (const [d0, d1] of iv) { const base = vb; cuts.push({ d0, d1, base, top: base + h, known: !!bd.h, h, name: bd.tags.name }); }
+      for (const [d0, d1] of iv) { const base = vb; cuts.push({ d0, d1, base, top: base + h, known: !!bd.h, h, name: bd.tags['name:en'] || bd.tags.name, tags: bd.tags }); }
       continue;
     }
     let omin = Infinity, amin = Infinity, amax = -Infinity, base = Infinity;
     for (const p of ring) { omin = Math.min(omin, dot2(p, A, n)); const a = dot2(p, A, u); amin = Math.min(amin, a); amax = Math.max(amax, a); base = Math.min(base, zAt(p[0], p[1])); }
-    if (omin > 0 && omin < depth && amax > 0 && amin < L) beyond.push({ d0: Math.max(0, amin), d1: Math.min(L, amax), base, top: base + h, dist: omin });
+    if (omin > 0 && omin < depth && amax > 0 && amin < L) beyond.push({ d0: Math.max(0, amin), d1: Math.min(L, amax), base, top: base + h, dist: omin, tags: bd.tags });
   }
   for (const t of o.trees) {
     const p = toLocal(t.lon, t.lat), ox = dot2(p, A, n), ax = dot2(p, A, u);
@@ -2393,6 +2398,240 @@ async function sheetSectionView(sec, mode) {
   return sheetSVG(W, top + IH + kp + 90, `SECTION ${sec.n}–${sec.n}' · ${kind}`,
     `${fmt(sd.L)} m cut, looking ${sd.view} · true-scale terrain, OSM building footprints & heights, ${fmt(sd.cuts.length)} buildings cut · perspective view — use the 2D section for measured drawings`, body,
     { titleSize: 34, credit: 'Data: OpenStreetMap contributors, AWS Terrain Tiles' + ($('#secGround').value === 'satellite' ? ', imagery © Esri' : '') });
+}
+/* ───────────────────────── illustrated architectural sections ───────────────────────── */
+/* window of the section line centred on the site; if the line crosses water, the window is stretched to run from the site out to (and across) the nearest water */
+function trimSection(sec, len) {
+  const A = toLocal(...sec.a), B = toLocal(...sec.b), L = Math.hypot(B[0] - A[0], B[1] - A[1]);
+  if (!len || L <= len) return sec;
+  const u = [(B[0] - A[0]) / L, (B[1] - A[1]) / L], n = [-u[1], u[0]], ss = clamp(dot2(toLocal(...sitePoint()), A, u), 0, L);
+  let lo = ss - len / 2, hi = ss + len / 2;
+  const wat = [];
+  for (const w of (S.osm ? S.osm.water : [])) wat.push(...insideIntervals(lineCrossings(w.ring.map(p => toLocal(p[0], p[1])), A, u, n), L));
+  if (wat.length) {
+    const near = wat.reduce((a, w) => Math.min(Math.abs(w[0] - ss), Math.abs(w[1] - ss)) < Math.min(Math.abs(a[0] - ss), Math.abs(a[1] - ss)) ? w : a);
+    const span = Math.min(near[1] - near[0], len * 0.6);
+    if (near[0] >= ss) { lo = Math.min(lo, ss - len * 0.2); hi = Math.max(hi, near[0] + span + len * 0.08); }
+    else if (near[1] <= ss) { hi = Math.max(hi, ss + len * 0.2); lo = Math.min(lo, near[1] - span - len * 0.08); }
+    if (hi - lo > 1400) { const c = (lo + hi) / 2; lo = c - 700; hi = c + 700; }
+  }
+  if (lo < 0) { hi -= lo; lo = 0; } if (hi > L) { lo -= hi - L; hi = L; } lo = Math.max(0, lo);
+  const ll = s => [S.m.lon0 + (A[0] + u[0] * s) / S.m.mLon, S.m.lat0 + (A[1] + u[1] * s) / S.m.mLat];
+  return { n: sec.n, a: ll(lo), b: ll(hi) };
+}
+const isMosque = t => t && (t.building === 'mosque' || (t.amenity === 'place_of_worship' && (!t.religion || t.religion === 'muslim')));
+const isChurch = t => t && (t.building === 'church' || t.building === 'cathedral' || (t.amenity === 'place_of_worship' && t.religion === 'christian'));
+const CAR_COLS = ['#f4f4f2', '#c9ccd1', '#7d8790', '#b23b3b', '#2f4f6f', '#e8e2d0'];
+function ilDefs() {
+  return `<pattern id="pMade" patternUnits="userSpaceOnUse" width="14" height="14"><rect width="14" height="14" fill="#dcc7a8"/><circle cx="3" cy="4" r="1.3" fill="#a88d6a"/><circle cx="10" cy="10" r="1" fill="#a88d6a"/><path d="M8 3 l3 1" stroke="#a88d6a"/></pattern>
+<pattern id="pSand" patternUnits="userSpaceOnUse" width="10" height="10"><rect width="10" height="10" fill="#f0e3aa"/><circle cx="2" cy="3" r=".9" fill="#c7b46f"/><circle cx="7" cy="8" r=".9" fill="#c7b46f"/></pattern>
+<pattern id="pCap" patternUnits="userSpaceOnUse" width="22" height="10"><rect width="22" height="10" fill="#d3c49d"/><path d="M0 5 h9 M13 5 h7" stroke="#9e8e66" stroke-width="1.2"/></pattern>
+<pattern id="pRock" patternUnits="userSpaceOnUse" width="30" height="16"><rect width="30" height="16" fill="#bcac91"/><path d="M0 8 H30 M10 0 V8 M24 8 V16" stroke="#8d7d63" stroke-width="1.1"/></pattern>
+<pattern id="pSoil" patternUnits="userSpaceOnUse" width="12" height="12"><rect width="12" height="12" fill="#c8ad86"/><path d="M2 9 l2-2 M8 4 l2-2" stroke="#8f7553"/></pattern>
+<pattern id="pClay" patternUnits="userSpaceOnUse" width="16" height="8"><rect width="16" height="8" fill="#e2d1a6"/><path d="M1 4 h6" stroke="#b39c66"/></pattern>
+<linearGradient id="gWater" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9daee"/><stop offset="1" stop-color="#7fb1d4"/></linearGradient>`;
+}
+function stratigraphy(coastal) {
+  return coastal
+    ? [{ id: 'made', name: 'Made ground (fill)', fill: 'url(#pMade)', sw: '#dcc7a8', depth: 2.5, rel: 'ground', landOnly: true }, { id: 'sand', name: 'Marine sand & silt', fill: 'url(#pSand)', sw: '#f0e3aa', bottom: -9 }, { id: 'cap', name: 'Caprock', fill: 'url(#pCap)', sw: '#d3c49d', bottom: -13 }, { id: 'rock', name: 'Sandstone bedrock', fill: 'url(#pRock)', sw: '#bcac91', bottom: -Infinity }]
+    : [{ id: 'soil', name: 'Topsoil / made ground', fill: 'url(#pSoil)', sw: '#c8ad86', depth: 1.5, rel: 'ground', landOnly: true }, { id: 'clay', name: 'Clay / silt / sand', fill: 'url(#pClay)', sw: '#e2d1a6', depth: 8, rel: 'ground' }, { id: 'weath', name: 'Weathered rock', fill: 'url(#pCap)', sw: '#d3c49d', depth: 14, rel: 'ground' }, { id: 'rock', name: 'Bedrock', fill: 'url(#pRock)', sw: '#bcac91', bottom: -Infinity }];
+}
+function nearestPlace(lon, lat, maxM = 2500) {
+  let best = null, bd = maxM;
+  for (const p of (S.osm && S.osm.places) || []) { const a = toLocal(p.lon, p.lat), b = toLocal(lon, lat), d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (d < bd) { bd = d; best = p.name; } }
+  return best;
+}
+/* one illustrated section block; returns {svg, height} */
+function illustratedBlock(sec0, x0, y0, width, title) {
+  const sec = trimSection(sec0, +$('#illLen').value || 0), sd = sectionData(sec), o = S.osm || emptyOSM(), ent = $('#entourage').checked;
+  const L = sd.L, coastal = S.dem.min < 6;
+  // water bodies on the line, with level and a synthesised bed where the DEM is flat water
+  const waters = sd.water.map(w => ({ ...w, level: Math.min(sd.zAlong(w.d0), sd.zAlong(w.d1)) }));
+  for (const w of waters) { w.level = coastal ? Math.max(0, Math.min(w.level, 1)) : w.level; }
+  const bed = s => {
+    let z = sd.zAlong(s);
+    for (const w of waters) if (s >= w.d0 && s <= w.d1) {
+      const seg = sd.profile.filter(p => p[0] >= w.d0 && p[0] <= w.d1), rng = seg.length ? Math.max(...seg.map(p => p[1])) - Math.min(...seg.map(p => p[1])) : 0;
+      if (rng < 1.2) { const Dp = clamp((w.d1 - w.d0) * 0.025, 1.5, 7); z = w.level - 0.6 - Dp * Math.sin(Math.PI * (s - w.d0) / (w.d1 - w.d0)); }
+      else z = Math.min(z, w.level - 0.3);
+    }
+    return z;
+  };
+  const inWater = s => waters.some(w => s >= w.d0 && s <= w.d1);
+  const datum = waters.length ? waters[0].level : (coastal ? 0 : null);
+  const NS = 360, prof = Array.from({ length: NS + 1 }, (_, k) => { const s = L * k / NS; return [s, bed(s)]; });
+  const zGroundMin = Math.min(...prof.map(p => p[1]));
+  const zBot = Math.min(zGroundMin, datum ?? zGroundMin) - (coastal ? 20 : 22);
+  const zTop = Math.max(sd.zmax, ...prof.map(p => p[1])) + 6;
+  const plotW = width - 120, maxH = 640;
+  let sx = plotW / L, exag = clamp(560 / ((zTop - zBot) * sx), 1, 4);
+  if ((zTop - zBot) * sx > maxH) { sx = maxH / (zTop - zBot); exag = 1; }
+  const sz = sx * exag, dW = L * sx, X0 = x0 + 90 + (plotW - dW) / 2, X = s => X0 + s * sx;
+  const labelBand = 150, plotTop = y0 + labelBand, Y = z => plotTop + (zTop - z) * sz, yBot = Y(zBot);
+  let g = `<defs><clipPath id="ilc${sec.n}"><rect x="${r1(X0)}" y="${r1(plotTop - 20)}" width="${r1(dW)}" height="${r1(yBot - plotTop + 20)}"/></clipPath></defs>`;
+  // ── strata
+  const layers = stratigraphy(coastal), wav = (s, k) => 0.7 * Math.sin(s / 37 + k) + 0.45 * Math.sin(s / 91 + 2 * k);
+  let upper = prof.map(p => [p[0], p[1]]);
+  const strata = [];
+  layers.forEach((ly, k) => {
+    const lower = prof.map(([s, zg], i) => {
+      let z = ly.bottom === -Infinity ? zBot : ly.rel === 'ground' ? zg - ly.depth + (ly.landOnly ? 0 : wav(s, k)) : (datum ?? zGroundMin) + ly.bottom + wav(s, k);
+      if (ly.landOnly && inWater(s)) z = upper[i][1];
+      return [s, Math.min(upper[i][1], Math.max(z, zBot))];
+    });
+    const pts = upper.map(p => `${r1(X(p[0]))},${r1(Y(p[1]))}`).concat(lower.slice().reverse().map(p => `${r1(X(p[0]))},${r1(Y(p[1]))}`)).join(' ');
+    strata.push(`<polygon points="${pts}" fill="${ly.fill}" stroke="#8b7a60" stroke-width="0.8"/>`);
+    const mid = lower.map((p, i) => [p[0], (p[1] + upper[i][1]) / 2]), lbl = mid[Math.round(NS * (0.5 + 0.1 * k))];
+    const thick = upper[Math.round(NS * (0.5 + 0.1 * k))][1] - lower[Math.round(NS * (0.5 + 0.1 * k))][1];
+    if (thick * sz > 16) strata.push(`<text x="${r1(X(lbl[0]))}" y="${r1(Y(lbl[1]) + 6)}" font-size="16" font-weight="700" text-anchor="middle" fill="#4a3d2c">${esc(ly.name.toUpperCase())}</text>`);
+    upper = lower;
+  });
+  g += `<g clip-path="url(#ilc${sec.n})">`;
+  // ── buildings beyond (elevation), far first
+  const elevBuilding = (b, cut) => {
+    const x = X(b.d0), w = Math.max(2, (b.d1 - b.d0) * sx), yb = Y(b.base), yt = Y(b.top), floors = Math.max(1, Math.round((b.top - b.base) / 3.5));
+    const shade = cut ? '' : (() => { const t = clamp(b.dist / sd.depth, 0, 1); return `fill-opacity="${r1(1 - 0.45 * t)}"`; })();
+    let s = `<rect x="${r1(x)}" y="${r1(yt)}" width="${r1(w)}" height="${r1(yb - yt)}" fill="#e2d4bc" ${shade} stroke="#8a7b66" stroke-width="0.9"/>`;
+    const fh = (yb - yt) / floors;
+    if (fh > 7 && w > 14) for (let f = 0; f < floors; f++) {
+      const wy = yb - (f + 1) * fh + fh * 0.28, nW = Math.max(1, Math.floor(w / Math.max(8, 3.2 * sx)));
+      for (let k = 0; k < nW; k++) { const cw = w / nW; s += `<rect x="${r1(x + k * cw + cw * 0.25)}" y="${r1(wy)}" width="${r1(cw * 0.5)}" height="${r1(fh * 0.42)}" fill="#b8c4ca" ${shade} stroke="#7d7466" stroke-width="0.5"/>`; }
+    }
+    if (isMosque(b.tags)) {
+      const dr = Math.min(w * 0.3, 9 * sx), cx = x + w / 2;
+      s += `<path d="M${r1(cx - dr)},${r1(yt)} A${r1(dr)},${r1(dr * Math.min(1.3, sz / sx))} 0 0 1 ${r1(cx + dr)},${r1(yt)}Z" fill="#e8dcc6" stroke="#8a7b66"/><line x1="${r1(cx)}" y1="${r1(yt - dr * Math.min(1.3, sz / sx))}" x2="${r1(cx)}" y2="${r1(yt - dr * Math.min(1.3, sz / sx) - 2.5 * sz)}" stroke="#8a7b66" stroke-width="1.5"/>`;
+      const mh = (b.top - b.base) * 1.7 + 12, mx = x + Math.min(w - 4 * sx, w * 0.12), mw = Math.max(4, 3 * sx);
+      s += `<rect x="${r1(mx)}" y="${r1(Y(b.base + mh))}" width="${r1(mw)}" height="${r1(Y(b.base) - Y(b.base + mh))}" fill="#eadfca" stroke="#8a7b66"/><rect x="${r1(mx - mw * 0.3)}" y="${r1(Y(b.base + mh * 0.8))}" width="${r1(mw * 1.6)}" height="${r1(Math.max(2, 0.8 * sz))}" fill="#d6c7ab" stroke="#8a7b66"/><path d="M${r1(mx)},${r1(Y(b.base + mh))} L${r1(mx + mw / 2)},${r1(Y(b.base + mh + 6))} L${r1(mx + mw)},${r1(Y(b.base + mh))}Z" fill="#d6c7ab" stroke="#8a7b66"/>`;
+    } else if (isChurch(b.tags)) {
+      const cx = x + w * 0.2; s += `<path d="M${r1(cx - 3 * sx)},${r1(yt)} L${r1(cx)},${r1(yt - 14 * sz)} L${r1(cx + 3 * sx)},${r1(yt)}Z" fill="#e2d4bc" stroke="#8a7b66"/>`;
+    }
+    return s;
+  };
+  g += sd.beyond.slice().sort((a, b) => b.dist - a.dist).filter(b => b.dist < sd.depth * 0.8).map(b => elevBuilding(b, false)).join('');
+  // ── ground & water
+  g += strata.join('');
+  for (const w of waters) {
+    const seg = prof.filter(p => p[0] >= w.d0 && p[0] <= w.d1);
+    g += `<polygon points="${r1(X(w.d0))},${r1(Y(w.level))} ${seg.map(p => `${r1(X(p[0]))},${r1(Y(Math.min(p[1], w.level)))}`).join(' ')} ${r1(X(w.d1))},${r1(Y(w.level))}" fill="url(#gWater)" stroke="#4f8fbf" stroke-width="1.2"/>`;
+    for (let s = w.d0 + 4; s < w.d1 - 4; s += Math.max(6, 18 / sx)) g += `<path d="M${r1(X(s))},${r1(Y(w.level) + 7)} q${r1(3)},-3 ${r1(6)},0 t${r1(6)},0" fill="none" stroke="#ffffff" stroke-opacity=".7"/>`;
+  }
+  g += `<polyline points="${prof.filter(p => !inWater(p[0])).length ? prof.map(p => `${r1(X(p[0]))},${r1(Y(p[1]))}`).join(' ') : ''}" fill="none" stroke="#3d362e" stroke-width="2.2"/>`;
+  // ── roads in section: asphalt band, kerbs, cars, lamps, people
+  const crossings = [];
+  for (const r of o.roads) {
+    const pts = r.pts.map(p => toLocal(p[0], p[1]));
+    for (let k = 0; k < pts.length - 1; k++) {
+      const P = pts[k], Q = pts[k + 1], sp = dot2(P, sd.A, sd.n), sq = dot2(Q, sd.A, sd.n);
+      if ((sp > 0) === (sq > 0)) continue;
+      const t = sp / (sp - sq), s = dot2([P[0] + t * (Q[0] - P[0]), P[1] + t * (Q[1] - P[1])], sd.A, sd.u);
+      if (s < 0 || s > L || inWater(s)) continue;
+      const cosA = Math.abs(((Q[0] - P[0]) * sd.u[0] + (Q[1] - P[1]) * sd.u[1]) / (Math.hypot(Q[0] - P[0], Q[1] - P[1]) || 1)), wAlong = Math.min(r.width / Math.max(0.25, Math.sqrt(1 - cosA * cosA)), r.width * 3);
+      if (!crossings.some(c => Math.abs(c.s - s) < 3)) crossings.push({ s, w: wAlong, r });
+    }
+  }
+  let rnd = mulberry32(sec.n.charCodeAt(0) * 97);
+  const person = (s, z, h = 1.75) => `<g transform="translate(${r1(X(s))},${r1(Y(z))}) scale(${r1(sx * 10) / 10},${r1(-sz * 10) / 10})" fill="none" stroke="#3d362e" stroke-width="1.2" vector-effect="non-scaling-stroke"><path d="M-0.18,0 L0,0.9 L0.18,0 M0,0.9 L0,1.42 M-0.25,1.15 L0.25,1.2" vector-effect="non-scaling-stroke"/><circle cx="0" cy="${h - 0.14}" r="0.15" fill="#3d362e" vector-effect="non-scaling-stroke"/></g>`;
+  const car = (s, z, dir) => { const c = CAR_COLS[Math.floor(rnd() * CAR_COLS.length)]; return `<g transform="translate(${r1(X(s))},${r1(Y(z))}) scale(${r1(sx * dir * 100) / 100},${r1(-sz * 100) / 100})"><path d="M0,0.35 L0,0.85 L0.9,0.95 L1.5,1.45 L3.2,1.45 L3.85,0.95 L4.5,0.85 L4.5,0.35 Z" fill="${c}" stroke="#3d362e" stroke-width="1" vector-effect="non-scaling-stroke"/><path d="M1.65,1.32 L3.1,1.32 L3.55,0.98 L1.2,0.98Z" fill="#9fb4c2" stroke="#3d362e" stroke-width=".6" vector-effect="non-scaling-stroke"/><circle cx="0.95" cy="0.32" r="0.32" fill="#2b2b2b"/><circle cx="3.6" cy="0.32" r="0.32" fill="#2b2b2b"/></g>`; };
+  const lamp = (s, z, dir) => `<g fill="none" stroke="#5a5650" stroke-width="1.6"><line x1="${r1(X(s))}" y1="${r1(Y(z))}" x2="${r1(X(s))}" y2="${r1(Y(z + 8))}"/><path d="M${r1(X(s))},${r1(Y(z + 8))} q${r1(dir * 1.2 * sx)},${r1(-0.6 * sz)} ${r1(dir * 2 * sx)},${r1(0.1 * sz)}"/></g><ellipse cx="${r1(X(s + dir * 2))}" cy="${r1(Y(z + 7.9))}" rx="${r1(Math.max(2, 0.5 * sx))}" ry="2" fill="#f4e6a6" stroke="#5a5650"/>`;
+  const tree = (s, z, h) => { const r = h * 0.24; return `<g><line x1="${r1(X(s))}" y1="${r1(Y(z))}" x2="${r1(X(s))}" y2="${r1(Y(z + h * 0.5))}" stroke="#6b5641" stroke-width="${r1(Math.max(1.5, 0.35 * sx))}"/>${[[0, 0.68, 1], [-0.55, 0.58, 0.75], [0.55, 0.6, 0.8], [0.1, 0.84, 0.7]].map(([dx, dy, k]) => `<ellipse cx="${r1(X(s + dx * r))}" cy="${r1(Y(z + h * dy))}" rx="${r1(r * k * sx)}" ry="${r1(r * k * sz * 0.85)}" fill="#9cbf7f" fill-opacity=".92" stroke="#5f8a4a" stroke-width="0.9"/>`).join('')}</g>`; };
+  let ents = '';
+  for (const c of crossings) {
+    const zg = sd.zAlong(c.s), w = c.w, x1 = c.s - w / 2, x2 = c.s + w / 2;
+    if (c.r.width >= 4) {
+      g += `<rect x="${r1(X(x1))}" y="${r1(Y(zg) - 1)}" width="${r1(w * sx)}" height="${r1(Math.max(3, 0.35 * sz))}" fill="#4a4a4a"/>`;
+      if (ent) {
+        const lanes = Math.max(1, Math.round(w / 3.6));
+        for (let k = 0; k < Math.min(lanes, 6); k++) if (rnd() < 0.7) ents += car(x1 + k * w / lanes + 0.2, zg, 1);
+        if (c.r.width >= 6) ents += lamp(x1 - 1, zg, 1) + lamp(x2 + 1, zg, -1);
+        if (rnd() < 0.8) ents += person(x2 + 2.2, zg);
+      }
+    } else if (ent && rnd() < 0.7) ents += person(c.s, zg) + (rnd() < 0.5 ? person(c.s + 0.9, zg, 1.6) : '');
+  }
+  // trees: OSM trees close to the cut, plus planting in green spaces the line crosses
+  if (ent) {
+    for (const t of sd.trees.filter(t => t.dist < 40)) ents += tree(t.d, sd.zAlong(t.d), t.h);
+    for (const gsp of o.green) for (const [d0, d1] of insideIntervals(lineCrossings(gsp.ring.map(p => toLocal(p[0], p[1])), sd.A, sd.u, sd.n), L))
+      for (let s = d0 + 4; s < d1 - 3; s += 9 + rnd() * 6) ents += tree(s, sd.zAlong(s), 7 + rnd() * 5);
+    for (const w of waters) if (w.d1 - w.d0 > 60) for (let s = w.d0 + 25; s < w.d1 - 30; s += 70 + rnd() * 60) {
+      const bx = s, by = w.level, k = rnd() < 0.5 ? 1 : -1, hl = 20;
+      ents += `<g transform="translate(${r1(X(bx))},${r1(Y(by))}) scale(${r1(sx * k * 100) / 100},${r1(-sz * 100) / 100})"><path d="M-${hl / 2},1.4 L-${hl / 2 - 2.5},-0.9 L${hl / 2 - 2},-0.9 L${hl / 2},2 Z" fill="#9a6b45" stroke="#4b3a2a" stroke-width="1" vector-effect="non-scaling-stroke"/><line x1="-1" y1="1" x2="-1" y2="15" stroke="#4b3a2a" stroke-width="1.4" vector-effect="non-scaling-stroke"/><line x1="5" y1="1" x2="5" y2="11" stroke="#4b3a2a" stroke-width="1.2" vector-effect="non-scaling-stroke"/><path d="M-1,14 L-8,3 L-1,3Z" fill="#f2ead8" stroke="#4b3a2a" stroke-width=".8" vector-effect="non-scaling-stroke"/><path d="M5,10 L0.5,3 L5,3Z" fill="#f2ead8" stroke="#4b3a2a" stroke-width=".8" vector-effect="non-scaling-stroke"/><path d="M-${hl / 2},1.4 L-1,15 L${hl / 2},2" fill="none" stroke="#4b3a2a" stroke-width=".5" vector-effect="non-scaling-stroke"/></g>`;
+    }
+  }
+  // ── buildings cut by the section: walls, slabs, rear windows, foundations
+  for (const c of sd.cuts.slice().sort((a, b) => a.d0 - b.d0)) {
+    const x = X(c.d0), w = Math.max(2, (c.d1 - c.d0) * sx), yb = Y(c.base), yt = Y(c.top), floors = Math.max(1, Math.round(c.h / 3.5)), fh = (yb - yt) / floors;
+    const wt = Math.max(2.5, 0.3 * sx), st = Math.max(2.5, 0.3 * sz);
+    if (floors >= 5) { const nP = Math.max(2, Math.round(w / Math.max(10, 6 * sx))); for (let k = 0; k < nP; k++) { const px = x + w * (k + 0.5) / nP; g += `<line x1="${r1(px)}" y1="${r1(yb)}" x2="${r1(px)}" y2="${r1(Y(c.base - Math.min(18, 4 + floors * 0.8)))}" stroke="#6a6258" stroke-width="${r1(Math.max(2, 0.6 * sx))}"/>`; } g += `<rect x="${r1(x - wt)}" y="${r1(yb)}" width="${r1(w + 2 * wt)}" height="${r1(Math.max(4, 1.2 * sz))}" fill="#8f877c" stroke="#3d362e"/>`; }
+    else g += `<rect x="${r1(x - wt)}" y="${r1(yb)}" width="${r1(w + 2 * wt)}" height="${r1(Math.max(3, 0.8 * sz))}" fill="#8f877c" stroke="#3d362e"/>`;
+    g += `<rect x="${r1(x)}" y="${r1(yt)}" width="${r1(w)}" height="${r1(yb - yt)}" fill="#f6efe2"/>`;
+    if (fh > 6 && w > 12) for (let f = 0; f < floors; f++) {
+      const fy = yb - (f + 1) * fh, nW = Math.max(1, Math.floor(w / Math.max(16, 4.5 * sx)));
+      for (let k = 0; k < nW; k++) { const cw = w / nW; g += `<rect x="${r1(x + k * cw + cw * 0.3)}" y="${r1(fy + fh * 0.3)}" width="${r1(cw * 0.4)}" height="${r1(fh * 0.42)}" fill="#dfe6e8" stroke="#a49b8e" stroke-width="0.6"/>`; }
+      if (w > 60 && fh > 14) { const px = x + w * (0.35 + 0.3 * hash01(c.d0 + f)); g += `<line x1="${r1(px)}" y1="${r1(fy + st)}" x2="${r1(px)}" y2="${r1(fy + fh)}" stroke="#7b7266" stroke-width="1.4"/>`; }
+      if (ent && f === 0 && fh > 9 && rnd() < 0.6) g += person(c.d0 + (c.d1 - c.d0) * (0.3 + 0.4 * rnd()), c.base);
+    }
+    for (let f = 0; f <= floors; f++) g += `<rect x="${r1(x)}" y="${r1(yb - f * fh - (f ? st / 2 : 0))}" width="${r1(w)}" height="${r1(st)}" fill="#3d362e"/>`;
+    g += `<rect x="${r1(x)}" y="${r1(yt)}" width="${r1(wt)}" height="${r1(yb - yt)}" fill="#3d362e"/><rect x="${r1(x + w - wt)}" y="${r1(yt)}" width="${r1(wt)}" height="${r1(yb - yt)}" fill="#3d362e"/>`;
+    g += `<rect x="${r1(x)}" y="${r1(yt - Math.max(3, 1 * sz))}" width="${r1(wt)}" height="${r1(Math.max(3, 1 * sz))}" fill="#3d362e"/><rect x="${r1(x + w - wt)}" y="${r1(yt - Math.max(3, 1 * sz))}" width="${r1(wt)}" height="${r1(Math.max(3, 1 * sz))}" fill="#3d362e"/>`;
+    if (isMosque(c.tags)) { const dr = Math.min(w * 0.3, 9 * sx), cx = x + w / 2; g += `<path d="M${r1(cx - dr)},${r1(yt)} A${r1(dr)},${r1(dr)} 0 0 1 ${r1(cx + dr)},${r1(yt)}" fill="#f6efe2" stroke="#3d362e" stroke-width="${r1(st)}"/>`; }
+  }
+  g += ents + '</g>';
+  // ── datum, level marks, gridlines & labels
+  const lvlStep = niceStep(zTop - zBot, 7);
+  for (let z = Math.ceil(zBot / lvlStep) * lvlStep; z <= zTop; z += lvlStep) g += `<line x1="${r1(X0 - 14)}" y1="${r1(Y(z))}" x2="${r1(X0)}" y2="${r1(Y(z))}" stroke="#3d362e" stroke-width="1.2"/><text x="${r1(X0 - 18)}" y="${r1(Y(z) + 5)}" font-size="14" text-anchor="end" fill="#3d362e">${Math.abs(z) < 1e-9 ? '±0.00' : (z > 0 ? '+' : '') + z.toFixed(2)}</text>`;
+  if (datum != null) g += `<line x1="${r1(X0)}" y1="${r1(Y(datum))}" x2="${r1(X0 + dW)}" y2="${r1(Y(datum))}" stroke="#2f6f9f" stroke-width="1" stroke-dasharray="10 5"/><path d="M${r1(X0 + 14)},${r1(Y(datum) - 14)} l8,12 l8,-12z" fill="#2f6f9f"/><text x="${r1(X0 + 34)}" y="${r1(Y(datum) - 4)}" font-size="14" fill="#2f6f9f">${waters.length ? 'W.L.' : 'M.S.L.'} ${datum >= 0 ? '+' : ''}${datum.toFixed(2)}</text>`;
+  // gridline candidates: ends, named roads, water, named / large buildings
+  const marks = [{ s: 0, label: '' }];
+  for (const c of crossings) if (c.r.width >= 6 || c.r.tags.name) marks.push({ s: c.s, label: (c.r.tags.name || c.r.tags.ref || (c.r.width >= 8 ? 'MAIN ROAD' : 'LANE')) });
+  for (const w of waters) { const nm = (o.water.find(x => x.tags.name && insideIntervals(lineCrossings(x.ring.map(p => toLocal(p[0], p[1])), sd.A, sd.u, sd.n), L).length) || {}).tags; marks.push({ s: w.d0, label: '' }, { s: (w.d0 + w.d1) / 2, label: nm ? (nm['name:en'] || nm.name) : 'WATER BODY', water: true }); }
+  for (const c of sd.cuts) if (c.name || isMosque(c.tags) || (c.d1 - c.d0) > L * 0.08) marks.push({ s: (c.d0 + c.d1) / 2, label: c.name || (isMosque(c.tags) ? 'MOSQUE' : `BUILDING (${Math.round(c.h)} m)`) });
+  marks.push({ s: L, label: '' });
+  marks.sort((a, b) => a.s - b.s);
+  const kept = []; for (const m of marks) if (!kept.length || (X(m.s) - X(kept[kept.length - 1].s)) > 120) kept.push(m);
+  // fill long gaps with district / place names
+  for (let i = 0; i < kept.length - 1; i++) {
+    const a = kept[i], b = kept[i + 1];
+    if (X(b.s) - X(a.s) > 420) { const sm = (a.s + b.s) / 2, x = sd.A[0] + sd.u[0] * sm, y = sd.A[1] + sd.u[1] * sm, nm = nearestPlace(S.m.lon0 + x / S.m.mLon, S.m.lat0 + y / S.m.mLat); if (nm) { kept.splice(i + 1, 0, { s: sm, label: nm, place: true }); i++; } }
+  }
+  const GL = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; let gi = 0;
+  for (const m of kept) {
+    const x = X(m.s), tag = m.s === 0 ? bearingName(Math.atan2(-sd.u[0], -sd.u[1]) / D2R).replace(/-/g, ' ').replace(/(\w)\w*\s?(\w)?\w*/, (q, a, b) => (a + (b || '')).toUpperCase()) : m.s === L ? bearingName(Math.atan2(sd.u[0], sd.u[1]) / D2R).replace(/-/g, ' ').replace(/(\w)\w*\s?(\w)?\w*/, (q, a, b) => (a + (b || '')).toUpperCase()) : String(++gi);
+    g += `<line x1="${r1(x)}" y1="${r1(y0 + 34)}" x2="${r1(x)}" y2="${r1(yBot)}" stroke="#8c8478" stroke-width="1" stroke-dasharray="6 6"/><circle cx="${r1(x)}" cy="${y0 + 18}" r="16" fill="#f6f1e6" stroke="#3d362e" stroke-width="1.4"/><text x="${r1(x)}" y="${y0 + 23}" font-size="13" text-anchor="middle" fill="#3d362e">${esc(tag)}</text>`;
+    if (m.label) {
+      const words = String(m.label).toUpperCase().split(/\s+/), lines = []; let cur = '';
+      for (const wd of words) { if ((cur + ' ' + wd).trim().length > 18 && cur) { lines.push(cur); cur = wd; } else cur = (cur + ' ' + wd).trim(); }
+      if (cur) lines.push(cur);
+      g += lines.slice(0, 3).map((ln, k) => `<text x="${r1(x)}" y="${y0 + 62 + k * 21}" font-size="17" font-weight="${m.place ? 400 : 700}" text-anchor="middle" fill="#3d362e" paint-order="stroke" stroke="#f6f1e6" stroke-width="4">${esc(ln)}</text>`).join('');
+    }
+  }
+  g += `<text x="${x0}" y="${r1(yBot + 40)}" font-size="22" font-weight="700" fill="#2b2620">${esc(title)}</text>`;
+  g += `<text x="${x0}" y="${r1(yBot + 64)}" font-size="15" fill="#6b6256">${fmt(L)} m · horizontal 1:1${exag > 1.05 ? `, vertical ×${exag.toFixed(1)}` : ''} · looking ${sd.view} · ${sd.cuts.length} buildings cut · ground strata indicative (not from a site investigation)</text>`;
+  return { svg: g, height: yBot + 80 - y0, layers, sx, coastal };
+}
+function sheetIllustrated(secs) {
+  const W = 2600, panelW = 330, x0 = 50, dw = W - panelW - 90;
+  let y = 60, body = '', info = null;
+  const dirName = sec => { const A = toLocal(...sec.a), B = toLocal(...sec.b), d = Math.atan2(B[0] - A[0], B[1] - A[1]) / D2R; return `${bearingName(d + 180).toUpperCase()} TO ${bearingName(d).toUpperCase()}`; };
+  secs.forEach((sec, i) => {
+    const kind = i === 0 ? 'LONGITUDINAL SECTION' : 'TRANSVERSE SECTION';
+    const blk = illustratedBlock(sec, x0, y, dw, `SECTION ${sec.n}–${sec.n}': ${kind} (${dirName(sec)})`);
+    body += blk.svg; y += blk.height + 40; info = info || blk;
+  });
+  const H = Math.max(y + 30, 1100), px = W - panelW - 30;
+  // border with grid references
+  let frame = `<rect x="14" y="14" width="${W - 28}" height="${H - 28}" fill="none" stroke="#3d362e" stroke-width="2"/><rect x="26" y="26" width="${W - 52}" height="${H - 52}" fill="none" stroke="#3d362e" stroke-width="1"/>`;
+  for (let k = 1; k <= 8; k++) { const fx = 26 + (W - 52) * (k - 0.5) / 8; frame += `<text x="${r1(fx)}" y="23" font-size="11" text-anchor="middle" fill="#3d362e">${k}</text><text x="${r1(fx)}" y="${H - 16}" font-size="11" text-anchor="middle" fill="#3d362e">${k}</text>`; if (k < 8) frame += `<line x1="${r1(26 + (W - 52) * k / 8)}" y1="14" x2="${r1(26 + (W - 52) * k / 8)}" y2="26" stroke="#3d362e"/>`; }
+  for (let k = 0; k < 4; k++) { const fy = 26 + (H - 52) * (k + 0.5) / 4; frame += `<text x="20" y="${r1(fy)}" font-size="11" text-anchor="middle" fill="#3d362e">${'ABCD'[k]}</text><text x="${W - 20}" y="${r1(fy)}" font-size="11" text-anchor="middle" fill="#3d362e">${'ABCD'[k]}</text>`; }
+  // material legend
+  const leg = [...info.layers.map(l => [l.fill, l.name]), ['url(#gWater)', 'Water'], ['#3d362e', 'Structure in section (walls, slabs)'], ['#f6efe2', 'Interior space (cut)'], ['#e2d4bc', 'Buildings beyond (elevation)'], ['#9cbf7f', 'Trees & planting'], ['#4a4a4a', 'Road surface'], ['#8f877c', 'Foundations / piles']];
+  let pnl = `<rect x="${px}" y="60" width="${panelW}" height="${54 + leg.length * 30}" fill="#fbf8f1" stroke="#3d362e"/><text x="${px + 14}" y="88" font-size="17" font-weight="700">MATERIAL LEGEND</text>` + leg.map((l, k) => `<rect x="${px + 14}" y="${104 + k * 30}" width="40" height="20" fill="${l[0]}" stroke="#5a5248"/><text x="${px + 64}" y="${119 + k * 30}" font-size="14">${esc(l[1])}</text>`).join('');
+  // title block
+  const ty = H - 470, [lon, lat] = sitePoint(), place = nearestPlace(lon, lat, 5000) || 'SELECTED SITE';
+  pnl += `<rect x="${px}" y="${ty}" width="${panelW}" height="420" fill="#fbf8f1" stroke="#3d362e"/>` + keyPlan(px + 45, ty + 40, 240, secs[0]).replace(/KEY PLAN/, 'KEY PLAN');
+  pnl += `<line x1="${px}" y1="${ty + 300}" x2="${px + panelW}" y2="${ty + 300}" stroke="#3d362e"/><text x="${px + panelW / 2}" y="${ty + 328}" font-size="18" font-weight="700" text-anchor="middle">TECHNICAL SECTION DRAWINGS</text><text x="${px + panelW / 2}" y="${ty + 352}" font-size="15" text-anchor="middle">${esc(place.toUpperCase())}</text><text x="${px + panelW / 2}" y="${ty + 374}" font-size="14" text-anchor="middle">${Math.abs(lat).toFixed(6)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(6)}° ${lon >= 0 ? 'E' : 'W'}</text><text x="${px + panelW / 2}" y="${ty + 396}" font-size="13" fill="#6b6256" text-anchor="middle">${new Date().toISOString().slice(0, 10)} · TerraKit</text>`;
+  const L0 = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000].filter(v => v * info.sx <= 280).pop() || 5, bl = L0 * info.sx;
+  pnl += `<g transform="translate(${px + 20},${ty - 60})">${[0, 1, 2, 3].map(k => `<rect x="${r1(k * bl / 4)}" y="0" width="${r1(bl / 4)}" height="9" fill="${k % 2 ? '#fff' : '#3d362e'}" stroke="#3d362e"/>`).join('')}<text x="0" y="-6" font-size="13">0</text><text x="${r1(bl)}" y="-6" font-size="13" text-anchor="middle">${L0} m</text><text x="${r1(bl / 2)}" y="28" font-size="13" text-anchor="middle">SCALE (HORIZONTAL)</text></g>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${SF}"><defs>${ilDefs()}</defs><rect width="100%" height="100%" fill="#f6f1e6"/>${frame}${body}${pnl}<text x="${x0}" y="${H - 34}" font-size="14" font-style="italic" fill="#6b6256">Data: OpenStreetMap contributors (ODbL), AWS Terrain Tiles. People, vehicles, boats and ground strata are illustrative.</text></svg>`;
 }
 window.__terrakit = { S, exportOne, generate, generateSheets }; window.__svgToPng = svgToPng; window.__setBox = b => { setBBox(b); map.fitBounds(selRect.getBounds()); };
 </script>
