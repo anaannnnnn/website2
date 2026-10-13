@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { sunPosition } from './geo.js';
 
-export const CONTEXT_ITEMS = ['sunpath', 'sun', 'wind', 'people', 'north', 'scale', 'outline'];
+export const CONTEXT_ITEMS = ['people', 'cars', 'sunpath', 'sun', 'wind', 'north', 'scale', 'outline'];
 
 const mat = (c, o = {}) => new THREE.MeshBasicMaterial({ color: c, ...o });
 function label(text, size, color = '#222') {
@@ -96,6 +96,18 @@ export function buildContext(M, o) {
       m4.compose(new THREE.Vector3(x, hAt(x, y), -y), new THREE.Quaternion(), new THREE.Vector3(sc, sc, sc)); inst.setMatrixAt(k, m4); hs.setMatrixAt(k, m4); k++;
     }
     inst.count = hs.count = k; inst.castShadow = hs.castShadow = true; g.add(inst, hs);
+  }
+  if (on.cars) {
+    const rg = rng(23), sc = Math.max(1, size / 250), n = Math.min(24, Math.round(5 + size / 60)), rings = M.buildings.filter(b => b.inFrame).map(b => b.loc[0]);
+    const cols = ['#e9e6df', '#cfd3d6', '#b8bcc0', '#f4f4f2'], body = new THREE.BoxGeometry(4.2, 0.8, 1.8).translate(0, 0.65, 0), cab = new THREE.BoxGeometry(2.2, 0.7, 1.6).translate(-0.2, 1.4, 0);
+    const bm = new THREE.InstancedMesh(body, new THREE.MeshStandardMaterial({ color: '#d8d8d6', roughness: 0.8 }), n), cm = new THREE.InstancedMesh(cab, new THREE.MeshStandardMaterial({ color: '#9aa3aa', roughness: 0.6 }), n), m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
+    let k = 0, tries = 0;
+    while (k < n && tries++ < n * 40) {
+      const x = (rg() - 0.5) * f.w * 0.8, y = (rg() - 0.5) * f.h * 0.8; if (rings.some(r => inPoly(x, y, r))) continue;
+      const e = 1.5 * sc, a = rg() < 0.5 ? 0 : Math.PI / 2; if ([[e, 0], [-e, 0], [0, e], [0, -e]].some(([dx, dy]) => Math.abs(hAt(x + dx, y + dy) - hAt(x, y)) > 0.6 * sc)) continue;
+      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), a); m4.compose(new THREE.Vector3(x, hAt(x, y), -y), q, new THREE.Vector3(sc, sc, sc)); bm.setMatrixAt(k, m4); cm.setMatrixAt(k, m4); bm.setColorAt(k, new THREE.Color(cols[k % 4])); k++;
+    }
+    bm.count = cm.count = k; bm.castShadow = cm.castShadow = true; g.add(bm, cm);
   }
   g.name = 'context3d';
   return g;

@@ -195,10 +195,11 @@
             <label class="f">Vertical exaggeration <span class="mono" id="mExagV">1.0×</span><input type="range" id="mExag" min="1" max="5" step="0.5" value="1"></label>
             <label class="f">Sun — date<input type="date" id="mDate"></label>
             <label class="f">Sun — time (local solar) <span class="mono" id="mTimeV">14:00</span><input type="range" id="mTime" min="5" max="20" step="0.25" value="14"></label>
-            <div class="checks"><label><input type="checkbox" id="mBuild" checked> Buildings</label><label><input type="checkbox" id="mBase" checked> Solid base</label></div>
+            <div class="checks"><label><input type="checkbox" id="mBuild" checked> Buildings</label><label><input type="checkbox" id="mBase" checked> Solid base</label><label><input type="checkbox" id="mClean" checked> White presentation background</label></div>
             <fieldset class="ctx"><legend>3D context — choose what to show</legend>
               <div class="checks">
                 <label><input type="checkbox" data-ctx="people" checked> People (scale figures)</label>
+                <label><input type="checkbox" data-ctx="cars" checked> Cars</label>
                 <label><input type="checkbox" data-ctx="sunpath" checked> Sun path (solstices &amp; equinox)</label>
                 <label><input type="checkbox" data-ctx="sun" checked> Sun at chosen date/time</label>
                 <label><input type="checkbox" data-ctx="wind" checked> Wind directions</label>
@@ -209,7 +210,7 @@
             </fieldset>
             <div class="legend" id="mLegend"></div>
             <div class="dl">
-              <button class="btn ghost" data-m="stl">STL</button><button class="btn ghost" data-m="obj">OBJ</button><button class="btn ghost" data-m="glb">GLB</button><button class="btn ghost" data-m="png">PNG</button>
+              <button class="btn ghost" data-m="stl">STL</button><button class="btn ghost" data-m="obj">OBJ</button><button class="btn ghost" data-m="glb">GLB</button><button class="btn ghost" data-m="png">PNG</button><button class="btn primary" data-m="sheet">Presentation sheet</button>
             </div>
           </div>
         </div>

@@ -158,7 +158,7 @@ export function createViewer(host) {
       if (o.context && Object.values(o.context).some(Boolean)) { ctx = buildContext(M, o); scene.add(ctx); }
       const s = model.size, d = sunDir(M, o.date, o.hour);
       sun.position.copy(d.multiplyScalar(s * 1.5)); const sc = sun.shadow.camera; sc.left = sc.bottom = -s * 0.75; sc.right = sc.top = s * 0.75; sc.near = 1; sc.far = s * 4; sc.updateProjectionMatrix(); sun.shadow.bias = -0.0004; sun.shadow.normalBias = s / 3000;
-      scene.background = new THREE.Color('#eef1f4');
+      scene.background = new THREE.Color(o.clean ? '#ffffff' : '#eef1f4');
       if (first) { camera.near = s / 2000; camera.far = s * 30; /* context ring extends beyond the site */ camera.position.set(-s * 0.45, s * 0.55, s * 0.75); controls.target.set(0, (M.dem.max - M.dem.min) * 0.3, 0); camera.updateProjectionMatrix(); first = false; }
       resize(); need = true;
       return tex && tex.legend;

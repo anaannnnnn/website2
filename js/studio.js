@@ -174,21 +174,36 @@ let viewer = null;
 async function show3D() {
   if (!ST) return;
   if (!viewer) { viewer = ST.view3d.createViewer($('#viewer')); if (!$('#mDate').value) $('#mDate').valueAsDate = new Date(); }
-  const o = { style: $('#mStyle').value, surface: $('#mHeat').value, exag: +$('#mExag').value, buildings: $('#mBuild').checked, base: $('#mBase').checked, iv: Math.max(ST.iv, (ST.M.dem.max - ST.M.dem.min) / 30), date: $('#mDate').valueAsDate || new Date(), hour: +$('#mTime').value, context: Object.fromEntries($$('[data-ctx]').map(c => [c.dataset.ctx, c.checked])) };
+  const o = { style: $('#mStyle').value, surface: $('#mHeat').value, exag: +$('#mExag').value, buildings: $('#mBuild').checked, base: $('#mBase').checked, iv: Math.max(ST.iv, (ST.M.dem.max - ST.M.dem.min) / 30), date: $('#mDate').valueAsDate || new Date(), hour: +$('#mTime').value, clean: $('#mClean').checked, context: Object.fromEntries($$('[data-ctx]').map(c => [c.dataset.ctx, c.checked])) };
   try {
     const lg = await viewer.show(ST.M, o);
     $('#mLegend').innerHTML = lg ? `<div class="hint">${esc(lg.label)}</div><div class="grad" style="background:linear-gradient(90deg,${lg.colors.join(',')})"></div><div class="ends"><span>${fmt(lg.lo, 1)}</span><span>${fmt(lg.hi, 1)}</span></div>` : '';
   } catch (e) { console.error(e); toast('3D failed: ' + e.message, 'err'); }
 }
-['#mStyle', '#mHeat', '#mExag', '#mBuild', '#mBase', '#mDate', '#mTime'].forEach(id => $(id).addEventListener('change', show3D));
+['#mStyle', '#mHeat', '#mExag', '#mBuild', '#mBase', '#mClean', '#mDate', '#mTime'].forEach(id => $(id).addEventListener('change', show3D));
 $$('[data-ctx]').forEach(c => c.addEventListener('change', show3D));
 $('#mExag').addEventListener('input', () => { $('#mExagV').textContent = (+$('#mExag').value).toFixed(1) + '×'; });
 $('#mTime').addEventListener('input', () => { const h = +$('#mTime').value; $('#mTimeV').textContent = `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round(h % 1 * 60)).padStart(2, '0')}`; });
 $$('.model-panel [data-m]').forEach(b => b.onclick = async () => {
   if (!viewer || !viewer.root) return;
   const k = b.dataset.m, name = `${ST.base}_model_view`;
+  if (k === 'sheet') return download(await presentationSheet(), name.replace('_model_view', '_3d_presentation') + '.png');
   if (k === 'png') return download(await viewer.png(), name + '.png');
   if (k === 'stl') return download(ST.view3d.toSTL(viewer.root), name + '.stl');
   if (k === 'obj') return download(ST.view3d.toOBJ(viewer.root), name + '.obj', 'text/plain');
   if (k === 'glb') return download(await ST.view3d.toGLB(viewer.root), name + '.glb');
 });
+
+/* single presentation sheet: white background render + title block + legend of the chosen elements */
+async function presentationSheet() {
+  const img = new Image(); img.src = URL.createObjectURL(await viewer.png()); await img.decode();
+  const W = 2400, pad = 80, ih = Math.round((W - 2 * pad) * img.height / img.width), H = ih + pad * 2 + 260, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, W, H); c.drawImage(img, pad, pad + 80, W - 2 * pad, ih); URL.revokeObjectURL(img.src);
+  const M = ST.M, on = Object.fromEntries($$('[data-ctx]').map(x => [x.dataset.ctx, x.checked])), date = $('#mDate').valueAsDate || new Date(), hr = +$('#mTime').value;
+  c.fillStyle = '#111'; c.font = '700 54px system-ui,sans-serif'; c.fillText('3D SITE MODEL', pad, pad + 40);
+  c.font = '400 30px system-ui,sans-serif'; c.fillStyle = '#555'; c.fillText(`${M.frame.lat.toFixed(4)}°, ${M.frame.lon.toFixed(4)}° · ${Math.round(M.frame.w)} × ${Math.round(M.frame.h)} m · vertical exaggeration ${(+$('#mExag').value).toFixed(1)}×`, pad, pad + 78);
+  const items = [['people', 'People for scale'], ['cars', 'Cars'], ['sunpath', 'Sun path: 21 Jun (red), equinox (green), 21 Dec (blue)'], ['sun', `Sun position ${date.toISOString().slice(0, 10)} ${String(Math.floor(hr)).padStart(2, '0')}:${String(Math.round(hr % 1 * 60)).padStart(2, '0')} solar`], ['wind', 'Prevailing wind directions (arrows point downwind)'], ['north', 'North'], ['scale', 'Scale bar'], ['outline', 'Site boundary (red)']].filter(([k]) => on[k] && (k !== 'wind' || (M.climate && M.climate.wind)));
+  c.font = '500 30px system-ui,sans-serif'; c.fillStyle = '#111'; c.fillText('INCLUDED', pad, ih + pad + 150);
+  c.font = '400 28px system-ui,sans-serif'; c.fillStyle = '#333'; items.forEach(([, l], i) => c.fillText('• ' + l, pad + (i % 2) * 1100, ih + pad + 195 + Math.floor(i / 2) * 40));
+  return new Promise(r => cv.toBlob(r));
+}
