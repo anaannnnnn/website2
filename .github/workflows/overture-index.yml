@@ -1,0 +1,34 @@
+name: Refresh Overture building index
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'   # weekly; Overture publishes a new release roughly monthly
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build index
+        working-directory: tools
+        run: |
+          npm install --no-audit --no-fund
+          node build-overture-index.mjs ../data/overture-index.json
+      - name: Commit if the release changed
+        run: |
+          if git diff --quiet -- data/overture-index.json; then echo "No change"; exit 0; fi
+          OLD=$(git show HEAD:data/overture-index.json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).release))')
+          NEW=$(node -e 'console.log(require("./data/overture-index.json").release)')
+          if [ "$OLD" = "$NEW" ]; then git checkout -- data/overture-index.json; echo "Same release"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/overture-index.json
+          git commit -m "Update Overture building index to $NEW"
+          git push

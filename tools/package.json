@@ -1,0 +1,9 @@
+{
+  "name": "terrakit-tools",
+  "private": true,
+  "type": "module",
+  "description": "Build-time helpers for TerraKit (run by GitHub Actions; the website itself needs no build).",
+  "dependencies": {
+    "hyparquet": "1.31.4"
+  }
+}

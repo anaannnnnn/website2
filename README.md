@@ -1,22 +1,56 @@
-# TerraKit — free terrain & 3D site studio
+# TerraKit — Site Studio
 
-A single-page web app (`index.html`, no build step) that generates and downloads, for free, from open data:
+Free, accurate site drawings for architecture students, anywhere in the world. Pick a site, frame it on a
+rotatable 3D map at the sheet size and scale you'll print, and get true-scale plans, sections, terrain
+analysis, climate boards, CAD/GIS files, a 3D model and laser-cut contour layers.
 
-- **Terrain / DEM**: GeoTIFF, ESRI ASCII grid, XYZ point cloud, 16-bit PNG and R16 heightmaps (Unreal/Unity), 8-bit PNG
-- **Contours**: DXF, GeoJSON, KML, SVG (auto or custom interval, major/minor)
-- **3D models**: STL (watertight, 3D-print scaling), OBJ, textured GLB, DXF site model (terrain mesh, contours, 3D buildings, roads, water, green, trees)
-- **3D styles**: smooth landscape, 3D terrain blocks, terraced contour model, 3D heatmap bars, wireframe
-- **Heatmaps**: elevation, hillshade, slope, aspect, solar exposure, runoff paths (D8 flow accumulation), annual rainfall, rainfall runoff volume, temperature, flood depth, satellite
-- **Rainfall & climate**: last full year of daily rainfall, snow, temperature and evapotranspiration (CSV)
-- **Tools**: flood / water-level simulation, sun position & shadows by date and time, 2D heatmap overlay on the map
-- **Presentation sheets** (vector SVG + PNG): building heights, figure-ground, street hierarchy, land use / green & blue, slope analysis, contour heat map (site and wider area), layered interpretation, 3D topography & contour model, sun path diagram, wind rose, climate summary
-- **Illustrated architectural sections** (A–A′ & B–B′ on one board): ground strata below the water-level datum, water bodies with bed and boats, buildings cut floor-by-floor with slabs, windows and piles, mosques/churches, buildings beyond in elevation, cars, people, trees, street lights, gridlines with place/road/water names, material legend, key plan and title block
-- **True-scale section elevation** (default): orthographic straight view at 1:1, real data only, with measured elevations, distance ruler, building height dimensions, street gridlines and print scale
-- **Rendered 3D section views** (optional): section perspective and sectional aerial view per section — the real area cut open along the line, OSM building footprints with windowed facades and roofs, trees, satellite or map-style ground, sun shadows, poché cut faces, level markers and key plan
-- **Site sections**: A–A′ (west–east) and B–B′ (south–north) through the site plus any line you draw — ground poché, buildings cut and in elevation, trees, water, street names, level datums, key plan; also DXF and CSV profile
-- Automatic repair of terrain-tile dropouts, adjustable smoothing, crisp classed colour bands
-- **Download everything** as one ZIP
+Everything runs in the browser — no account, no paid server. Host it free on GitHub Pages
+(Settings → Pages → deploy from branch, root folder).
 
-Data: AWS Terrain Tiles (SRTM, 3DEP, EU-DEM…), © OpenStreetMap contributors (ODbL), Open-Meteo ERA5 (CC-BY 4.0), Esri World Imagery.
+## How it works
 
-Run locally: open `index.html` in a browser, or serve the folder (`python3 -m http.server`). Host free on GitHub Pages (Settings → Pages → deploy from branch).
+1. **Site** — search (OpenStreetMap Nominatim), paste coordinates, use your location or click the map.
+2. **Frame** — choose the sheet (A4–A0, landscape/portrait) and scale (1:200 – 1:10 000); the frame becomes
+   exactly the area that fits. Drag to move, rotate with the handle, or *Align to street* to snap to the
+   street grid. The map itself rotates and tilts (MapLibre GL, 3D terrain).
+3. **Data** — fetched live, each layer with its source and a reliability badge:
+   - **Terrain**: AWS Terrain Tiles (SRTM, USGS 3DEP, UK EA LIDAR, EU-DEM, LINZ … depending on region),
+     resampled onto a frame-aligned UTM grid, dropouts repaired.
+   - **Buildings**: **Overture Maps** (OpenStreetMap + Microsoft + Google + Esri footprints, heights, floors)
+     read directly from Overture's public GeoParquet files; fallback to live OpenStreetMap, then
+     OpenFreeMap tiles.
+   - **Streets, water, land use, trees, places**: live OpenStreetMap (Overpass, 4 mirrors) + sea polygons.
+   - **Climate & wind**: Open-Meteo ERA5 (last full year).
+4. **Sections** — A–A′ and B–B′ are added along the frame axes; draw more on the map (snapping to the
+   frame axes), drag the ends and watch the live profile.
+5. **Drawings** — choose packs:
+   - **Site plans**: contour site plan with index labels and spot heights, figure-ground, building
+     heights, street hierarchy, land use.
+   - **Sections**: true-scale CAD sections — solid poché cut, hidden-line elevation behind, terrain
+     silhouettes, hatched ground.
+   - **Terrain analysis**: elevation, slope, aspect, solar exposure, runoff paths, clay axonometric model.
+   - **Sun & climate**: sun path, shadow study (solstices/equinox × 9/12/15 h), wind rose, climate summary.
+   - **Physical model**: laser-cut contour layers (contour step = board thickness at model scale,
+     next layer + building footprints engraved, packed on your board size) as SVG/DXF, and a 3D-print STL.
+   - **CAD / GIS**: DXF site model (site-aligned *and* real UTM coordinates), contour DXF/GeoJSON/KML,
+     GeoTIFF (EPSG UTM with rotation), ASCII grid, XYZ points, 16-bit heightmap, OBJ, GLB, GeoJSON.
+
+Every sheet is authored in millimetres and exports as **vector PDF**, SVG or PNG, with a title block
+(project, author, coordinates, UTM zone, scale bar, rotated north arrow, data sources and reliability).
+Projects are saved in the page link — share it to reopen the same site, frame and sections.
+
+## Honest data
+
+Nothing is invented. Buildings without a recorded height use a default height that you set, and are
+hatched / dashed / on separate CAD layers. Missing layers are reported, not filled. Where national
+open data is better than these global sources (lidar, LoD2 city models), it is worth using it alongside.
+
+## Repository
+
+- `index.html`, `css/`, `js/` — the app (plain ES modules, no build step).
+- `data/overture-index.json` — bounding box of each Overture building file; refreshed weekly by
+  `.github/workflows/overture-index.yml` running `tools/build-overture-index.mjs`.
+- `legacy/` — the previous single-file version.
+
+Data © OpenStreetMap contributors (ODbL), Overture Maps Foundation (CDLA-Permissive / ODbL),
+AWS Terrain Tiles / Mapzen, Open-Meteo (CC-BY 4.0), OpenFreeMap, Esri (imagery, view only).
