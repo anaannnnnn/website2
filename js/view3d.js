@@ -87,7 +87,7 @@ export async function surfaceTexture(M, mode) {
       const px = Math.round(lonToX(lon, z) - mos.x0 * 256), py = Math.round(latToY(lat, z) - mos.y0 * 256), q = (clamp(py, 0, mos.cv.height - 1) * mos.cv.width + clamp(px, 0, mos.cv.width - 1)) * 4;
       img.data[p] = src.data[q]; img.data[p + 1] = src.data[q + 1]; img.data[p + 2] = src.data[q + 2]; img.data[p + 3] = 255;
     }
-    c.putImageData(img, 0, 0);
+    c.putImageData(img, 0, 0); mos.cv.width = mos.cv.height = 0;
     return { canvas: cv, legend: null };
   }
   const defs = {
@@ -197,6 +197,10 @@ export async function axonometricPNG(M, o) {
   Object.assign(cam, { left: (x0 + x1) / 2 - w / 2, right: (x0 + x1) / 2 + w / 2, top: (y0 + y1) / 2 + h / 2, bottom: (y0 + y1) / 2 - h / 2 }); cam.updateProjectionMatrix();
   off.render(scene, cam);
   const url = off.domElement.toDataURL('image/png');
-  m.root.traverse(x => { x.geometry && x.geometry.dispose(); });
+  // free everything now: geometry, materials, textures and the off-screen WebGL context itself
+  m.root.traverse(x => { x.geometry && x.geometry.dispose(); for (const mt of [].concat(x.material || [])) { mt.map && mt.map.dispose(); mt.dispose(); } });
+  if (tex.canvas) tex.canvas.width = tex.canvas.height = 0;
+  sun.shadow.map && sun.shadow.map.dispose();
+  off.dispose(); off.forceContextLoss(); off = null;
   return { url, w: Wp, h: Hp };
 }

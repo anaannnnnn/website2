@@ -90,26 +90,47 @@ export async function openStudio(S, H) {
 function fillCards(card, list) {
   const frag = document.createDocumentFragment();
   for (const sh of list) {
+    // keep the drawing as a Blob (browser storage, outside the page's memory), read back only when needed
+    sh.size = EX.svgSize(sh.svg); sh.blob = new Blob([sh.svg], { type: 'image/svg+xml' }); sh.svg = null;
+    if (sh.section) sh.section.svg = null;
+    sh.text = async () => { const t = await sh.blob.text(); return sh.num ? t.replace(/(\d{4}-\d{2}-\d{2})(<\/text>)/, `$1  ·  SHEET ${sh.num}$2`) : t; };
     ST.sheets.push(sh);
     const el = document.createElement('div'); el.className = 'card';
-    const url = URL.createObjectURL(new Blob([sh.svg], { type: 'image/svg+xml' }));
-    el.innerHTML = `<div class="thumb"><img alt="${esc(sh.title)}" src="${url}"></div><div class="cap"><div><strong>${esc(sh.title)}</strong><small>${esc(sh.note || sh.sub)}</small></div></div>
+    el.innerHTML = `<div class="thumb loading"><img alt="${esc(sh.title)}"></div><div class="cap"><div><strong>${esc(sh.title)}</strong><small>${esc(sh.note || sh.sub)}</small></div></div>
       <div class="acts"><button class="btn ghost" data-a="pdf">PDF</button><button class="btn ghost" data-a="svg">SVG</button><button class="btn ghost" data-a="png">PNG</button>${sh.dxf ? '<button class="btn ghost" data-a="dxf">DXF</button>' : ''}</div>`;
-    el.querySelector('.thumb').onclick = () => openModal(sh, url);
+    el.querySelector('.thumb').onclick = () => openModal(sh);
+    queueThumb(sh, el.querySelector('.thumb'));
     el.querySelectorAll('[data-a]').forEach(b => b.onclick = () => sheetDownload(sh, b.dataset.a, b));
     frag.appendChild(el);
   }
   card.replaceWith(frag);
 }
-function numberSheets() { const n = ST.sheets.filter(s => !s.dxf).length; let i = 0; for (const s of ST.sheets) if (!s.dxf) { i++; s.svg = s.svg.replace(/(\d{4}-\d{2}-\d{2})(<\/text>)/, `$1  ·  SHEET ${String(i).padStart(2, '0')}/${String(n).padStart(2, '0')}$2`); } }
+// Previews: small PNGs, made only when a card scrolls into view, one at a time with a short pause so the
+// browser can free each full drawing before opening the next (back-to-back previews spiked to 1.5 GB).
+let thumbQ = Promise.resolve();
+const thumbIO = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { thumbIO.unobserve(e.target); e.target._thumb && e.target._thumb(); } }), { rootMargin: '300px' });
+function queueThumb(sh, box) {
+  const run = ST;
+  box._thumb = () => {
+    box._thumb = null;
+    thumbQ = thumbQ.then(async () => {
+      if (ST !== run || !box.isConnected) return;
+      try { const blob = await EX.thumbPNG(await sh.text()); const img = box.querySelector('img'); img.onload = () => box.classList.remove('loading'); img.src = URL.createObjectURL(blob); }
+      catch (e) { console.error('thumb', e); box.classList.remove('loading'); }
+      await sleep(150);
+    });
+  };
+  thumbIO.observe(box);
+}
+function numberSheets() { const n = ST.sheets.filter(s => !s.dxf).length; let i = 0; for (const s of ST.sheets) if (!s.dxf) { i++; s.num = `${String(i).padStart(2, '0')}/${String(n).padStart(2, '0')}`; } }
 async function sheetDownload(sh, kind, btn) {
   const name = `${ST.base}_${sh.id}`;
   try {
     btn && (btn.disabled = true);
-    if (kind === 'svg') download(sh.svg, name + '.svg', 'image/svg+xml');
+    if (kind === 'svg') download(await sh.text(), name + '.svg', 'image/svg+xml');
     if (kind === 'dxf') download(sh.dxf, name + '.dxf', 'application/dxf');
     if (kind === 'png') return pngMenu(sh, btn);
-    if (kind === 'pdf') { toast('Building vector PDF…'); download(await EX.sheetPDF(sh.svg), name + '.pdf', 'application/pdf'); }
+    if (kind === 'pdf') { toast('Building vector PDF…'); download(await EX.sheetPDF(await sh.text()), name + '.pdf', 'application/pdf'); }
   } catch (e) { console.error(e); toast('Export failed: ' + e.message, 'err'); }
   finally { btn && (btn.disabled = false); }
 }
@@ -120,10 +141,10 @@ function pngMenu(sh, btn) {
   closePngMenu();
   const name = `${ST.base}_${sh.id}`, opts = [];
   if (sh.section) for (const px of SECTION_PX) {
-    const z = EX.pngSize(sh.svg, { width: px });
+    const z = EX.pngSize(sh.size, { width: px });
     opts.push({ grp: `${sh.title} — drawing only`, label: `${fmt(px)} px wide`, info: `${fmt(z.W)} × ${fmt(z.H)} px · ${fmt(z.dpi)} dpi at 1:${fmt(sh.section.scale)}`, o: { width: px }, file: `${name}_${px}px.png` });
   }
-  else for (const dpi of [150, 300, 600]) { const z = EX.pngSize(sh.svg, { dpi }); opts.push({ grp: 'Whole sheet', label: `${dpi} dpi`, info: `${fmt(z.W)} × ${fmt(z.H)} px`, o: { dpi }, file: `${name}_${dpi}dpi.png` }); }
+  else for (const dpi of [150, 300, 600]) { const z = EX.pngSize(sh.size, { dpi }); opts.push({ grp: 'Whole sheet', label: `${dpi} dpi`, info: `${fmt(z.W)} × ${fmt(z.H)} px`, o: { dpi }, file: `${name}_${dpi}dpi.png` }); }
   const m = document.createElement('div'); m.className = 'pngmenu'; m.setAttribute('role', 'menu');
   let last = '';
   m.innerHTML = opts.map((o, i) => (o.grp !== last ? `<div class="grp">${esc(last = o.grp)}</div>` : '') + `<button role="menuitem" data-i="${i}"><b>${esc(o.label)}</b><small>${esc(o.info)}</small></button>`).join('') +
@@ -137,7 +158,7 @@ function pngMenu(sh, btn) {
     const o = opts[+el.dataset.i]; closePngMenu();
     const label = btn.textContent; btn.disabled = true;
     try {
-      const blob = await EX.renderPNG(sh.svg, o.o, p => { btn.textContent = `${Math.round(p * 100)}%`; });
+      const blob = await EX.renderPNG(await sh.text(), o.o, p => { btn.textContent = `${Math.round(p * 100)}%`; });
       download(blob, o.file); toast(`${esc(o.file)} — ${fmt(blob.size / 1048576, 1)} MB`, 'ok');
     } catch (e) { console.error(e); toast('PNG failed: ' + esc(e.message), 'err'); }
     finally { btn.disabled = false; btn.textContent = label; }
@@ -149,8 +170,11 @@ const escKey = e => { if (e.key === 'Escape') closePngMenu(); };
 function closePngMenu() { $$('.pngmenu').forEach(m => m.remove()); document.removeEventListener('pointerdown', outside, true); document.removeEventListener('keydown', escKey); }
 
 /* zoomable preview */
-function openModal(sh, url) {
+let modalUrl = null;
+async function openModal(sh) {
   const m = $('#viewerModal'), cv = $('#modalCanvas');
+  if (modalUrl) URL.revokeObjectURL(modalUrl);
+  const url = modalUrl = URL.createObjectURL(new Blob([await sh.text()], { type: 'image/svg+xml' }));   // full vector only while zoomed
   $('#modalTitle').textContent = sh.title;
   cv.innerHTML = `<img src="${url}" alt="">`;
   const img = cv.firstChild; let z = 1;
@@ -160,7 +184,10 @@ function openModal(sh, url) {
   $$('#modalActions [data-a]').forEach(b => b.onclick = () => sheetDownload(sh, b.dataset.a, b));
   m.classList.add('on'); m.setAttribute('aria-hidden', 'false');
 }
-$('#modalClose').onclick = () => { $('#viewerModal').classList.remove('on'); $('#viewerModal').setAttribute('aria-hidden', 'true'); };
+$('#modalClose').onclick = () => {
+  $('#viewerModal').classList.remove('on'); $('#viewerModal').setAttribute('aria-hidden', 'true');
+  $('#modalCanvas').innerHTML = ''; if (modalUrl) { URL.revokeObjectURL(modalUrl); modalUrl = null; }
+};
 
 /* files */
 function renderFiles(files) {
@@ -191,14 +218,14 @@ $('#btnZip').onclick = async () => {
     };
     const sheets = ST.sheets.filter(s => !s.dxf), total = ST.sheets.length + sheets.length + ST.files.length + ST.sheets.filter(s => s.section).length; let n = 0;
     const tick = msg => { bar.style.width = `${++n / total * 100}%`; b.textContent = msg; };
-    for (const s of ST.sheets) { await add(`${s.pack}/${ST.base}_${s.id}.svg`, s.svg); if (s.dxf) await add(`${s.pack}/${ST.base}_${s.id}.dxf`, s.dxf); tick('Sheets…'); }
+    for (const s of ST.sheets) { await add(`${s.pack}/${ST.base}_${s.id}.svg`, await s.text()); if (s.dxf) await add(`${s.pack}/${ST.base}_${s.id}.dxf`, s.dxf); tick('Sheets…'); }
     for (const s of ST.sheets) if (s.section) {   // each section drawing also as a high-resolution PNG
       tick(`${s.title} PNG…`);
-      try { await add(`${s.pack}/png/${ST.base}_${s.id}_10000px.png`, await EX.renderPNG(s.svg, { width: 10000 })); } catch (e) { console.error('section png', e); }
+      try { await add(`${s.pack}/png/${ST.base}_${s.id}_10000px.png`, await EX.renderPNG(await s.text(), { width: 10000 })); } catch (e) { console.error('section png', e); }
     }
     for (const f of ST.files) { tick(`${f.name}…`); try { await add(`${f.pack}/${f.name}`, await f.make()); } catch (e) { console.error(f.name, e); } }
-    for (const s of sheets) { tick(`PDF: ${s.title}…`); try { await add(`${s.pack}/pdf/${ST.base}_${s.id}.pdf`, await EX.sheetPDF(s.svg)); } catch (e) { console.error('pdf', s.id, e); } }
-    if (sheets.length > 1) { b.textContent = 'Combined PDF…'; try { await add(`${ST.base}_drawings.pdf`, await EX.sheetsToPDF(sheets.map(s => s.svg))); } catch (e) { console.error('pdf set', e); } }
+    for (const s of sheets) { tick(`PDF: ${s.title}…`); try { await add(`${s.pack}/pdf/${ST.base}_${s.id}.pdf`, await EX.sheetPDF(await s.text())); } catch (e) { console.error('pdf', s.id, e); } }
+    if (sheets.length > 1) { b.textContent = 'Combined PDF…'; try { await add(`${ST.base}_drawings.pdf`, await EX.sheetsToPDF(sheets.map(s => s.text))); } catch (e) { console.error('pdf set', e); } }
     zip.end(); await done;
     const blob = new Blob(parts, { type: 'application/zip' });
     download(blob, `${ST.base}_terrakit.zip`);
@@ -209,7 +236,7 @@ $('#btnZip').onclick = async () => {
 $('#btnPdfAll').onclick = async () => {
   if (!ST) return;
   const b = $('#btnPdfAll'); b.disabled = true; b.textContent = 'Building PDF…';
-  try { download(await EX.sheetsToPDF(ST.sheets.filter(s => !s.dxf).map(s => s.svg), p => { b.textContent = `PDF ${Math.round(p * 100)}%`; }), `${ST.base}_drawings.pdf`, 'application/pdf'); toast('PDF set ready.', 'ok'); }
+  try { download(await EX.sheetsToPDF(ST.sheets.filter(s => !s.dxf).map(s => s.text), p => { b.textContent = `PDF ${Math.round(p * 100)}%`; }), `${ST.base}_drawings.pdf`, 'application/pdf'); toast('PDF set ready.', 'ok'); }
   catch (e) { console.error(e); toast('PDF failed: ' + e.message, 'err'); }
   finally { b.disabled = false; b.textContent = 'PDF set'; }
 };

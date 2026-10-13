@@ -16,6 +16,19 @@ export function sheetCtx(M, o) {
   return { M, o, L, scale, k, f, cx, cy, fs, P, pts: arr => arr.map(p => { const q = P(p[0], p[1]); return r2(q[0]) + ',' + r2(q[1]); }).join(' ') };
 }
 const clipId = () => 'c' + Math.random().toString(36).slice(2, 8);
+/* Many shapes → one SVG path. Every outer ring is wound the same way and holes the opposite way, so with
+   the default non-zero fill overlaps stay solid and holes stay open. Thousands of separate elements made
+   sheets (the shadow study reached 26 MB / 319,000 elements) heavy enough to crash the tab. */
+const sArea = r => { let a = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] - r[i][0]) * (r[j][1] + r[i][1]); return a; };
+function ringD(r, outer) {
+  if (r.length < 3) return '';
+  const pts = (sArea(r) > 0) === outer ? r : r.slice().reverse();
+  let d = 'M' + r2(pts[0][0]) + ',' + r2(pts[0][1]);
+  for (let i = 1; i < pts.length; i++) d += 'L' + r2(pts[i][0]) + ',' + r2(pts[i][1]);
+  return d + 'Z';
+}
+/** polygons: arrays of rings (first = outer) already in sheet mm */
+const polysD = polys => polys.map(rs => rs.map((r, i) => ringD(r, i === 0)).join('')).join('');
 
 /* ── text helpers ── */
 function wrap(text, maxW, size) { const words = String(text).split(/\s+/), lines = []; let cur = ''; const cw = size * 0.52; for (const w of words) { if ((cur + ' ' + w).trim().length * cw > maxW && cur) { lines.push(cur); cur = w; } else cur = (cur + ' ' + w).trim(); } if (cur) lines.push(cur); return lines; }
@@ -85,15 +98,16 @@ function dataNotes(M) {
 function viewportClip(c) { const id = clipId(); return { id, def: `<clipPath id="${id}"><rect x="${r2(c.L.vx)}" y="${r2(c.L.vy)}" width="${r2(c.L.vw)}" height="${r2(c.L.vh)}"/></clipPath>` }; }
 const polyAttr = (c, ring) => `points="${c.pts(ring)}"`;
 function buildingsSVG(c, style) {
-  // Pattern (hatch) fills are merged into one path per pattern: in PDF every pattern use becomes its own
-  // object, so thousands of hatched buildings made 130 MB PDFs. Outlines stay per building.
-  const pat = new Map(), out = [];
-  for (const b of c.M.buildings) {
-    const d = b.loc.map(r => 'M' + c.pts(r).replace(/ /g, ' L') + 'Z').join(' '), st = style(b), m = st.match(/fill="(url\(#[^"]+\))"/);
-    if (m) { if (!pat.has(m[1])) pat.set(m[1], []); pat.get(m[1]).push(d); out.push(`<path d="${d}" ${st.replace(m[0], 'fill="none"')}/>`); }
-    else out.push(`<path d="${d}" fill-rule="evenodd" ${st}/>`);
+  // one path per distinct style (fill, stroke) instead of one element per building
+  const groups = new Map();
+  for (const b of c.M.buildings) { const st = style(b); if (!groups.has(st)) groups.set(st, []); groups.get(st).push(b.loc.map(r => r.map(p => c.P(p[0], p[1])))); }
+  const out = [];
+  for (const [st, polys] of groups) {
+    const m = st.match(/fill="(url\(#[^"]+\))"/);
+    if (m) out.unshift(`<path d="${polysD(polys)}" fill="${m[1]}" stroke="none"/>`), out.push(`<path d="${polysD(polys)}" ${st.replace(m[0], 'fill="none"')}/>`);
+    else out.push(`<path d="${polysD(polys)}" ${st}/>`);
   }
-  return [...pat].map(([f, ds]) => `<path d="${ds.join(' ')}" fill-rule="evenodd" fill="${f}" stroke="none"/>`).join('') + out.join('');
+  return out.join('');
 }
 function roadsSVG(c, { casing = '#000', fill = '#fff', minW = 0.35, cw = PEN.f } = {}) {
   const rs = c.M.osm.roads.slice().sort((a, b) => a.width - b.width), w = r => Math.max(minW, r.width * c.k);
@@ -229,8 +243,9 @@ function rasterImage(c, rgba) { // embed a classed raster aligned to the frame
   const M = c.M, cv = document.createElement('canvas'); cv.width = M.dem.W; cv.height = M.dem.H; const ctx = cv.getContext('2d'), img = ctx.createImageData(M.dem.W, M.dem.H);
   for (let i = 0; i < M.dem.W * M.dem.H; i++) img.data.set(rgba(i), i * 4);
   ctx.putImageData(img, 0, 0);
-  const [x, y] = c.P(-M.frame.w / 2 - M.dem.dx / 2, M.frame.h / 2 + M.dem.dy / 2);
-  return `<image x="${r2(x)}" y="${r2(y)}" width="${r2((M.frame.w + M.dem.dx) * c.k)}" height="${r2((M.frame.h + M.dem.dy) * c.k)}" preserveAspectRatio="none" style="image-rendering:pixelated" href="${cv.toDataURL('image/png')}"/>`;
+  const [x, y] = c.P(-M.frame.w / 2 - M.dem.dx / 2, M.frame.h / 2 + M.dem.dy / 2), url = cv.toDataURL('image/png');
+  cv.width = cv.height = 0;   // release the canvas now (Safari caps total canvas memory)
+  return `<image x="${r2(x)}" y="${r2(y)}" width="${r2((M.frame.w + M.dem.dx) * c.k)}" height="${r2((M.frame.h + M.dem.dy) * c.k)}" preserveAspectRatio="none" style="image-rendering:pixelated" href="${url}"/>`;
 }
 const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16), 255];
 export function aspectMap(c) {
@@ -318,19 +333,31 @@ export function shadowStudy(c) {
   let body = '';
   dates.forEach(([mo, dd, dn], r) => hours.forEach((h, ci) => {
     const p = sunPosition(Date.UTC(year, mo, dd) + (h - lon / 15) * 3600000, lat, lon), ox = L.vx + ci * cw + cw / 2, oy = L.vy + 6 * fs + r * ch + (ch - 6 * fs) / 2;
-    const P = (x, y) => [ox + x * sc, oy - y * sc], pts = arr => arr.map(q => { const t = P(q[0], q[1]); return r2(t[0]) + ',' + r2(t[1]); }).join(' ');
+    const P = (x, y) => [ox + x * sc, oy - y * sc];
+    const fps = [];   // footprints in panel mm, simplified to what the pen can show
+    for (const b of M.buildings) {
+      const pts = [];
+      for (const v of b.loc[0].slice(0, -1)) { const t = P(v[0], v[1]), l = pts[pts.length - 1]; if (!l || Math.abs(t[0] - l[0]) + Math.abs(t[1] - l[1]) > 0.08) pts.push(t); }
+      if (pts.length >= 3) fps.push({ pts, h: b.h, sgn: sArea(pts) > 0 ? 1 : -1 });
+    }
     let g = `<rect x="${r2(ox - M.frame.w * sc / 2)}" y="${r2(oy - M.frame.h * sc / 2)}" width="${r2(M.frame.w * sc)}" height="${r2(M.frame.h * sc)}" fill="#fff" stroke="#000" stroke-width="${PEN.f}"/>`;
     if (p.alt > 0.02) {
       const [se, sn] = M.frame.enToFrame(Math.sin(p.az), Math.cos(p.az)), len = 1 / Math.tan(p.alt);
-      let sh = '';
-      for (const b of M.buildings) {
-        const d = [-se * b.h * len, -sn * b.h * len], ring = b.loc[0];
-        for (let i = 0; i < ring.length - 1; i++) { const a = ring[i], q = ring[i + 1]; sh += `<polygon points="${pts([a, q, [q[0] + d[0], q[1] + d[1]], [a[0] + d[0], a[1] + d[1]]])}"/>`; }
-        sh += `<polygon points="${pts(ring.map(v => [v[0] + d[0], v[1] + d[1]]))}"/>`;
+      // Shadow of a prism = roof outline moved by the shadow vector + the swept quads of the walls that face
+      // away from the sun (the other walls lie inside that). Worked in panel millimetres, with corners closer
+      // than 0.08 mm merged — finer than the pen can draw at this scale.
+      const D = [-se * len * sc, sn * len * sc], shadows = [];
+      for (const r of fps) {
+        const h = r.h, dx = D[0] * h, dy = D[1] * h, ring = r.pts;
+        shadows.push([ring.map(v => [v[0] + dx, v[1] + dy])]);
+        for (let i = 0; i < ring.length; i++) {
+          const a = ring[i], q = ring[(i + 1) % ring.length], nx = (q[1] - a[1]) * r.sgn, ny = -(q[0] - a[0]) * r.sgn;
+          if (nx * dx + ny * dy > 0) shadows.push([[a, q, [q[0] + dx, q[1] + dy], [a[0] + dx, a[1] + dy]]]);
+        }
       }
-      g += `<g fill="#7d8796" stroke="none">${sh}</g>`;
+      g += `<path d="${polysD(shadows)}" fill="#7d8796"/>`;
     }
-    g += `<g fill="#000">${M.buildings.map(b => `<polygon points="${pts(b.loc[0])}"/>`).join('')}</g>`;
+    g += `<path d="${polysD(fps.map(r => [r.pts]))}" fill="#000"/>`;
     const id = clipId();
     body += `<clipPath id="${id}"><rect x="${r2(ox - M.frame.w * sc / 2)}" y="${r2(oy - M.frame.h * sc / 2)}" width="${r2(M.frame.w * sc)}" height="${r2(M.frame.h * sc)}"/></clipPath><g clip-path="url(#${id})">${g}</g>`;
     body += T(ox - M.frame.w * sc / 2, oy - M.frame.h * sc / 2 - 1.5 * fs, 2.4 * fs, `${dn} · ${String(h).padStart(2, '0')}:00${p.alt > 0.02 ? ` · sun ${fmt(p.alt / D2R)}° high` : ' · sun below horizon'}`, 'font-weight="700"');

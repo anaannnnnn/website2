@@ -95,6 +95,7 @@ export async function buildDEM(frame, N, onProgress) {
     const [lon, lat] = frame.toLonLat(-frame.w / 2 + i * dx, frame.h / 2 - j * dy);
     data[j * W + i] = bilinear(elev, CW, CH, lonToX(lon, z) - mos.x0 * 256 - 0.5, latToY(lat, z) - mos.y0 * 256 - 0.5);
   }
+  mos.cv.width = mos.cv.height = 0;   // release the tile mosaic now (Safari caps total canvas memory)
   const repaired = despike(data, W, H);
   let min = Infinity, max = -Infinity, sum = 0;
   for (const v of data) { if (v < min) min = v; if (v > max) max = v; sum += v; }

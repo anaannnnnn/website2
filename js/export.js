@@ -226,7 +226,8 @@ async function pdfLibs() {
   if (!pdfLib) { await loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'); await loadScript('https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.3/dist/svg2pdf.umd.min.js'); pdfLib = window.jspdf.jsPDF; }
   return pdfLib;
 }
-const sizeOf = svg => { const m = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/); return [+m[1], +m[2]]; };
+const sizeOf = svg => { if (Array.isArray(svg)) return svg; const m = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/); return [+m[1], +m[2]]; };
+export const svgSize = sizeOf;
 async function addSvgPage(doc, svg, first) {
   const [w, h] = sizeOf(svg);
   if (!first) doc.addPage([w, h], w > h ? 'landscape' : 'portrait');
@@ -244,11 +245,12 @@ export async function sheetPDF(svg) {
 /** several sheets → one PDF. Each page is built on its own and merged as binary (pdf-lib), so a big set no
     longer has to fit in one giant string (that failed with "Invalid string length" on large sites). */
 export async function sheetsToPDF(svgs, onProgress) {
-  if (svgs.length === 1) return new Blob([await sheetPDF(svgs[0])], { type: 'application/pdf' });
+  if (svgs.length === 1) return new Blob([await sheetPDF(typeof svgs[0] === 'function' ? await svgs[0]() : svgs[0])], { type: 'application/pdf' });
   const { PDFDocument } = await import('pdf-lib');
   const out = await PDFDocument.create();
   for (let i = 0; i < svgs.length; i++) {
-    const src = await PDFDocument.load(await sheetPDF(svgs[i]));
+    const svg = typeof svgs[i] === 'function' ? await svgs[i]() : svgs[i];   // drawings may be fetched lazily
+    const src = await PDFDocument.load(await sheetPDF(svg));
     for (const p of await out.copyPages(src, src.getPageIndices())) out.addPage(p);
     onProgress && onProgress((i + 1) / svgs.length);
     await new Promise(r => setTimeout(r, 0));
@@ -306,9 +308,20 @@ export async function renderPNG(svg, opts = {}, onProgress) {
     await wr.write(buf);
     onProgress && onProgress(Math.min(1, (y0 + n) / H));
   }
-  await wr.close();
+  await wr.close(); cv.width = cv.height = 0;
   const ihdr = new Uint8Array(13), dv = new DataView(ihdr.buffer); dv.setUint32(0, W); dv.setUint32(4, H); ihdr.set([8, 2, 0, 0, 0], 8);
   const phys = new Uint8Array(9), dp = new DataView(phys.buffer), ppm = Math.round(ppmm * 1000); dp.setUint32(0, ppm); dp.setUint32(4, ppm); phys[8] = 1;
   return new Blob([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), ...pngChunk('IHDR', ihdr), ...pngChunk('pHYs', phys), ...pngChunk('IDAT', new Uint8Array(await zipped)), ...pngChunk('IEND', new Uint8Array(0))], { type: 'image/png' });
 }
 export const svgToPNG = (svg, dpi = 300) => renderPNG(svg, { dpi });
+/** small raster preview for the gallery: the vector drawing is parsed once, drawn small, then released
+    (live SVG <img>s of every sheet kept >1 GB of drawings open at once on big sites) */
+export async function thumbPNG(svg, maxW = 720) {
+  const [w, h] = sizeOf(svg), k = maxW / Math.max(w, h), W = Math.round(w * k), H = Math.round(h * k);
+  const img = await loadSVG(svg.replace(/<svg\b[^>]*>/, m => m.replace(/\swidth="[^"]*"/, ` width="${W}"`).replace(/\sheight="[^"]*"/, ` height="${H}"`)));
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, W, H); c.drawImage(img, 0, 0, W, H);
+  img.src = '';
+  const blob = await canvasBlob(cv, 'image/png'); cv.width = cv.height = 0;
+  return blob;
+}
