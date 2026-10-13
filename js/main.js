@@ -330,15 +330,17 @@ function buildModel(res) {
     if (!model.buildings.length) layerState('buildings', 'fail', 'No buildings found here (or all servers failed). Retry, or this area may simply have none mapped.');
     else {
       layerState('buildings', 'ok', `<b data-c="${hs.n}">0</b> buildings · <b>${fmt(hs.pct, 0)}%</b> with real heights (${fmt(hs.recorded)} recorded, ${fmt(hs.floors)} from floors) · others use ${defH()} m, marked “~”`,
-        `${esc(model.bsource)}${model.release ? ' ' + esc(model.release) : ''}${srcTxt ? ' — ' + srcTxt : ''}`, hs.pct >= 60 ? 'good' : hs.pct >= 25 ? 'fair' : 'limited');
+        `${esc(model.bsource)}${model.release ? ' ' + esc(model.release) : ''}${res.overture && res.overture.buildings.length && !res.overture.sourcesRead ? ' — footprint origin (OpenStreetMap / Microsoft / Google) is only read for smaller sites, to keep memory low' : srcTxt ? ' — ' + srcTxt : ''}`, hs.pct >= 60 ? 'good' : hs.pct >= 25 ? 'fair' : 'limited');
       const el = $('#ly-buildings [data-c]'); if (el) countUp(el, hs.n);
       const bar = document.createElement('div'); bar.className = 'bar'; bar.innerHTML = '<i></i>'; $('#ly-buildings').appendChild(bar); requestAnimationFrame(() => bar.firstChild.style.width = `${hs.pct}%`);
     }
   }
-  const src = res.src || {}, srcNote = k => src[k] === 'live' ? 'OpenStreetMap (live, Overpass)' : 'OpenStreetMap via OpenFreeMap tiles (updated weekly)';
+  const src = res.src || {}, vt = res.vt;
+  const vtGaps = vt ? (vt.zoom < 14 ? ` · area too large for full-detail tiles (zoom ${vt.zoom}): minor streets, paths and small features are left out — use a smaller frame for full detail` : '') + (vt.failed ? ` · ${vt.failed} of ${vt.failed + vt.tiles} tiles failed — press Reload for the rest` : '') : '';
+  const srcNote = k => src[k] === 'live' ? 'OpenStreetMap (live, Overpass)' : 'OpenStreetMap via OpenFreeMap tiles (updated weekly)' + vtGaps;
   if (S.layers.streets) {
     if (!src.streets) layerState('streets', 'fail', 'Street data could not be reached — press Retry.');
-    else { const km = osm.roads.reduce((a, r) => a + r.loc.reduce((s, p, i) => i ? s + Math.hypot(p[0] - r.loc[i - 1][0], p[1] - r.loc[i - 1][1]) : 0, 0), 0) / 1000; layerState('streets', 'ok', `<b>${fmt(osm.roads.length)}</b> ways · <b>${fmt(km, 1)} km</b> · ${fmt(osm.roads.filter(r => r.name).length)} named · ${fmt(osm.rails.length)} rail`, srcNote('streets'), 'good'); }
+    else { const km = osm.roads.reduce((a, r) => a + r.loc.reduce((s, p, i) => i ? s + Math.hypot(p[0] - r.loc[i - 1][0], p[1] - r.loc[i - 1][1]) : 0, 0), 0) / 1000; layerState('streets', 'ok', `<b>${fmt(osm.roads.length)}</b> ways · <b>${fmt(km, 1)} km</b> · ${fmt(osm.roads.filter(r => r.name).length)} named · ${fmt(osm.rails.length)} rail`, srcNote('streets'), src.streets === 'tiles' && vtGaps ? 'fair' : 'good'); }
   }
   if (S.layers.water) {
     if (!src.land) layerState('water', 'fail', 'Water and land-use data could not be reached — press Retry.');

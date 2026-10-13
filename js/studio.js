@@ -77,7 +77,13 @@ export async function openStudio(S, H) {
       if (j.kind === 'laser') {
         const out = r.boards.map((b, k) => ({ id: `laser_board_${k + 1}`, title: `Laser board ${k + 1} / ${r.boards.length}`, sub: `${fmt(b.w)} × ${fmt(b.h)} mm · ${b.n} pieces${b.oversize ? ' · piece larger than your board' : ''}`, svg: b.svg, dxf: b.dxf, pack: 'model' }));
         out[0] && (out[0].note = `Contour step ${fmt(r.interval, 2)} m · ${r.layers} layers · ${r.pieces} pieces · model ${fmt(r.size[0])} × ${fmt(r.size[1])} mm`);
-        fillCards(card, out);
+        // big sites at a large model scale can need hundreds of boards: preview the first ones, ZIP has all
+        const SHOW = 24;
+        fillCards(card, out.slice(0, SHOW));
+        if (out.length > SHOW) {
+          ST.sheets.push(...out.slice(SHOW));
+          toast(`${out.length} laser boards — showing the first ${SHOW}; all are in Download all. A smaller model scale (e.g. 1:${fmt(laser.scale * 2)}) needs fewer.`, 'warn', 8000);
+        }
         if (r.oversize) toast(`${r.oversize} laser piece(s) are bigger than your board — choose a smaller model scale (e.g. 1:${fmt(laser.scale * 2)}).`, 'warn', 7000);
       } else if (j.kind === 'multi') {
         const secs = (r.crops || []).flat().map(cr => ({ id: `section_${cr.n}`, title: `Section ${cr.n}–${cr.n}′`, sub: `${fmt(cr.L)} m · ${cr.sd.dir} · drawing only, 1:${fmt(cr.scale)} · PNG up to 16,000 px`, svg: cr.svg, dxf: cr.dxf, pack: j.pack, section: cr }));
@@ -116,7 +122,7 @@ async function sheetDownload(sh, kind, btn) {
     if (kind === 'svg') download(sh.svg, name + '.svg', 'image/svg+xml');
     if (kind === 'dxf') download(sh.dxf, name + '.dxf', 'application/dxf');
     if (kind === 'png') return pngMenu(sh, btn);
-    if (kind === 'pdf') { toast('Building vector PDF…'); download(await EX.sheetsToPDF([sh.svg]), name + '.pdf', 'application/pdf'); }
+    if (kind === 'pdf') { toast('Building vector PDF…'); download(await EX.sheetPDF(sh.svg), name + '.pdf', 'application/pdf'); }
   } catch (e) { console.error(e); toast('Export failed: ' + e.message, 'err'); }
   finally { btn && (btn.disabled = false); }
 }
@@ -179,30 +185,43 @@ async function EX_OBJ(view3d, M) { return view3d.toOBJ(await modelRoot(view3d, M
 async function EX_GLB(view3d, M) { return view3d.toGLB(await modelRoot(view3d, M)); }
 async function EX_STL(view3d, M, scale) { return view3d.toSTL(await modelRoot(view3d, M), 1000 / scale); }
 
-/* download all */
+/* download all — streamed: each file is made, compressed and released before the next, so memory stays
+   at roughly one file plus the compressed output (the old in-memory ZIP peaked near 3 GB on big sites) */
+const STORED = /\.(png|jpe?g|glb|pdf|tif|zip)$/i;
 $('#btnZip').onclick = async () => {
   if (!ST) return;
   const b = $('#btnZip'); b.disabled = true; const bar = $('#studioProgress div');
   try {
-    const z = new JSZip(), total = ST.sheets.length + ST.files.length + 1; let n = 0;
+    const { Zip, ZipDeflate, ZipPassThrough } = await import('fflate');
+    const parts = [];
+    const done = new Promise((res, rej) => { ST.zip = new Zip((err, chunk, final) => { if (err) return rej(err); parts.push(chunk); if (final) res(); }); });
+    const zip = ST.zip, enc = new TextEncoder();
+    const add = async (name, data) => {
+      const bytes = typeof data === 'string' ? enc.encode(data) : data instanceof Blob ? new Uint8Array(await data.arrayBuffer()) : data instanceof Uint8Array ? data : new Uint8Array(data);
+      const f = STORED.test(name) ? new ZipPassThrough(name) : new ZipDeflate(name, { level: 6 });
+      zip.add(f); f.push(bytes, true);
+      await sleep(0);
+    };
+    const sheets = ST.sheets.filter(s => !s.dxf), total = ST.sheets.length + sheets.length + ST.files.length + ST.sheets.filter(s => s.section).length; let n = 0;
     const tick = msg => { bar.style.width = `${++n / total * 100}%`; b.textContent = msg; };
-    for (const s of ST.sheets) { z.file(`${s.pack}/${ST.base}_${s.id}.svg`, s.svg); if (s.dxf) z.file(`${s.pack}/${ST.base}_${s.id}.dxf`, s.dxf); tick('Sheets…'); await sleep(0); }
+    for (const s of ST.sheets) { await add(`${s.pack}/${ST.base}_${s.id}.svg`, s.svg); if (s.dxf) await add(`${s.pack}/${ST.base}_${s.id}.dxf`, s.dxf); tick('Sheets…'); }
     for (const s of ST.sheets) if (s.section) {   // each section drawing also as a high-resolution PNG
-      b.textContent = `${s.title} PNG…`;
-      try { z.file(`${s.pack}/png/${ST.base}_${s.id}_10000px.png`, await EX.renderPNG(s.svg, { width: 10000 })); } catch (e) { console.error('section png', e); }
+      tick(`${s.title} PNG…`);
+      try { await add(`${s.pack}/png/${ST.base}_${s.id}_10000px.png`, await EX.renderPNG(s.svg, { width: 10000 })); } catch (e) { console.error('section png', e); }
     }
-    for (const f of ST.files) { try { z.file(`${f.pack}/${f.name}`, await f.make()); } catch (e) { console.error(f.name, e); } tick('Files…'); await sleep(0); }
-    try { const set = ST.sheets.filter(s => !s.dxf).map(s => s.svg); if (set.length) z.file(`${ST.base}_drawings.pdf`, await EX.sheetsToPDF(set)); } catch (e) { console.error('pdf', e); }
-    tick('Compressing…');
-    download(await z.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 4 } }), `${ST.base}_terrakit.zip`);
-    toast('ZIP ready.', 'ok');
-  } catch (e) { console.error(e); toast('ZIP failed: ' + e.message, 'err'); }
-  finally { b.disabled = false; b.textContent = 'Download all'; setTimeout(() => bar.style.width = '0', 800); }
+    for (const f of ST.files) { tick(`${f.name}…`); try { await add(`${f.pack}/${f.name}`, await f.make()); } catch (e) { console.error(f.name, e); } }
+    for (const s of sheets) { tick(`PDF: ${s.title}…`); try { await add(`${s.pack}/pdf/${ST.base}_${s.id}.pdf`, await EX.sheetPDF(s.svg)); } catch (e) { console.error('pdf', s.id, e); } }
+    zip.end(); await done;
+    const blob = new Blob(parts, { type: 'application/zip' });
+    download(blob, `${ST.base}_terrakit.zip`);
+    toast(`ZIP ready — ${fmt(blob.size / 1048576, 1)} MB.`, 'ok');
+  } catch (e) { console.error(e); toast('ZIP failed: ' + esc(e.message), 'err'); }
+  finally { ST.zip = null; b.disabled = false; b.textContent = 'Download all'; setTimeout(() => bar.style.width = '0', 800); }
 };
 $('#btnPdfAll').onclick = async () => {
   if (!ST) return;
   const b = $('#btnPdfAll'); b.disabled = true; b.textContent = 'Building PDF…';
-  try { download(await EX.sheetsToPDF(ST.sheets.filter(s => !s.dxf).map(s => s.svg)), `${ST.base}_drawings.pdf`, 'application/pdf'); toast('PDF set ready.', 'ok'); }
+  try { download(await EX.sheetsToPDF(ST.sheets.filter(s => !s.dxf).map(s => s.svg), p => { b.textContent = `PDF ${Math.round(p * 100)}%`; }), `${ST.base}_drawings.pdf`, 'application/pdf'); toast('PDF set ready.', 'ok'); }
   catch (e) { console.error(e); toast('PDF failed: ' + e.message, 'err'); }
   finally { b.disabled = false; b.textContent = 'PDF set'; }
 };

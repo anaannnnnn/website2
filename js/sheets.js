@@ -85,10 +85,15 @@ function dataNotes(M) {
 function viewportClip(c) { const id = clipId(); return { id, def: `<clipPath id="${id}"><rect x="${r2(c.L.vx)}" y="${r2(c.L.vy)}" width="${r2(c.L.vw)}" height="${r2(c.L.vh)}"/></clipPath>` }; }
 const polyAttr = (c, ring) => `points="${c.pts(ring)}"`;
 function buildingsSVG(c, style) {
-  return c.M.buildings.map(b => {
-    const d = b.loc.map(r => 'M' + c.pts(r).replace(/ /g, ' L') + 'Z').join(' ');
-    return `<path d="${d}" fill-rule="evenodd" ${style(b)}/>`;
-  }).join('');
+  // Pattern (hatch) fills are merged into one path per pattern: in PDF every pattern use becomes its own
+  // object, so thousands of hatched buildings made 130 MB PDFs. Outlines stay per building.
+  const pat = new Map(), out = [];
+  for (const b of c.M.buildings) {
+    const d = b.loc.map(r => 'M' + c.pts(r).replace(/ /g, ' L') + 'Z').join(' '), st = style(b), m = st.match(/fill="(url\(#[^"]+\))"/);
+    if (m) { if (!pat.has(m[1])) pat.set(m[1], []); pat.get(m[1]).push(d); out.push(`<path d="${d}" ${st.replace(m[0], 'fill="none"')}/>`); }
+    else out.push(`<path d="${d}" fill-rule="evenodd" ${st}/>`);
+  }
+  return [...pat].map(([f, ds]) => `<path d="${ds.join(' ')}" fill-rule="evenodd" fill="${f}" stroke="none"/>`).join('') + out.join('');
 }
 function roadsSVG(c, { casing = '#000', fill = '#fff', minW = 0.35, cw = PEN.f } = {}) {
   const rs = c.M.osm.roads.slice().sort((a, b) => a.width - b.width), w = r => Math.max(minW, r.width * c.k);

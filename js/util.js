@@ -32,7 +32,7 @@ export function countUp(el, to, { d = 0, suffix = '', ms = 900 } = {}) {
   const from = parseFloat(el.dataset.v || '0') || 0, t0 = performance.now();
   el.dataset.v = to;
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = fmt(to, d) + suffix; return; }
-  const step = t => { const k = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(from + (to - from) * e, d) + suffix; if (k < 1) requestAnimationFrame(step); };
+  const step = t => { const k = Math.max(0, Math.min(1, (t - t0) / ms)), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(from + (to - from) * e, d) + suffix; if (k < 1) requestAnimationFrame(step); };
   requestAnimationFrame(step);
 }
 

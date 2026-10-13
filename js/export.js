@@ -234,11 +234,26 @@ async function addSvgPage(doc, svg, first) {
   host.innerHTML = svg; document.body.appendChild(host);
   try { await doc.svg(host.firstElementChild, { x: 0, y: 0, width: w, height: h }); } finally { host.remove(); }
 }
-export async function sheetsToPDF(svgs) {
-  const jsPDF = await pdfLibs(), [w, h] = sizeOf(svgs[0]);
+/** one sheet → vector PDF (bytes) */
+export async function sheetPDF(svg) {
+  const jsPDF = await pdfLibs(), [w, h] = sizeOf(svg);
   const doc = new jsPDF({ unit: 'mm', format: [w, h], orientation: w > h ? 'landscape' : 'portrait', compress: true });
-  for (let i = 0; i < svgs.length; i++) await addSvgPage(doc, svgs[i], i === 0);
-  return doc.output('blob');
+  await addSvgPage(doc, svg, true);
+  return new Uint8Array(doc.output('arraybuffer'));
+}
+/** several sheets → one PDF. Each page is built on its own and merged as binary (pdf-lib), so a big set no
+    longer has to fit in one giant string (that failed with "Invalid string length" on large sites). */
+export async function sheetsToPDF(svgs, onProgress) {
+  if (svgs.length === 1) return new Blob([await sheetPDF(svgs[0])], { type: 'application/pdf' });
+  const { PDFDocument } = await import('pdf-lib');
+  const out = await PDFDocument.create();
+  for (let i = 0; i < svgs.length; i++) {
+    const src = await PDFDocument.load(await sheetPDF(svgs[i]));
+    for (const p of await out.copyPages(src, src.getPageIndices())) out.addPage(p);
+    onProgress && onProgress((i + 1) / svgs.length);
+    await new Promise(r => setTimeout(r, 0));
+  }
+  return new Blob([await out.save()], { type: 'application/pdf' });
 }
 /* ── high-resolution PNG: the SVG is rasterised in horizontal strips (each strip re-renders the vector
    drawing through its own viewBox, so lines stay crisp) and streamed into a PNG with the browser's
