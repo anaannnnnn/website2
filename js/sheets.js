@@ -3,7 +3,7 @@
 import { D2R, clamp, sheetLayout, sunPosition } from './geo.js';
 import { esc, fmt, niceStep, r2 } from './util.js';
 import { contourPolylines, contourLevels, gridToLocal, isMajor, autoInterval, CMAPS, percentiles, lut } from './analysis.js';
-import { computeSection, renderSection } from './sections.js';
+import { computeSection, renderSection, sectionDXF } from './sections.js';
 
 const FONT = 'Inter, Helvetica, Arial, sans-serif';
 const PEN = { xf: 0.09, f: 0.13, m: 0.18, n: 0.25, b: 0.35, h: 0.5, x: 0.7 };
@@ -273,10 +273,11 @@ export function sectionSheets(c, sections, depth) {
       body += r.svg;
       for (let z = Math.ceil(b.zBot / zs) * zs; z <= b.zTop; z += zs) body += `<line x1="${r2(x0)}" x2="${r2(x0 + 3 * c.fs)}" y1="${r2(r.Y(z))}" y2="${r2(r.Y(z))}" stroke="#000" stroke-width="${PEN.f}"/>${T(x0 + 4 * c.fs, r.Y(z) + fz * 0.35, fz * 0.85, (z >= 0 ? '+' : '') + z.toFixed(1), `paint-order="stroke" stroke="#fff" stroke-width="${r2(fz * 0.4)}"`)}`;
       for (const [x, t] of [[x0, b.sd.sec.n], [r.Xe, b.sd.sec.n + '′']]) body += `<circle cx="${r2(x)}" cy="${r2(y + 2 * c.fs)}" r="${r2(3 * c.fs)}" fill="#fff" stroke="#000" stroke-width="${PEN.b}"/>${T(x, y + 3.1 * c.fs, 3.2 * c.fs, t, 'text-anchor="middle" font-weight="800"')}<line x1="${r2(x)}" x2="${r2(x)}" y1="${r2(y + 5 * c.fs)}" y2="${r2(r.yG)}" stroke="#000" stroke-width="${PEN.f}" stroke-dasharray="2 1"/>`;
+      const b1 = body.length;
       body += T(c.L.vx + 4 * c.fs, r.yG + 7 * c.fs, 3.4 * c.fs, `SECTION ${b.sd.sec.n}–${b.sd.sec.n}′`, 'font-weight="800"') + T(c.L.vx + 4 * c.fs, r.yG + 11 * c.fs, 2.1 * c.fs, `${fmt(b.sd.L)} m · ${b.sd.dir} · looking ${b.sd.view} · ${b.sd.cuts.length} buildings cut, ${b.sd.beyond.length} in elevation up to ${fmt(b.sd.depth)} m behind · 1:${fmt(scale)} horizontal and vertical`, 'fill="#444"');
-      // the same section on its own (nothing clipped, end markers whole) — for the high-resolution section PNG
-      const cx0 = x0 - 5 * c.fs, cx1 = Math.max(r.Xe + 5 * c.fs, c.L.vx + 120 * c.fs), cy0 = y - 2 * c.fs, cy1 = r.yG + 13 * c.fs, cw = r2(cx1 - cx0), ch = r2(cy1 - cy0);
-      pageCrops.push({ n: b.sd.sec.n, L: b.sd.L, scale, svg: `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${cw}mm" height="${ch}mm" viewBox="0 0 ${cw} ${ch}" font-family="${FONT}"><defs>${SEC_HL}</defs><rect width="${cw}" height="${ch}" fill="#fff"/><g transform="translate(${r2(-cx0)} ${r2(-cy0)})">${body.slice(b0)}</g></svg>` });
+      // the same section on its own — just the drawing, no sheet frame or title block (PNG/SVG/PDF), plus CAD linework
+      const cx0 = x0 - 5 * c.fs, cx1 = r.Xe + 5 * c.fs, cy0 = y - 2 * c.fs, cy1 = r.yG + 2 * c.fs, cw = r2(cx1 - cx0), ch = r2(cy1 - cy0);
+      pageCrops.push({ n: b.sd.sec.n, L: b.sd.L, scale, sd: b.sd, dxf: sectionDXF(b.sd, { zBot: b.zBot, zTop: b.zTop, scale }), svg: `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${cw}mm" height="${ch}mm" viewBox="0 0 ${cw} ${ch}" font-family="${FONT}"><defs>${SEC_HL}</defs><rect width="${cw}" height="${ch}" fill="#fff"/><g transform="translate(${r2(-cx0)} ${r2(-cy0)})">${body.slice(b0, b1)}</g></svg>` });
       y += b.h + gap;
     }
     const cl = viewportClip(c);

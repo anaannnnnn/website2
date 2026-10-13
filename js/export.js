@@ -47,14 +47,24 @@ export async function png16(M) {
 }
 
 /* ── DXF (R12 ASCII: opens in AutoCAD, Rhino, SketchUp, Revit, ArchiCAD, QGIS, Blender) ── */
+// R12 text is not Unicode: map common symbols to ASCII and escape the rest as \U+XXXX (read by AutoCAD, BricsCAD, Rhino)
+const dxfText = s => String(s).replace(/[\r\n]/g, ' ').replace(/→/g, 'to').replace(/[′’‘]/g, "'").replace(/[–—]/g, '-').replace(/[“”]/g, '"').replace(/×/g, 'x').replace(/·/g, '-').replace(/°/g, '%%d')
+  .replace(/[^\x20-\x7e]/gu, ch => '\\U+' + ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0'));
 export class DXF {
   constructor() { this.layers = new Map(); this.e = []; }
   layer(n, c) { this.layers.set(n, c); }
   n(v) { return (Math.round(v * 1000) / 1000).toString(); }
   poly(layer, pts, closed) { const e = this.e; e.push('0', 'POLYLINE', '8', layer, '66', '1', '10', '0', '20', '0', '30', '0', '70', closed ? '9' : '8'); for (const p of pts) e.push('0', 'VERTEX', '8', layer, '10', this.n(p[0]), '20', this.n(p[1]), '30', this.n(p[2] || 0), '70', '32'); e.push('0', 'SEQEND', '8', layer); }
   face(layer, a, b, c, d = c) { const e = this.e; e.push('0', '3DFACE', '8', layer); [a, b, c, d].forEach((p, i) => e.push('1' + i, this.n(p[0]), '2' + i, this.n(p[1]), '3' + i, this.n(p[2]))); }
+  /** 2D polyline (flat drawings such as sections) */
+  poly2(layer, pts, closed, width = 0) { const e = this.e; e.push('0', 'POLYLINE', '8', layer, '66', '1', '10', '0', '20', '0', '30', '0', '70', closed ? '1' : '0'); if (width) e.push('40', this.n(width), '41', this.n(width)); for (const p of pts) e.push('0', 'VERTEX', '8', layer, '10', this.n(p[0]), '20', this.n(p[1]), '30', '0'); e.push('0', 'SEQEND', '8', layer); }
+  line(layer, a, b) { this.e.push('0', 'LINE', '8', layer, '10', this.n(a[0]), '20', this.n(a[1]), '30', '0', '11', this.n(b[0]), '21', this.n(b[1]), '31', '0'); }
+  /** filled quad (R12 SOLID; vertex order a, b, d, c as the format requires) */
+  solid(layer, a, b, c, d) { this.e.push('0', 'SOLID', '8', layer); [a, b, d, c].forEach((p, i) => this.e.push('1' + i, this.n(p[0]), '2' + i, this.n(p[1]), '3' + i, '0')); }
+  /** text with horizontal justification: 0 left, 1 centre, 2 right */
+  textJ(layer, p, h, s, j = 0) { this.e.push('0', 'TEXT', '8', layer, '10', this.n(p[0]), '20', this.n(p[1]), '30', '0', '40', this.n(h), '1', dxfText(s), '72', String(j), '11', this.n(p[0]), '21', this.n(p[1]), '31', '0'); }
   circle(layer, p, r) { this.e.push('0', 'CIRCLE', '8', layer, '10', this.n(p[0]), '20', this.n(p[1]), '30', this.n(p[2] || 0), '40', this.n(r)); }
-  text(layer, p, h, s) { this.e.push('0', 'TEXT', '8', layer, '10', this.n(p[0]), '20', this.n(p[1]), '30', this.n(p[2] || 0), '40', this.n(h), '1', String(s).replace(/[\r\n]/g, ' ')); }
+  text(layer, p, h, s) { this.e.push('0', 'TEXT', '8', layer, '10', this.n(p[0]), '20', this.n(p[1]), '30', this.n(p[2] || 0), '40', this.n(h), '1', dxfText(s)); }
   toString() {
     const out = ['0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1009', '0', 'ENDSEC', '0', 'SECTION', '2', 'TABLES', '0', 'TABLE', '2', 'LAYER', '70', String(this.layers.size)];
     for (const [n, c] of this.layers) out.push('0', 'LAYER', '2', n, '70', '0', '62', String(c), '6', 'CONTINUOUS');
@@ -88,6 +98,75 @@ export function siteDXF(M, iv, mode = 'site') {
   for (const g of M.osm.green) dx.poly('GREEN', g.loc.slice(0, -1).map(drape), true);
   for (const t of M.osm.trees) dx.circle('TREES', drape(t.loc), (t.h || 8) * 0.3);
   dx.poly('FRAME', [[-f.w / 2, -f.h / 2], [f.w / 2, -f.h / 2], [f.w / 2, f.h / 2], [-f.w / 2, f.h / 2]].map(p => [...T(...p), M.dem.min]), true);
+  return dx.toString();
+}
+/* clip to the frame rectangle (frame-local metres): polylines → visible runs, polygons → Sutherland–Hodgman */
+function clipLineRect(pts, X, Y) {
+  const out = []; let run = null;
+  for (let k = 0; k + 1 < pts.length; k++) {
+    let [x0, y0] = pts[k], [x1, y1] = pts[k + 1], t0 = 0, t1 = 1; const dx = x1 - x0, dy = y1 - y0;
+    const ok = [[-dx, x0 + X], [dx, X - x0], [-dy, y0 + Y], [dy, Y - y0]].every(([p, q]) => { if (p === 0) return q >= 0; const r = q / p; if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; } return true; });
+    if (!ok) { if (run) out.push(run); run = null; continue; }
+    const A = [x0 + t0 * dx, y0 + t0 * dy], B = [x0 + t1 * dx, y0 + t1 * dy];
+    if (run && t0 === 0) run.push(B); else { if (run) out.push(run); run = [A, B]; }
+    if (t1 < 1) { out.push(run); run = null; }
+  }
+  if (run) out.push(run);
+  return out;
+}
+function clipPolyRect(ring, X, Y) {
+  let poly = ring.slice(0, -1);
+  for (const [ax, sgn] of [[0, 1], [0, -1], [1, 1], [1, -1]]) {
+    const lim = ax ? Y : X, inn = p => sgn * p[ax] <= lim, out = [];
+    for (let i = 0; i < poly.length; i++) {
+      const P = poly[i], Q = poly[(i + 1) % poly.length];
+      if (inn(P)) out.push(P);
+      if (inn(P) !== inn(Q)) { const t = (sgn * lim - P[ax]) / (Q[ax] - P[ax]); out.push([P[0] + t * (Q[0] - P[0]), P[1] + t * (Q[1] - P[1])]); }
+    }
+    poly = out; if (!poly.length) break;
+  }
+  return poly;
+}
+/** flat 2D site plan for drafting over: footprints, contours with labels, streets, water, green, land use,
+    trees, section lines, north arrow. 1 unit = 1 m; 'site' = frame-aligned, 'utm' = real UTM coordinates. */
+export function sitePlanDXF(M, iv, sections = [], scale = 1000, mode = 'site') {
+  const f = M.frame, T = mode === 'utm' ? (x, y) => f.toUTM(x, y) : (x, y) => [x, y], dx = new DXF(), u = scale / 1000, tH = 2 * u;
+  [['FRAME', 7], ['CONTOURS_MINOR', 8], ['CONTOURS_MAJOR', 1], ['CONTOUR_LABELS', 1], ['BUILDINGS', 7], ['BUILDINGS_HEIGHT_UNKNOWN', 30], ['BUILDING_HEIGHTS', 7], ['ROADS', 2], ['ROAD_NAMES', 2],
+    ['RAILWAYS', 250], ['WATER', 5], ['WATERWAYS', 5], ['GREEN', 3], ['LANDUSE', 9], ['TREES', 3], ['SECTION_LINES', 6], ['NORTH', 7]].forEach(([l, c]) => dx.layer(l, c));
+  const P = p => T(p[0], p[1]);
+  dx.poly2('FRAME', [[-f.w / 2, -f.h / 2], [f.w / 2, -f.h / 2], [f.w / 2, f.h / 2], [-f.w / 2, f.h / 2]].map(P), true);
+  for (const c of contourLines(M, iv)) {
+    dx.poly2(c.major ? 'CONTOURS_MAJOR' : 'CONTOURS_MINOR', c.pts.map(P), false);
+    if (c.major && c.pts.length > 10) dx.textJ('CONTOUR_LABELS', P(c.pts[Math.floor(c.pts.length / 2)]), tH * 0.9, c.v.toFixed(c.v % 1 ? 1 : 0), 1);
+  }
+  for (const b of M.buildings.filter(q => q.inFrame)) {
+    for (const ring of b.loc) dx.poly2(b.known ? 'BUILDINGS' : 'BUILDINGS_HEIGHT_UNKNOWN', ring.slice(0, -1).map(P), true);
+    let cx = 0, cy = 0; const r0 = b.loc[0].slice(0, -1); for (const p of r0) { cx += p[0]; cy += p[1]; }
+    dx.textJ('BUILDING_HEIGHTS', P([cx / r0.length, cy / r0.length]), tH * 0.7, `${b.known ? '' : '~'}${b.h.toFixed(1)}`, 1);
+  }
+  const X = f.w / 2, Y = f.h / 2, lines = (lay, l) => clipLineRect(l, X, Y).forEach(r => dx.poly2(lay, r.map(P), false)), polys = (lay, ring) => { const q = clipPolyRect(ring, X, Y); if (q.length > 2) dx.poly2(lay, q.map(P), true); };
+  const named = new Set();
+  for (const r of M.osm.roads) {
+    const runs = clipLineRect(r.loc, X, Y); runs.forEach(q => dx.poly2('ROADS', q.map(P), false));
+    const lng = runs.sort((a, b) => b.length - a.length)[0];
+    if (r.name && lng && !named.has(r.name)) { named.add(r.name); dx.textJ('ROAD_NAMES', P(lng[Math.floor(lng.length / 2)]), tH, r.name, 1); }
+  }
+  for (const r of M.osm.rails) lines('RAILWAYS', r.loc);
+  for (const w of M.osm.water) polys('WATER', w.loc);
+  for (const w of M.osm.waterways) lines('WATERWAYS', w.loc);
+  for (const g of M.osm.green) polys('GREEN', g.loc);
+  for (const g of M.osm.landuse) polys('LANDUSE', g.loc);
+  for (const t of M.osm.trees) if (f.inside(t.loc[0], t.loc[1])) dx.circle('TREES', P(t.loc), (t.h || 8) * 0.3);
+  for (const sec of sections) {
+    const A = f.toLocal(...sec.a), B = f.toLocal(...sec.b);
+    dx.poly2('SECTION_LINES', [P(A), P(B)], false);
+    for (const [p, t] of [[A, sec.n], [B, sec.n + "'"]]) { dx.circle('SECTION_LINES', P(p), 3 * u); dx.textJ('SECTION_LINES', P([p[0], p[1] - 1.1 * u]), 3 * u, t, 1); }
+  }
+  // north arrow in the top-right corner
+  const nv = f.enToFrame(0, 1), o = [f.w / 2 - 15 * u, f.h / 2 - 20 * u], tip = [o[0] + nv[0] * 10 * u, o[1] + nv[1] * 10 * u], side = [-nv[1], nv[0]];
+  dx.poly2('NORTH', [P([o[0] + side[0] * 3 * u, o[1] + side[1] * 3 * u]), P(tip), P([o[0] - side[0] * 3 * u, o[1] - side[1] * 3 * u]), P(o)], true);
+  dx.textJ('NORTH', P([tip[0] + nv[0] * 2 * u, tip[1] + nv[1] * 2 * u]), 3 * u, 'N', 1);
+  dx.textJ('FRAME', P([-f.w / 2, -f.h / 2 - 6 * u]), tH, `Units: metres. ${mode === 'utm' ? `UTM zone ${f.zone}${f.south ? 'S' : 'N'} (EPSG:${f.epsg})` : 'Site-aligned: origin at frame centre, Y = frame up'}. Heights in m; ~ = not recorded (default used).`, 0);
   return dx.toString();
 }
 let THREE_triangulate = ring => { const r = []; for (let i = 1; i < ring.length - 1; i++) r.push([0, i, i + 1]); return r; };

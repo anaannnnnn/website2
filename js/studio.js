@@ -46,6 +46,8 @@ export async function openStudio(S, H) {
   const file = (pack, name, desc, make, type = 'application/octet-stream') => files.push({ pack, name, desc, make, type });
   const base = slug((S.site && S.site.name) || 'site');
   if (S.packs.has('cad')) {
+    file('cad', `${base}_site_plan_2d.dxf`, 'CAD 2D site plan — footprints with heights, contours with labels, streets, water, green, land use, trees, section lines, north arrow (site-aligned metres)', () => EX.sitePlanDXF(M, iv, S.sections, scale, 'site'), 'application/dxf');
+    file('cad', `${base}_site_plan_2d_utm.dxf`, `CAD 2D site plan in real UTM ${M.frame.zone}${M.frame.south ? 'S' : 'N'} coordinates`, () => EX.sitePlanDXF(M, iv, S.sections, scale, 'utm'), 'application/dxf');
     file('cad', `${base}_site.dxf`, 'CAD site model — site-aligned metres (terrain mesh, contours, 3D buildings, roads, water, trees)', () => EX.siteDXF(M, iv, 'site'), 'application/dxf');
     file('cad', `${base}_site_utm.dxf`, `CAD site model — real UTM ${M.frame.zone}${M.frame.south ? 'S' : 'N'} coordinates`, () => EX.siteDXF(M, iv, 'utm'), 'application/dxf');
     file('cad', `${base}_contours_${iv}m.dxf`, `Contours every ${iv} m (major every ${iv * 5} m) — site-aligned`, () => EX.contoursDXF(M, iv, 'site'), 'application/dxf');
@@ -78,7 +80,8 @@ export async function openStudio(S, H) {
         fillCards(card, out);
         if (r.oversize) toast(`${r.oversize} laser piece(s) are bigger than your board — choose a smaller model scale (e.g. 1:${fmt(laser.scale * 2)}).`, 'warn', 7000);
       } else if (j.kind === 'multi') {
-        fillCards(card, r.map((svg, k) => ({ id: `sections_${k + 1}`, title: r.length > 1 ? `Sections · sheet ${k + 1}` : 'Sections', sub: `1:${fmt(scale)} @ ${S.paper} · PNG up to 16,000 px per section`, svg, pack: j.pack, crops: r.crops && r.crops[k] })));
+        const secs = (r.crops || []).flat().map(cr => ({ id: `section_${cr.n}`, title: `Section ${cr.n}–${cr.n}′`, sub: `${fmt(cr.L)} m · ${cr.sd.dir} · drawing only, 1:${fmt(cr.scale)} · PNG up to 16,000 px`, svg: cr.svg, dxf: cr.dxf, pack: j.pack, section: cr }));
+        fillCards(card, secs.concat(r.map((svg, k) => ({ id: `sections_sheet_${k + 1}`, title: r.length > 1 ? `Sections — presentation sheet ${k + 1}` : 'Sections — presentation sheet', sub: `1:${fmt(scale)} @ ${S.paper} with title block`, svg, pack: j.pack }))));
       } else fillCards(card, [{ id: slug(j.title), title: j.title, sub: `${S.paper} ${S.orient} · ${/axonometric|Sun path|Wind|Climate/.test(j.title) ? 'diagram' : '1:' + fmt(scale)}`, svg: r, pack: j.pack }]);
     } catch (e) {
       console.error(j.title, e);
@@ -119,15 +122,15 @@ async function sheetDownload(sh, kind, btn) {
 }
 
 /* PNG sizes: whole sheet at print DPI, or each section cropped on its own at a large pixel width */
-const SECTION_PX = [6000, 10000, 16000];
+const SECTION_PX = [4000, 8000, 12000, 16000];
 function pngMenu(sh, btn) {
   closePngMenu();
   const name = `${ST.base}_${sh.id}`, opts = [];
-  for (const dpi of [150, 300, 600]) { const z = EX.pngSize(sh.svg, { dpi }); opts.push({ grp: 'Whole sheet', label: `${dpi} dpi`, info: `${fmt(z.W)} × ${fmt(z.H)} px`, o: { dpi }, file: `${name}_${dpi}dpi.png` }); }
-  for (const cr of sh.crops || []) for (const px of SECTION_PX) {
-    const z = EX.pngSize(cr.svg, { width: px });
-    opts.push({ grp: `Section ${cr.n}–${cr.n}′ only`, label: `${fmt(px)} px wide`, info: `${fmt(z.W)} × ${fmt(z.H)} px · ${fmt(z.dpi)} dpi at 1:${fmt(cr.scale)}`, svg: cr.svg, o: { width: px }, file: `${ST.base}_section_${cr.n}_${px}px.png` });
+  if (sh.section) for (const px of SECTION_PX) {
+    const z = EX.pngSize(sh.svg, { width: px });
+    opts.push({ grp: `${sh.title} — drawing only`, label: `${fmt(px)} px wide`, info: `${fmt(z.W)} × ${fmt(z.H)} px · ${fmt(z.dpi)} dpi at 1:${fmt(sh.section.scale)}`, o: { width: px }, file: `${name}_${px}px.png` });
   }
+  else for (const dpi of [150, 300, 600]) { const z = EX.pngSize(sh.svg, { dpi }); opts.push({ grp: 'Whole sheet', label: `${dpi} dpi`, info: `${fmt(z.W)} × ${fmt(z.H)} px`, o: { dpi }, file: `${name}_${dpi}dpi.png` }); }
   const m = document.createElement('div'); m.className = 'pngmenu'; m.setAttribute('role', 'menu');
   let last = '';
   m.innerHTML = opts.map((o, i) => (o.grp !== last ? `<div class="grp">${esc(last = o.grp)}</div>` : '') + `<button role="menuitem" data-i="${i}"><b>${esc(o.label)}</b><small>${esc(o.info)}</small></button>`).join('') +
@@ -141,7 +144,7 @@ function pngMenu(sh, btn) {
     const o = opts[+el.dataset.i]; closePngMenu();
     const label = btn.textContent; btn.disabled = true;
     try {
-      const blob = await EX.renderPNG(o.svg || sh.svg, o.o, p => { btn.textContent = `${Math.round(p * 100)}%`; });
+      const blob = await EX.renderPNG(sh.svg, o.o, p => { btn.textContent = `${Math.round(p * 100)}%`; });
       download(blob, o.file); toast(`${esc(o.file)} — ${fmt(blob.size / 1048576, 1)} MB`, 'ok');
     } catch (e) { console.error(e); toast('PNG failed: ' + esc(e.message), 'err'); }
     finally { btn.disabled = false; btn.textContent = label; }
@@ -184,11 +187,9 @@ $('#btnZip').onclick = async () => {
     const z = new JSZip(), total = ST.sheets.length + ST.files.length + 1; let n = 0;
     const tick = msg => { bar.style.width = `${++n / total * 100}%`; b.textContent = msg; };
     for (const s of ST.sheets) { z.file(`${s.pack}/${ST.base}_${s.id}.svg`, s.svg); if (s.dxf) z.file(`${s.pack}/${ST.base}_${s.id}.dxf`, s.dxf); tick('Sheets…'); await sleep(0); }
-    for (const s of ST.sheets) if (s.crops) {   // sections also as high-resolution PNGs
-      try {
-        z.file(`${s.pack}/png/${ST.base}_${s.id}_300dpi.png`, await EX.renderPNG(s.svg, { dpi: 300 }));
-        for (const cr of s.crops) { b.textContent = `Section ${cr.n} PNG…`; z.file(`${s.pack}/png/${ST.base}_section_${cr.n}_10000px.png`, await EX.renderPNG(cr.svg, { width: 10000 })); z.file(`${s.pack}/${ST.base}_section_${cr.n}.svg`, cr.svg); }
-      } catch (e) { console.error('section png', e); }
+    for (const s of ST.sheets) if (s.section) {   // each section drawing also as a high-resolution PNG
+      b.textContent = `${s.title} PNG…`;
+      try { z.file(`${s.pack}/png/${ST.base}_${s.id}_10000px.png`, await EX.renderPNG(s.svg, { width: 10000 })); } catch (e) { console.error('section png', e); }
     }
     for (const f of ST.files) { try { z.file(`${f.pack}/${f.name}`, await f.make()); } catch (e) { console.error(f.name, e); } tick('Files…'); await sleep(0); }
     try { const set = ST.sheets.filter(s => !s.dxf).map(s => s.svg); if (set.length) z.file(`${ST.base}_drawings.pdf`, await EX.sheetsToPDF(set)); } catch (e) { console.error('pdf', e); }

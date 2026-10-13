@@ -33,11 +33,19 @@ Everything runs in the browser — no account, no paid server. Host it free on G
    - **Sun & climate**: sun path, shadow study (solstices/equinox × 9/12/15 h), wind rose, climate summary.
    - **Physical model**: laser-cut contour layers (contour step = board thickness at model scale,
      next layer + building footprints engraved, packed on your board size) as SVG/DXF, and a 3D-print STL.
-   - **CAD / GIS**: DXF site model (site-aligned *and* real UTM coordinates), contour DXF/GeoJSON/KML,
+   - **Sections**: each section on its own as a drawing-only PNG (up to 16,000 px, DPI embedded), SVG,
+     PDF and **DXF** (1 unit = 1 m, X = distance along the cut, Y = real elevation; true hidden-line,
+     cut buildings as solid fills, ground hatch, separate layers), plus a presentation sheet.
+   - **CAD / GIS**: 2D site-plan DXF (footprints with heights, labelled contours, streets, water, green,
+     land use, trees, section lines, north arrow), 3D DXF site model (site-aligned *and* real UTM), contour DXF/GeoJSON/KML,
      GeoTIFF (EPSG UTM with rotation), ASCII grid, XYZ points, 16-bit heightmap, OBJ, GLB, GeoJSON.
 
 Every sheet is authored in millimetres and exports as **vector PDF**, SVG or PNG, with a title block
 (project, author, coordinates, UTM zone, scale bar, rotated north arrow, data sources and reliability).
+**DWG:** no free tool can write DWG reliably in a browser (the format is closed; LibreDWG's writer is
+experimental). The DXF files are R12, which AutoCAD, BricsCAD, Rhino, ArchiCAD, Revit and SketchUp open
+directly — in AutoCAD use *Save As → DWG*, or batch-convert a folder with the free ODA File Converter.
+
 Projects are saved in the page link — share it to reopen the same site, frame and sections.
 
 ## Honest data
