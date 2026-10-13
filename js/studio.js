@@ -78,7 +78,7 @@ export async function openStudio(S, H) {
         fillCards(card, out);
         if (r.oversize) toast(`${r.oversize} laser piece(s) are bigger than your board — choose a smaller model scale (e.g. 1:${fmt(laser.scale * 2)}).`, 'warn', 7000);
       } else if (j.kind === 'multi') {
-        fillCards(card, r.map((svg, k) => ({ id: `sections_${k + 1}`, title: r.length > 1 ? `Sections · sheet ${k + 1}` : 'Sections', sub: `1:${fmt(scale)} @ ${S.paper}`, svg, pack: j.pack })));
+        fillCards(card, r.map((svg, k) => ({ id: `sections_${k + 1}`, title: r.length > 1 ? `Sections · sheet ${k + 1}` : 'Sections', sub: `1:${fmt(scale)} @ ${S.paper} · PNG up to 16,000 px per section`, svg, pack: j.pack, crops: r.crops && r.crops[k] })));
       } else fillCards(card, [{ id: slug(j.title), title: j.title, sub: `${S.paper} ${S.orient} · ${/axonometric|Sun path|Wind|Climate/.test(j.title) ? 'diagram' : '1:' + fmt(scale)}`, svg: r, pack: j.pack }]);
     } catch (e) {
       console.error(j.title, e);
@@ -112,11 +112,45 @@ async function sheetDownload(sh, kind, btn) {
     btn && (btn.disabled = true);
     if (kind === 'svg') download(sh.svg, name + '.svg', 'image/svg+xml');
     if (kind === 'dxf') download(sh.dxf, name + '.dxf', 'application/dxf');
-    if (kind === 'png') download(await EX.svgToPNG(sh.svg, 150), name + '.png');
+    if (kind === 'png') return pngMenu(sh, btn);
     if (kind === 'pdf') { toast('Building vector PDF…'); download(await EX.sheetsToPDF([sh.svg]), name + '.pdf', 'application/pdf'); }
   } catch (e) { console.error(e); toast('Export failed: ' + e.message, 'err'); }
   finally { btn && (btn.disabled = false); }
 }
+
+/* PNG sizes: whole sheet at print DPI, or each section cropped on its own at a large pixel width */
+const SECTION_PX = [6000, 10000, 16000];
+function pngMenu(sh, btn) {
+  closePngMenu();
+  const name = `${ST.base}_${sh.id}`, opts = [];
+  for (const dpi of [150, 300, 600]) { const z = EX.pngSize(sh.svg, { dpi }); opts.push({ grp: 'Whole sheet', label: `${dpi} dpi`, info: `${fmt(z.W)} × ${fmt(z.H)} px`, o: { dpi }, file: `${name}_${dpi}dpi.png` }); }
+  for (const cr of sh.crops || []) for (const px of SECTION_PX) {
+    const z = EX.pngSize(cr.svg, { width: px });
+    opts.push({ grp: `Section ${cr.n}–${cr.n}′ only`, label: `${fmt(px)} px wide`, info: `${fmt(z.W)} × ${fmt(z.H)} px · ${fmt(z.dpi)} dpi at 1:${fmt(cr.scale)}`, svg: cr.svg, o: { width: px }, file: `${ST.base}_section_${cr.n}_${px}px.png` });
+  }
+  const m = document.createElement('div'); m.className = 'pngmenu'; m.setAttribute('role', 'menu');
+  let last = '';
+  m.innerHTML = opts.map((o, i) => (o.grp !== last ? `<div class="grp">${esc(last = o.grp)}</div>` : '') + `<button role="menuitem" data-i="${i}"><b>${esc(o.label)}</b><small>${esc(o.info)}</small></button>`).join('') +
+    '<p>PNGs carry their DPI, so they print at the drawing scale.</p>';
+  document.body.appendChild(m);
+  const b = btn.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
+  m.style.left = Math.max(8, Math.min(innerWidth - mw - 8, b.right - mw)) + 'px';
+  m.style.top = (b.bottom + mh + 8 < innerHeight ? b.bottom + 6 : Math.max(8, b.top - mh - 6)) + 'px';
+  requestAnimationFrame(() => m.classList.add('in'));
+  m.querySelectorAll('[data-i]').forEach(el => el.onclick = async () => {
+    const o = opts[+el.dataset.i]; closePngMenu();
+    const label = btn.textContent; btn.disabled = true;
+    try {
+      const blob = await EX.renderPNG(o.svg || sh.svg, o.o, p => { btn.textContent = `${Math.round(p * 100)}%`; });
+      download(blob, o.file); toast(`${esc(o.file)} — ${fmt(blob.size / 1048576, 1)} MB`, 'ok');
+    } catch (e) { console.error(e); toast('PNG failed: ' + esc(e.message), 'err'); }
+    finally { btn.disabled = false; btn.textContent = label; }
+  });
+  setTimeout(() => { document.addEventListener('pointerdown', outside, true); document.addEventListener('keydown', escKey); });
+}
+const outside = e => { if (!e.target.closest('.pngmenu')) closePngMenu(); };
+const escKey = e => { if (e.key === 'Escape') closePngMenu(); };
+function closePngMenu() { $$('.pngmenu').forEach(m => m.remove()); document.removeEventListener('pointerdown', outside, true); document.removeEventListener('keydown', escKey); }
 
 /* zoomable preview */
 function openModal(sh, url) {
@@ -150,6 +184,12 @@ $('#btnZip').onclick = async () => {
     const z = new JSZip(), total = ST.sheets.length + ST.files.length + 1; let n = 0;
     const tick = msg => { bar.style.width = `${++n / total * 100}%`; b.textContent = msg; };
     for (const s of ST.sheets) { z.file(`${s.pack}/${ST.base}_${s.id}.svg`, s.svg); if (s.dxf) z.file(`${s.pack}/${ST.base}_${s.id}.dxf`, s.dxf); tick('Sheets…'); await sleep(0); }
+    for (const s of ST.sheets) if (s.crops) {   // sections also as high-resolution PNGs
+      try {
+        z.file(`${s.pack}/png/${ST.base}_${s.id}_300dpi.png`, await EX.renderPNG(s.svg, { dpi: 300 }));
+        for (const cr of s.crops) { b.textContent = `Section ${cr.n} PNG…`; z.file(`${s.pack}/png/${ST.base}_section_${cr.n}_10000px.png`, await EX.renderPNG(cr.svg, { width: 10000 })); z.file(`${s.pack}/${ST.base}_section_${cr.n}.svg`, cr.svg); }
+      } catch (e) { console.error('section png', e); }
+    }
     for (const f of ST.files) { try { z.file(`${f.pack}/${f.name}`, await f.make()); } catch (e) { console.error(f.name, e); } tick('Files…'); await sleep(0); }
     try { const set = ST.sheets.filter(s => !s.dxf).map(s => s.svg); if (set.length) z.file(`${ST.base}_drawings.pdf`, await EX.sheetsToPDF(set)); } catch (e) { console.error('pdf', e); }
     tick('Compressing…');

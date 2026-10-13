@@ -161,11 +161,60 @@ export async function sheetsToPDF(svgs) {
   for (let i = 0; i < svgs.length; i++) await addSvgPage(doc, svgs[i], i === 0);
   return doc.output('blob');
 }
-export function svgToPNG(svg, dpi = 150) {
-  return new Promise((res, rej) => {
-    const [w, h] = sizeOf(svg), url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })), img = new Image();
-    img.onload = async () => { const cv = document.createElement('canvas'); cv.width = Math.round(w / 25.4 * dpi); cv.height = Math.round(h / 25.4 * dpi); const c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height); c.drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url); res(await canvasBlob(cv)); };
-    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('render failed')); };
-    img.src = url;
-  });
+/* ── high-resolution PNG: the SVG is rasterised in horizontal strips (each strip re-renders the vector
+   drawing through its own viewBox, so lines stay crisp) and streamed into a PNG with the browser's
+   native deflate. No canvas-size ceiling; the file carries its DPI so it prints at true scale. ── */
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function pngChunk(type, data) {
+  const head = new Uint8Array(8), dv = new DataView(head.buffer), tail = new Uint8Array(4);
+  dv.setUint32(0, data.length); for (let i = 0; i < 4; i++) head[4 + i] = type.charCodeAt(i);
+  let c = 0xffffffff;
+  for (let i = 4; i < 8; i++) c = CRC_T[(c ^ head[i]) & 255] ^ (c >>> 8);
+  for (let i = 0; i < data.length; i++) c = CRC_T[(c ^ data[i]) & 255] ^ (c >>> 8);
+  new DataView(tail.buffer).setUint32(0, (c ^ 0xffffffff) >>> 0);
+  return [head, data, tail];
 }
+const loadSVG = svg => new Promise((res, rej) => {
+  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })), img = new Image();
+  img.onload = () => { URL.revokeObjectURL(url); res(img); };
+  img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('render failed')); };
+  img.src = url;
+});
+/** px size of a PNG render: region in drawing mm (default whole sheet), at dpi or a fixed pixel width */
+export function pngSize(svg, { dpi = 300, region = null, width = null } = {}) {
+  const [sw, sh] = sizeOf(svg), r = region || { x: 0, y: 0, w: sw, h: sh }, ppmm = width ? width / r.w : dpi / 25.4;
+  return { W: Math.round(r.w * ppmm), H: Math.round(r.h * ppmm), ppmm, r, dpi: ppmm * 25.4 };
+}
+export async function renderPNG(svg, opts = {}, onProgress) {
+  const { W, H, ppmm, r } = pngSize(svg, opts);
+  if (W > 32000 || H > 32000) throw new Error('image too large');
+  const rows = Math.max(1, Math.min(2048, Math.floor(6e6 / W)));
+  const strip = (y0, n) => svg.replace(/<svg\b[^>]*>/, m => m.replace(/\swidth="[^"]*"/, ` width="${W}"`).replace(/\sheight="[^"]*"/, ` height="${n}"`)
+    .replace(/\sviewBox="[^"]*"/, ` viewBox="${r.x} ${r.y + y0 / ppmm} ${r.w} ${n / ppmm}" preserveAspectRatio="none"`));
+  const cv = document.createElement('canvas'); cv.width = W;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  if (typeof CompressionStream === 'undefined') {   // old browsers: single canvas, size-capped
+    const k = Math.min(1, 16000 / Math.max(W, H), Math.sqrt(2.5e8 / (W * H))), w = Math.round(W * k), h = Math.round(H * k);
+    cv.width = w; cv.height = h; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(await loadSVG(strip(0, H).replace(/\swidth="\d+"/, ` width="${w}"`).replace(/\sheight="\d+"/, ` height="${h}"`)), 0, 0, w, h);
+    return canvasBlob(cv);
+  }
+  const cs = new CompressionStream('deflate'), wr = cs.writable.getWriter(), zipped = new Response(cs.readable).arrayBuffer();
+  for (let y0 = 0; y0 < H; y0 += rows) {
+    const n = Math.min(rows, H - y0);
+    cv.height = n; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, n);
+    ctx.drawImage(await loadSVG(strip(y0, n)), 0, 0, W, n);
+    const px = ctx.getImageData(0, 0, W, n).data, line = 1 + W * 3, buf = new Uint8Array(n * line);
+    for (let j = 0; j < n; j++) {               // filter 1 (Sub) on RGB rows
+      const o = j * line, p = j * W * 4; buf[o] = 1;
+      for (let i = 0; i < W; i++) for (let c = 0; c < 3; c++) buf[o + 1 + i * 3 + c] = px[p + i * 4 + c] - (i ? px[p + (i - 1) * 4 + c] : 0);
+    }
+    await wr.write(buf);
+    onProgress && onProgress(Math.min(1, (y0 + n) / H));
+  }
+  await wr.close();
+  const ihdr = new Uint8Array(13), dv = new DataView(ihdr.buffer); dv.setUint32(0, W); dv.setUint32(4, H); ihdr.set([8, 2, 0, 0, 0], 8);
+  const phys = new Uint8Array(9), dp = new DataView(phys.buffer), ppm = Math.round(ppmm * 1000); dp.setUint32(0, ppm); dp.setUint32(4, ppm); phys[8] = 1;
+  return new Blob([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), ...pngChunk('IHDR', ihdr), ...pngChunk('pHYs', phys), ...pngChunk('IDAT', new Uint8Array(await zipped)), ...pngChunk('IEND', new Uint8Array(0))], { type: 'image/png' });
+}
+export const svgToPNG = (svg, dpi = 300) => renderPNG(svg, { dpi });

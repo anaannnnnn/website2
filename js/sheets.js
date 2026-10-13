@@ -246,6 +246,7 @@ export function runoffMap(c) {
 }
 
 /* ── sections (true scale, packed onto sheets) ── */
+const SEC_HL = `<pattern id="hl" patternUnits="userSpaceOnUse" width="1.6" height="1.6" patternTransform="rotate(45)"><rect width="1.6" height="1.6" fill="#fff"/><line x1="0" y1="0" x2="0" y2="1.6" stroke="#000" stroke-width="0.1"/></pattern>`;
 export function sectionSheets(c, sections, depth) {
   const M = c.M, out = [], blocks = [];
   let scale = c.scale;
@@ -261,15 +262,21 @@ export function sectionSheets(c, sections, depth) {
   const flush = () => { if (page.length) out.push(page); page = []; used = 0; };
   for (const b of layout) { if (used + b.h > c.L.vh - 8 && page.length) flush(); page.push(b); used += b.h + gap; }
   flush();
-  return out.map((pg, pi) => {
+  const crops = [];
+  const svgs = out.map((pg, pi) => {
     let body = '', y = c.L.vy + 12 * c.fs;
+    const pageCrops = []; crops.push(pageCrops);
     for (const b of pg) {
       const x0 = c.L.vx + (c.L.vw - b.sd.L * k) / 2, r = renderSection(b.sd, { k, exag: 1, pen: 0.13 * c.fs, font: fz, x0, y0: y + 6 * c.fs, zTop: b.zTop, zBot: b.zBot, id: 's' + pi + b.sd.sec.n, labels: true });
       const zs = niceStep(b.zTop - b.zBot, 6);
+      const b0 = body.length;
       body += r.svg;
       for (let z = Math.ceil(b.zBot / zs) * zs; z <= b.zTop; z += zs) body += `<line x1="${r2(x0)}" x2="${r2(x0 + 3 * c.fs)}" y1="${r2(r.Y(z))}" y2="${r2(r.Y(z))}" stroke="#000" stroke-width="${PEN.f}"/>${T(x0 + 4 * c.fs, r.Y(z) + fz * 0.35, fz * 0.85, (z >= 0 ? '+' : '') + z.toFixed(1), `paint-order="stroke" stroke="#fff" stroke-width="${r2(fz * 0.4)}"`)}`;
       for (const [x, t] of [[x0, b.sd.sec.n], [r.Xe, b.sd.sec.n + '′']]) body += `<circle cx="${r2(x)}" cy="${r2(y + 2 * c.fs)}" r="${r2(3 * c.fs)}" fill="#fff" stroke="#000" stroke-width="${PEN.b}"/>${T(x, y + 3.1 * c.fs, 3.2 * c.fs, t, 'text-anchor="middle" font-weight="800"')}<line x1="${r2(x)}" x2="${r2(x)}" y1="${r2(y + 5 * c.fs)}" y2="${r2(r.yG)}" stroke="#000" stroke-width="${PEN.f}" stroke-dasharray="2 1"/>`;
       body += T(c.L.vx + 4 * c.fs, r.yG + 7 * c.fs, 3.4 * c.fs, `SECTION ${b.sd.sec.n}–${b.sd.sec.n}′`, 'font-weight="800"') + T(c.L.vx + 4 * c.fs, r.yG + 11 * c.fs, 2.1 * c.fs, `${fmt(b.sd.L)} m · ${b.sd.dir} · looking ${b.sd.view} · ${b.sd.cuts.length} buildings cut, ${b.sd.beyond.length} in elevation up to ${fmt(b.sd.depth)} m behind · 1:${fmt(scale)} horizontal and vertical`, 'fill="#444"');
+      // the same section on its own (nothing clipped, end markers whole) — for the high-resolution section PNG
+      const cx0 = x0 - 5 * c.fs, cx1 = Math.max(r.Xe + 5 * c.fs, c.L.vx + 120 * c.fs), cy0 = y - 2 * c.fs, cy1 = r.yG + 13 * c.fs, cw = r2(cx1 - cx0), ch = r2(cy1 - cy0);
+      pageCrops.push({ n: b.sd.sec.n, L: b.sd.L, scale, svg: `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${cw}mm" height="${ch}mm" viewBox="0 0 ${cw} ${ch}" font-family="${FONT}"><defs>${SEC_HL}</defs><rect width="${cw}" height="${ch}" fill="#fff"/><g transform="translate(${r2(-cx0)} ${r2(-cy0)})">${body.slice(b0)}</g></svg>` });
       y += b.h + gap;
     }
     const cl = viewportClip(c);
@@ -277,8 +284,10 @@ export function sectionSheets(c, sections, depth) {
       body: `<g clip-path="url(#${cl.id})">${body}</g><rect x="${c.L.vx}" y="${c.L.vy}" width="${c.L.vw}" height="${c.L.vh}" fill="none" stroke="#000" stroke-width="${PEN.b}"/>`, defs: cl.def, north: false,
       legend: [{ fill: '#000', label: 'Cut: building' }, { fill: 'url(#hl)', label: 'Cut: ground (terrain model)' }, { fill: '#fff', label: 'Elevation beyond' }, { fill: '#fff', stroke: '#000', label: 'Dashed: height not recorded' }, { fill: '#e3eef6', label: 'Water' }],
       notes: ['Numbers above cut buildings are heights in metres; “~” = height not recorded (default used).'], scaleLabel: `1:${fmt(scale)} @ ${c.o.paper}` })
-      .replace('<defs>', `<defs><pattern id="hl" patternUnits="userSpaceOnUse" width="1.6" height="1.6" patternTransform="rotate(45)"><rect width="1.6" height="1.6" fill="#fff"/><line x1="0" y1="0" x2="0" y2="1.6" stroke="#000" stroke-width="0.1"/></pattern>`);
+      .replace('<defs>', `<defs>${SEC_HL}`);
   });
+  svgs.crops = crops;
+  return svgs;
 }
 
 /* ── sun & climate ── */
