@@ -17,9 +17,9 @@ Everything runs in the browser — no account, no paid server. Host it free on G
    - **Terrain**: AWS Terrain Tiles (SRTM, USGS 3DEP, UK EA LIDAR, EU-DEM, LINZ … depending on region),
      resampled onto a frame-aligned UTM grid, dropouts repaired.
    - **Buildings**: **Overture Maps** (OpenStreetMap + Microsoft + Google + Esri footprints, heights, floors)
-     read directly from Overture's public GeoParquet files; fallback to live OpenStreetMap, then
-     OpenFreeMap tiles.
-  - **Streets, water, land use, places**: OpenStreetMap via OpenFreeMap vector tiles (CDN, weekly) — always
+     read directly from Overture's public GeoParquet files; fallback to OpenFreeMap tiles, then
+     live OpenStreetMap.
+   - **Streets, water, land use, places**: OpenStreetMap via OpenFreeMap vector tiles (CDN, weekly) — always
      works; live Overpass (mirrors raced, 12 s grace) is preferred when it answers. **Trees** need live Overpass.
    - **Climate & wind**: Open-Meteo ERA5 (last full year).
 4. **Sections** — A–A′ and B–B′ are added along the frame axes; draw more on the map (snapping to the
