@@ -2,13 +2,15 @@
 import * as THREE from 'three';
 import { sunPosition } from './geo.js';
 
-export const CONTEXT_ITEMS = ['people', 'cars', 'sunpath', 'sun', 'wind', 'north', 'scale', 'outline'];
+export const CONTEXT_ITEMS = ['people', 'cars', 'sunpath', 'solar', 'sun', 'wind', 'north', 'scale', 'outline'];
 
 const mat = (c, o = {}) => new THREE.MeshBasicMaterial({ color: c, ...o });
 function label(text, size, color = '#222') {
-  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96; const c = cv.getContext('2d');
-  c.font = '700 54px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 10; c.strokeStyle = 'rgba(255,255,255,.9)'; c.strokeText(text, 128, 48); c.fillStyle = color; c.fillText(text, 128, 48);
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true })); s.scale.set(size * 2.67, size, 1); s.renderOrder = 10; return s;
+  const lines = String(text).split('\n'), fnt = '700 54px system-ui, sans-serif', cv = document.createElement('canvas'), c = cv.getContext('2d');
+  c.font = fnt; const w = Math.ceil(Math.max(...lines.map(l => c.measureText(l).width))) + 24, lh = 64; cv.width = w; cv.height = lh * lines.length + 16;
+  c.font = fnt; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 10; c.strokeStyle = 'rgba(255,255,255,.9)'; c.fillStyle = color;
+  lines.forEach((l, i) => { const y = 8 + lh * (i + 0.5); c.strokeText(l, w / 2, y); c.fillText(l, w / 2, y); });
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true })); s.scale.set(size * cv.width / lh, size * cv.height / lh, 1); s.renderOrder = 10; return s;
 }
 function inPoly(x, y, ring) { let r = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const a = ring[i], b = ring[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) r = !r; } return r; }
 function rng(seed) { let s = seed >>> 0 || 1; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; }
@@ -18,10 +20,10 @@ function arrow(len, w, color) {
 }
 const niceLen = v => { const p = 10 ** Math.floor(Math.log10(v)), n = v / p; return (n >= 5 ? 5 : n >= 2 ? 2 : 1) * p; };
 
-export function windStats(wind) {
+export function windStats(wind, months = null) {
   if (!wind) return null;
   const bins = new Array(16).fill(0), spd = new Array(16).fill(0); let n = 0;
-  for (let i = 0; i < wind.spd.length; i++) { const s = wind.spd[i], d = wind.dir[i]; if (s == null || d == null || s < 0.5) continue; const k = Math.round(d / 22.5) % 16; bins[k]++; spd[k] += s; n++; }
+  for (let i = 0; i < wind.spd.length; i++) { if (months && !months.includes(new Date(Date.UTC(2001, 0, 1 + Math.floor(i / 24))).getUTCMonth())) continue; const s = wind.spd[i], d = wind.dir[i]; if (s == null || d == null || s < 0.5) continue; const k = Math.round(d / 22.5) % 16; bins[k]++; spd[k] += s; n++; }
   if (!n) return null;
   return bins.map((c, k) => ({ k, freq: c / n, mean: c ? spd[k] / c : 0 }));
 }
@@ -60,6 +62,36 @@ export function buildContext(M, o) {
     const rim = []; for (let i = 0; i <= 96; i++) { const a = i / 96 * Math.PI * 2; rim.push(new THREE.Vector3(Math.sin(a) * R, 0.5, -Math.cos(a) * R).add(new THREE.Vector3(0, ground, 0))); }
     g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rim), new THREE.LineBasicMaterial({ color: '#999', transparent: true, opacity: 0.6 })));
     for (const [n, a] of [['N', 0], ['E', 90], ['S', 180], ['W', 270]]) { const [x, y] = f.enToFrame(Math.sin(a * Math.PI / 180), Math.cos(a * Math.PI / 180)), t = label(n, fs); t.position.set(x * R * 1.06, ground + 1, -y * R * 1.06); g.add(t); }
+  }
+  if (on.solar) {
+    const lat = f.lat, lon = f.lon, year = new Date().getUTCFullYear(), south = lat < 0, C = new THREE.Vector3(0, ground, 0);
+    const at = (mo, dd, h) => { const p = sunPosition(Date.UTC(year, mo, dd) + (h - lon / 15) * 3600000, lat, lon), [x, y] = f.enToFrame(Math.sin(p.az) * Math.cos(p.alt), Math.cos(p.az) * Math.cos(p.alt)); return { p, v: new THREE.Vector3(x, Math.sin(p.alt), -y) }; };
+    const hm = h => `${Math.floor(h)}:${String(Math.round(h % 1 * 60) % 60).padStart(2, '0')}`.replace(/^(\d):/, '0$1:');
+    const info = (mo, dd) => { let rise = null, set = null, noon = 0, prev = false; for (let m = 0; m <= 1440; m += 2) { const s = at(mo, dd, m / 60), up = s.p.alt > 0; if (up && !prev && rise === null) rise = m / 60; if (!up && prev) set = m / 60; prev = up; noon = Math.max(noon, s.p.alt); } return { rise, set, noon: noon * 180 / Math.PI }; };
+    const seasons = [{ n: 'SUMMER', mo: south ? 11 : 5, col: '#e8a200' }, { n: 'WINTER', mo: south ? 5 : 11, col: '#e8a200' }];
+    const win = seasons[1];
+    for (const s of seasons) {
+      const dd = 21, I = info(s.mo, dd), pts = []; for (let h = 0; h <= 24.001; h += 0.1) { const q = at(s.mo, dd, h); if (q.p.alt > 0) pts.push(q.v.clone().multiplyScalar(R * 1.12).add(C)); }
+      if (pts.length > 1) g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: s.col, dashSize: size * 0.012, gapSize: size * 0.01 })).computeLineDistances());
+      let best = null; for (let h = 0; h <= 24; h += 0.1) { const q = at(s.mo, dd, h); if (!best || q.p.alt > best.p.alt) best = q; }
+      const pos = best.v.clone().multiplyScalar(R * 1.12).add(C), sun = new THREE.Mesh(new THREE.SphereGeometry(size * 0.022, 20, 14), mat('#ffb300')), halo = new THREE.Mesh(new THREE.SphereGeometry(size * 0.036, 20, 14), mat('#ffd54f', { transparent: true, opacity: 0.35 }));
+      sun.position.copy(pos); halo.position.copy(pos); g.add(sun, halo);
+      const t = label(`${s.n} SOLSTICE ${Math.round(I.noon)}°\nSunrise ${I.rise == null ? '—' : hm(I.rise)} · Sunset ${I.set == null ? '—' : hm(I.set)} (solar time)`, fs * 0.8, '#222'); t.position.copy(pos).add(new THREE.Vector3(0, fs * 2.4, 0)); g.add(t);
+      if (s === win) { s.I = I; }
+    }
+    // optimal orientation: arc on the equator-facing rim between winter sunrise and sunset azimuths
+    const I = win.I, a0 = I.rise == null ? 90 : at(win.mo, 21, I.rise).p.az * 180 / Math.PI, a1 = I.set == null ? 270 : at(win.mo, 21, I.set).p.az * 180 / Math.PI;
+    const lo = Math.min(a0, a1), hi = Math.max(a0, a1), arc = [], Rr = R * 0.96;
+    for (let i = 0; i <= 40; i++) { const a = (lo + (hi - lo) * i / 40) * Math.PI / 180, [x, y] = f.enToFrame(Math.sin(a), Math.cos(a)); arc.push(new THREE.Vector3(x * Rr, 1, -y * Rr).add(C)); }
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(arc), 60, size * 0.006, 6), mat('#e8a200')); g.add(tube);
+    const mid = arc[20].clone(), tl = label('OPTIMAL ORIENTATION\nFOR SOLAR MANAGEMENT', fs * 0.8, '#b07a00'); tl.position.copy(mid).add(new THREE.Vector3(0, fs * 1.8, 0)); tl.position.sub(C).multiplyScalar(1.12).add(C); tl.position.y = ground + fs * 1.8; g.add(tl);
+    // seasonal winds
+    const hot = [5, 6, 7], cold = [11, 0, 1], wd = M.climate && M.climate.wind;
+    for (const [nm, ms, col] of [['SUMMER WIND', south ? cold : hot, '#3a6ea5'], ['WINTER WIND', south ? hot : cold, '#3a6ea5']]) {
+      const st = windStats(wd, ms); if (!st) continue; const top = st.reduce((a, b) => b.freq > a.freq ? b : a), a = top.k * 22.5 * Math.PI / 180, [ex, ey] = f.enToFrame(-Math.sin(a), -Math.cos(a));
+      const ar = arrow(size * 0.16, size * 0.02, col), ox = -ex * R * 0.9, oy = -ey * R * 0.9; ar.rotation.y = Math.atan2(ey, ex); ar.position.set(ox, ground + topAbove * 0.7 + size * 0.03, oy * -1); g.add(ar);
+      const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'], t = label(`${nm} ${dirs[top.k]}\n${top.mean.toFixed(1)} m/s`, fs * 0.8, col); t.position.set(ox, ground + topAbove * 0.7 + size * 0.03 + fs * 2, -oy); g.add(t);
+    }
   }
   if (on.sun) {
     const ms = Date.UTC(o.date.getUTCFullYear(), o.date.getUTCMonth(), o.date.getUTCDate()) + (o.hour - f.lon / 15) * 3600000, p = sunPosition(ms, f.lat, f.lon);
