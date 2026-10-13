@@ -1,23 +1,37 @@
-// Live OpenStreetMap data via the Overpass API (several public mirrors), fetched in small groups.
+// Live OpenStreetMap data via the Overpass API (public mirrors, raced), fetched in small parallel groups.
+// Optional enrichment: OpenFreeMap tiles (vt.js) are the dependable source; Overpass adds trees and full tags.
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 
 export const emptyOSM = () => ({ buildings: [], roads: [], rails: [], water: [], waterways: [], green: [], landuse: [], trees: [], places: [] });
 const samePt = (a, b) => a[0] === b[0] && a[1] === b[1];
 
-async function overpass(q, log) {
-  let last;
-  for (const ep of OVERPASS) {
-    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 70000);
-    try {
-      const r = await fetch(ep, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const js = await r.json();
-      if (js.remark && /error|timed out|out of memory/i.test(js.remark) && !(js.elements || []).length) throw new Error(js.remark.slice(0, 80));
-      return js;
-    } catch (e) { last = e.name === 'AbortError' ? new Error('timed out') : e; log && log(`${new URL(ep).host}: ${last.message}, trying next mirror`); }
-    finally { clearTimeout(t); }
-  }
-  throw last || new Error('no server');
+/**
+ * Ask the public Overpass mirrors without waiting on a slow one: start the first, then start the next
+ * after a short head start (or at once when one fails). The first good answer wins; the rest are cancelled.
+ */
+function overpass(q, { stagger = 3500, timeout = 30000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const ctls = [];
+    let idx = 0, failures = 0, settled = false, timer = null;
+    const finish = (fn, v) => { if (settled) return; settled = true; clearTimeout(timer); ctls.forEach(c => c.abort()); fn(v); };
+    const launch = () => {
+      if (settled || idx >= OVERPASS.length) return;
+      const ep = OVERPASS[idx++], ctl = new AbortController(), t = setTimeout(() => ctl.abort(), timeout);
+      ctls.push(ctl);
+      clearTimeout(timer); timer = setTimeout(launch, stagger);
+      fetch(ep, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal })
+        .then(async r => {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          const js = await r.json();
+          if (js.remark && /error|timed out|out of memory/i.test(js.remark) && !(js.elements || []).length) throw new Error('server overloaded');
+          return js;
+        })
+        .then(js => finish(resolve, js))
+        .catch(() => { if (++failures >= OVERPASS.length) finish(reject, new Error('OpenStreetMap live servers are busy')); else launch(); })
+        .finally(() => clearTimeout(t));
+    };
+    launch();
+  });
 }
 
 export function joinRings(lines) {
@@ -79,7 +93,7 @@ export function parseOSM(js) {
  * @param b bbox, o {buildings, streets, water, green, trees}
  * @returns {Promise<{data, failed:string[]}>}
  */
-export async function fetchOSM(b, o, log) {
+export async function fetchOSM(b, o) {
   const bb = `(${b.s},${b.w},${b.n},${b.e})`, groups = [];
   if (o.buildings) groups.push(['buildings', `way["building"]${bb};relation["building"]["type"="multipolygon"]${bb};`]);
   if (o.streets) groups.push(['streets', `way["highway"]${bb};way["railway"~"^(rail|tram|subway|light_rail|narrow_gauge|monorail|funicular)$"]${bb};`]);
@@ -90,9 +104,9 @@ export async function fetchOSM(b, o, log) {
   misc += `node["place"~"^(suburb|neighbourhood|quarter|city_block|locality|island|village|town)$"](${b.s - 0.02},${b.w - 0.02},${b.n + 0.02},${b.e + 0.02});`;
   groups.push(['land', misc]);
   const all = { elements: [] }, failed = [];
-  for (const [label, q] of groups) {
-    try { const js = await overpass(`[out:json][timeout:90];(${q});out geom;`, log); all.elements.push(...(js.elements || [])); }
-    catch (e) { failed.push(label); log && log(`OpenStreetMap ${label} failed: ${e.message}`); }
-  }
+  await Promise.all(groups.map(async ([label, q]) => {
+    try { const js = await overpass(`[out:json][timeout:25];(${q});out geom;`); all.elements.push(...(js.elements || [])); }
+    catch (e) { failed.push(label); }
+  }));
   return { data: parseOSM(all), failed };
 }

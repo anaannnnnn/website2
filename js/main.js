@@ -255,7 +255,7 @@ async function loadData() {
   const cfg = frameCfg(); if (!cfg) return toast('Pick a site first.', 'warn');
   if (S.step !== 'data') go('data');
   S.loading = true; const btn = $('#btnLoad'); btn.classList.add('busy'); btn.disabled = true;
-  const frame = makeFrame(cfg), bb = frame.bbox(80), log = m => status(m);
+  const frame = makeFrame(cfg), bb = frame.bbox(80);
   const long = Math.max(cfg.w, cfg.h), gridSel = $('#gridRes').value;
   const N = gridSel === 'auto' ? clamp(Math.round(long / Math.max(1.5, long / 640)), 160, 768) : +gridSel;
   const res = { frame, osm: emptyOSM(), overture: null, osmBuildings: null, vt: null, climate: null, failed: [] };
@@ -266,20 +266,27 @@ async function loadData() {
     .catch(e => { res.failed.push('terrain'); layerState('terrain', 'fail', `Failed: ${esc(e.message)}`); });
   const tClimate = S.layers.climate ? fetchClimate(frame).then(c => { res.climate = c; }).catch(e => { res.failed.push('climate'); layerState('climate', 'fail', `Failed: ${esc(e.message)}`); }) : null;
   const tOverture = S.layers.buildings ? loadOvertureBuildings(bb, { log: m => layerState('buildings', 'loading', esc(m)) }).then(r => { res.overture = r; }).catch(e => { res.overtureErr = e.message; }) : null;
-  const tOsm = (S.layers.streets || S.layers.water || S.layers.trees) ? fetchOSM(bb, { streets: S.layers.streets, water: S.layers.water, green: S.layers.water, trees: S.layers.trees }, log)
-    .then(r => { res.osm = r.data; res.osmFailed = r.failed; }) : null;
+  // Streets / water / land use: OpenFreeMap tiles (fast CDN, weekly OSM) are always fetched; live Overpass
+  // runs alongside with a time budget and is preferred where it answers (fresher, full tags, trees).
+  const wantOsm = S.layers.streets || S.layers.water || S.layers.trees;
+  const tVt = (wantOsm || S.layers.buildings) ? fetchVectorTiles(bb).then(v => { res.vt = v; }).catch(e => { res.vtErr = e.message; }) : null;
+  const budget = ms => new Promise(r => setTimeout(() => r(null), ms));
+  const tLive = wantOsm ? fetchOSM(bb, { streets: S.layers.streets, water: S.layers.water, green: S.layers.water, trees: S.layers.trees })
+    .then(r => { res.live = r.data; res.liveFailed = r.failed; }).catch(() => {}) : null;
+  // don't hold the site hostage to a slow live server: once tiles are in, give it 12 s more (45 s cap)
+  const tOsm = tLive ? Promise.race([tLive, budget(45000), tVt.then(() => budget(res.vt ? 12000 : 45000))]) : null;
+  if (wantOsm) for (const id of ['streets', 'water', 'trees']) if (S.layers[id]) layerState(id, 'loading', 'Reading OpenStreetMap…');
   await tOverture;
   if (S.layers.buildings && !(res.overture && res.overture.buildings.length)) {
-    layerState('buildings', 'loading', 'Overture unavailable — trying OpenStreetMap…');
-    try { const r = await fetchOSM(bb, { buildings: true }, log); res.osmBuildings = r.data.buildings; } catch (e) { /* fall through */ }
-    if (!(res.osmBuildings && res.osmBuildings.length)) {
-      layerState('buildings', 'loading', 'Trying OpenFreeMap tiles…');
-      try { res.vt = await fetchVectorTiles(bb); } catch (e) { /* reported below */ }
+    layerState('buildings', 'loading', 'Overture unavailable — trying OpenStreetMap tiles…');
+    await tVt;
+    if (!(res.vt && res.vt.buildings.length)) {
+      layerState('buildings', 'loading', 'Trying live OpenStreetMap…');
+      try { const r = await Promise.race([fetchOSM(bb, { buildings: true }), budget(45000)]); if (r) res.osmBuildings = r.data.buildings; } catch (e) { /* reported below */ }
     }
   }
-  await Promise.all([tTerrain, tClimate, tOsm]);
-  // the sea is not an OSM polygon — add OpenFreeMap ocean/sea polygons when water is wanted
-  if (S.layers.water && frame.lat > -85) { try { if (!res.vt) res.vt = await fetchVectorTiles(bb); res.osm.water.push(...res.vt.water.filter(w => /ocean|sea/.test(w.tags.water))); } catch (e) { /* optional */ } }
+  await Promise.all([tTerrain, tClimate, tOsm, tVt]);
+  mergeOSM(res);
 
   btn.classList.remove('busy'); btn.disabled = false; S.loading = false;
   if (!res.dem) { status('Terrain failed — check your connection and retry.'); toast('Terrain could not be loaded. Press Retry on the Terrain card.', 'err'); return; }
@@ -289,11 +296,24 @@ async function loadData() {
   refreshAutoSections(); go('data');
 }
 
+/** pick, per group, live Overpass data when it answered, otherwise the OpenFreeMap tile data */
+function mergeOSM(res) {
+  const live = res.live, lf = res.liveFailed || [], vt = res.vt && res.vt.osm, out = emptyOSM(), src = {};
+  const liveOk = g => live && !lf.includes(g);
+  if (liveOk('streets')) { out.roads = live.roads; out.rails = live.rails; src.streets = 'live'; }
+  else if (vt) { out.roads = vt.roads; out.rails = vt.rails; src.streets = 'tiles'; }
+  if (liveOk('land')) { Object.assign(out, { water: live.water, waterways: live.waterways, green: live.green, landuse: live.landuse, trees: live.trees, places: live.places }); src.land = 'live'; }
+  else if (vt) { Object.assign(out, { water: vt.water.filter(w => !/ocean|sea/.test(w.tags.water)), waterways: vt.waterways, green: vt.green, landuse: vt.landuse, places: vt.places }); src.land = 'tiles'; }
+  // the sea is not an OSM polygon — always add the tile ocean/sea polygons
+  if (S.layers.water && res.vt) out.water.push(...res.vt.water.filter(w => /ocean|sea/.test(w.tags.water)));
+  res.osm = out; res.src = src;
+}
+
 function buildModel(res) {
   const { frame, dem } = res, sigma = +$('#smooth').value;
   const smooth = gaussian(dem.data, dem.W, dem.H, sigma), zAt = makeZAt(dem, frame, smooth);
   const osm = localiseOSM(frame, res.osm);
-  const nb = normaliseBuildings(frame, { overture: res.overture && res.overture.buildings, osm: res.osmBuildings, vt: res.vt && res.vt.buildings }, defH());
+  const nb = normaliseBuildings(frame, { overture: res.overture && res.overture.buildings, osm: res.osmBuildings, vt: !(res.osmBuildings && res.osmBuildings.length) && res.vt && res.vt.buildings }, defH());
   for (const b of nb.buildings) b.base = buildingBase(b, zAt);
   const der = derive(dem, frame, smooth);
   const model = { frame, dem, smooth, zAt, der, flow: null, buildings: nb.buildings, bsource: nb.source, release: res.overture && res.overture.release, osm, climate: res.climate, terrain: terrainSourceNote(frame.lon, frame.lat), site: S.site, paper: S.paper, orient: S.orient, scale: printScale(), loadedAt: new Date() };
@@ -315,16 +335,19 @@ function buildModel(res) {
       const bar = document.createElement('div'); bar.className = 'bar'; bar.innerHTML = '<i></i>'; $('#ly-buildings').appendChild(bar); requestAnimationFrame(() => bar.firstChild.style.width = `${hs.pct}%`);
     }
   }
-  const failed = g => (res.osmFailed || []).includes(g);
+  const src = res.src || {}, srcNote = k => src[k] === 'live' ? 'OpenStreetMap (live, Overpass)' : 'OpenStreetMap via OpenFreeMap tiles (updated weekly)';
   if (S.layers.streets) {
-    if (failed('streets')) layerState('streets', 'fail', 'OpenStreetMap servers busy — Retry.');
-    else { const km = osm.roads.reduce((a, r) => a + r.loc.reduce((s, p, i) => i ? s + Math.hypot(p[0] - r.loc[i - 1][0], p[1] - r.loc[i - 1][1]) : 0, 0), 0) / 1000; layerState('streets', 'ok', `<b>${fmt(osm.roads.length)}</b> ways · <b>${fmt(km, 1)} km</b> · ${fmt(osm.roads.filter(r => r.name).length)} named · ${fmt(osm.rails.length)} rail`, 'OpenStreetMap (live)', 'good'); }
+    if (!src.streets) layerState('streets', 'fail', 'Street data could not be reached — press Retry.');
+    else { const km = osm.roads.reduce((a, r) => a + r.loc.reduce((s, p, i) => i ? s + Math.hypot(p[0] - r.loc[i - 1][0], p[1] - r.loc[i - 1][1]) : 0, 0), 0) / 1000; layerState('streets', 'ok', `<b>${fmt(osm.roads.length)}</b> ways · <b>${fmt(km, 1)} km</b> · ${fmt(osm.roads.filter(r => r.name).length)} named · ${fmt(osm.rails.length)} rail`, srcNote('streets'), 'good'); }
   }
   if (S.layers.water) {
-    if (failed('land')) layerState('water', 'fail', 'OpenStreetMap servers busy — Retry.');
-    else layerState('water', 'ok', `<b>${fmt(osm.water.length + osm.waterways.length)}</b> water · <b>${fmt(osm.green.length)}</b> green · <b>${fmt(osm.landuse.length)}</b> land-use areas`, 'OpenStreetMap (live) + OpenFreeMap sea polygons', 'good');
+    if (!src.land) layerState('water', 'fail', 'Water and land-use data could not be reached — press Retry.');
+    else layerState('water', 'ok', `<b>${fmt(osm.water.length + osm.waterways.length)}</b> water · <b>${fmt(osm.green.length)}</b> green · <b>${fmt(osm.landuse.length)}</b> land-use areas`, srcNote('land') + ' + OpenFreeMap sea polygons', 'good');
   }
-  if (S.layers.trees && !failed('land')) layerState('trees', 'ok', `<b>${fmt(osm.trees.length)}</b> mapped trees · ${fmt(osm.trees.filter(t => t.h).length)} with recorded height`, 'OpenStreetMap — only trees someone has surveyed; many areas have few', osm.trees.length > 20 ? 'fair' : 'limited');
+  if (S.layers.trees) {
+    if (src.land === 'live') layerState('trees', 'ok', `<b>${fmt(osm.trees.length)}</b> mapped trees · ${fmt(osm.trees.filter(t => t.h).length)} with recorded height`, 'OpenStreetMap — only trees someone has surveyed; many areas have few', osm.trees.length > 20 ? 'fair' : 'limited');
+    else layerState('trees', 'fail', 'Individual trees come only from live OpenStreetMap, which is busy right now — press Retry later. Everything else loaded.');
+  }
   if (S.layers.climate && res.climate) { const c = res.climate; layerState('climate', 'ok', `<b>${fmt(c.annual)} mm</b> rain/yr · <b>${fmt(c.temp, 1)} °C</b> mean · ${c.wind ? 'hourly wind ✓' : 'no wind data'} (${c.year})`, 'Open-Meteo ERA5 reanalysis — regional (≈10–25 km), not site-specific', 'fair'); }
   // map preview of the buildings actually used
   M.setBuildings({ type: 'FeatureCollection', features: model.buildings.map(b => ({ type: 'Feature', properties: { h: b.h, how: b.known ? b.how : 'unknown' }, geometry: { type: 'Polygon', coordinates: b.rings } })) });
