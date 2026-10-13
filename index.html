@@ -246,9 +246,9 @@ main{position:relative;overflow:hidden;background:#06090d}
         <label class="f">Wider-area extent (× site size)<select id="wideX"><option>3</option><option selected>5</option><option>8</option><option>12</option></select></label>
         <div class="hint">Sections: A–A′ (west–east) and B–B′ (south–north) through the site are drawn automatically; add your own lines below.</div>
         <div class="row"><button id="btnSection" class="btn grow">✏️ Draw section line</button><button id="btnSectionReset" class="btn">Reset</button></div>
-        <label class="f">Section views<select id="secView"><option value="both" selected>3D section perspective + aerial + 2D drawing</option><option value="eye">3D section perspective + 2D drawing</option><option value="aerial">3D sectional aerial + 2D drawing</option><option value="2d">2D drawing only</option></select></label>
+        <label class="f">Section views<select id="secView"><option value="straight" selected>Straight true-scale section (rendered, measured) + 2D</option><option value="all">Straight + perspective + aerial + 2D</option><option value="2d">2D drawings only</option></select></label>
         <label class="f">3D section ground<select id="secGround"><option value="satellite" selected>Satellite imagery</option><option value="map">Map style (roads, parks, water)</option></select></label>
-        <label class="f">Illustrated section length (centred on site)<select id="illLen"><option value="250">250 m</option><option value="400" selected>400 m</option><option value="600">600 m</option><option value="1000">1 km</option><option value="0">Full line</option></select></label>
+        <label class="f">Section length for illustrated & true-scale views (centred on site)<select id="illLen"><option value="250">250 m</option><option value="400" selected>400 m</option><option value="600">600 m</option><option value="1000">1 km</option><option value="0">Full line</option></select></label>
         <div class="checks"><label><input type="checkbox" id="entourage" checked> People, cars, trees & boats</label></div>
         <label class="f">Section vertical exaggeration (1 = true scale)<input id="secExag" type="number" value="1" min="0.2" max="20" step="0.5"></label>
         <button id="btnSheets" class="btn primary big">Create presentation sheets</button>
@@ -1755,8 +1755,9 @@ function sheetList() {
   for (let i = 0; i < secs.length; i += 2) { const pair = secs.slice(i, i + 2); L.push([`sections_illustrated_${pair.map(p => p.n).join('')}`, `Illustrated sections ${pair.map(p => `${p.n}–${p.n}'`).join(' & ')}`, () => sheetIllustrated(pair)]); }
   const sv = $('#secView').value;
   for (const sc of getSections()) {
-    if (sv === 'both' || sv === 'eye') L.push([`section_${sc.n}_perspective`, `Section ${sc.n}–${sc.n}' · 3D perspective`, () => sheetSectionView(sc, 'eye')]);
-    if (sv === 'both' || sv === 'aerial') L.push([`section_${sc.n}_aerial`, `Section ${sc.n}–${sc.n}' · 3D aerial`, () => sheetSectionView(sc, 'aerial')]);
+    if (sv !== '2d') L.push([`section_${sc.n}_true_scale`, `Section ${sc.n}–${sc.n}' · straight, true scale`, () => sheetSectionView(sc, 'straight')]);
+    if (sv === 'all') L.push([`section_${sc.n}_perspective`, `Section ${sc.n}–${sc.n}' · 3D perspective`, () => sheetSectionView(sc, 'eye')]);
+    if (sv === 'all') L.push([`section_${sc.n}_aerial`, `Section ${sc.n}–${sc.n}' · 3D aerial`, () => sheetSectionView(sc, 'aerial')]);
     L.push([`section_${sc.n}`, `Section ${sc.n}–${sc.n}' · 2D drawing`, () => sheetSection(sc),
       [{ label: 'DXF', name: `section_${sc.n}.dxf`, make: () => sectionDXF(sc) }, { label: 'CSV', name: `section_${sc.n}_profile.csv`, make: () => sectionCSV(sc) }]]);
   }
@@ -2238,10 +2239,10 @@ function detailedBuildings(zFn) {
   return wp.length ? { walls: mk(wp, wn, wc, wu), roofs: mk(rp, rn, rc) } : null;
 }
 /* OSM trees plus planted trees filling parks and woods */
-function sectionTreeList(zFn) {
+function sectionTreeList(zFn, realOnly = false) {
   const o = S.osm || emptyOSM(), b = S.bbox, list = [], rnd = mulberry32(1234);
   for (const t of o.trees) { if (t.lon < b.w || t.lon > b.e || t.lat < b.s || t.lat > b.n) continue; const [x, y] = toLocal(t.lon, t.lat); list.push([x, y, parseFloat(t.tags.height) || 7 + rnd() * 5]); }
-  for (const g of o.green) {
+  for (const g of (realOnly ? [] : o.green)) {
     const ring = g.ring.map(p => toLocal(p[0], p[1])), area = ringArea(ring);
     const forest = g.forest, n = Math.min(forest ? 900 : 250, Math.floor(area / (forest ? 70 : 220)));
     let xs = ring.map(p => p[0]), ys = ring.map(p => p[1]); const x0 = Math.max(Math.min(...xs), -S.m.widthM / 2), x1 = Math.min(Math.max(...xs), S.m.widthM / 2), y0 = Math.max(Math.min(...ys), -S.m.heightM / 2), y1 = Math.min(Math.max(...ys), S.m.heightM / 2);
@@ -2301,7 +2302,7 @@ async function renderSectionView(sec, mode, Wpx, Hpx) {
   const scam = sun.shadow.camera; scam.left = scam.bottom = -size * 0.75; scam.right = scam.top = size * 0.75; scam.near = 1; scam.far = size * 4; sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.4;
   scene.add(sun, sun.target);
   // terrain (true scale) with draped ground texture
-  const baseT = Math.max(12, (sd.zmax - sd.zmin) * 0.35), gtex = new THREE.CanvasTexture(await groundTexture($('#secGround').value));
+  const baseT = mode === 'straight' ? Math.max(6, (sd.zmax - sd.zmin) * 0.15) : Math.max(12, (sd.zmax - sd.zmin) * 0.35), gtex = new THREE.CanvasTexture(await groundTexture($('#secGround').value));
   gtex.colorSpace = THREE.SRGBColorSpace; gtex.anisotropy = 16; disposables.push(gtex);
   const tg = terrainSolid(1, baseT, { ...d, data: sm.data }); disposables.push(tg);
   const terr = new THREE.Mesh(tg, [new THREE.MeshStandardMaterial({ map: gtex, roughness: 1, clippingPlanes: clip }), new THREE.MeshStandardMaterial({ color: '#7d6550', roughness: 1, clippingPlanes: clip })]);
@@ -2315,7 +2316,7 @@ async function renderSectionView(sec, mode, Wpx, Hpx) {
     disposables.push(bg.walls, bg.roofs);
   }
   // trees
-  const trees = sectionTreeList(zFn);
+  const trees = sectionTreeList(zFn, mode === 'straight');
   if (trees.length) {
     const crownG = new THREE.IcosahedronGeometry(1, 1), trunkG = new THREE.CylinderGeometry(0.16, 0.24, 1, 6); trunkG.translate(0, 0.5, 0);
     const crowns = new THREE.InstancedMesh(crownG, new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true, clippingPlanes: clip }), trees.length);
@@ -2342,39 +2343,62 @@ async function renderSectionView(sec, mode, Wpx, Hpx) {
     for (const i of [0, 1, 2, 0, 2, 3]) cutPos.push(q4[i].x, q4[i].y - 0.0, q4[i].z);
   }
   if (cutPos.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(cutPos, 3)); disposables.push(g); scene.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: '#141414', side: THREE.DoubleSide }))); }
+  const wPos = [], toW2 = (s, yv) => W3(A[0] + u[0] * s - n[0] * off * 2, A[1] + u[1] * s - n[1] * off * 2, yv);
+  for (const w of sd.water) {
+    const lvl = Math.min(sd.zAlong(w.d0), sd.zAlong(w.d1)) - zmin, seg = sd.profile.filter(p => p[0] > w.d0 && p[0] < w.d1).map(p => [p[0], Math.min(p[1] - zmin, lvl)]);
+    const pts = [[w.d0, lvl], ...seg, [w.d1, lvl]];
+    for (let k = 0; k < pts.length - 1; k++) { const a = pts[k], b = pts[k + 1]; const q = [toW2(a[0], lvl), toW2(b[0], lvl), toW2(b[0], b[1]), toW2(a[0], a[1])]; for (const i of [0, 1, 2, 0, 2, 3]) wPos.push(q[i].x, q[i].y, q[i].z); }
+  }
+  if (wPos.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(wPos, 3)); disposables.push(g); scene.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: '#6fa6d3', side: THREE.DoubleSide }))); }
   const edge = new THREE.BufferGeometry().setFromPoints(sd.profile.map(p => toW(p[0], p[1] - zmin))); disposables.push(edge);
   scene.add(new THREE.Line(edge, new THREE.LineBasicMaterial({ color: '#111' })));
   // camera
   const ztop = sd.zmax - zmin, mid = L / 2, gm = sd.zAlong(mid) - zmin, aspect = Wpx / Hpx, fov = 30;
   const hh = Math.atan(Math.tan(fov / 2 * D2R) * aspect), D = (L * 0.54) / Math.tan(hh), M = [A[0] + u[0] * mid, A[1] + u[1] * mid];
-  const cam = new THREE.PerspectiveCamera(fov, aspect, Math.max(0.5, D / 200), D * 6 + size * 2);
-  const pitch = (mode === 'aerial' ? 30 : 6) * D2R, back = mode === 'aerial' ? D * 0.8 : D;
-  cam.position.copy(W3(M[0] - n[0] * back, M[1] - n[1] * back, gm + ztop * 0.3 + back * Math.tan(pitch)));
-  cam.lookAt(W3(M[0], M[1], gm));
-  // frame tightly: the cut face (top to base) plus the far edge of the model beyond the cut
-  const far = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sy]) => [sx * S.m.widthM / 2, sy * S.m.heightM / 2]).filter(p => dot2(p, A, n) > 1);
-  const fitPts = [[0, -baseT], [L, -baseT], [0, ztop], [L, ztop]].map(([s, yv]) => toW(s, yv));
-  for (const p of far) fitPts.push(W3(p[0], p[1], zFn(p[0], p[1]) - zmin), W3(p[0], p[1], ztop * 0.8));
-  for (let it = 0; it < 4; it++) {
+  let cam, pxPerM = null;
+  if (mode === 'straight') {
+    // orthographic, level camera looking straight along the section normal: true 1:1 scale in both directions
+    let yB = -baseT - 1, yT = ztop + Math.max(4, ztop * 0.08), halfW = L / 2 * 1.12;
+    Hpx = Math.round(clamp(Wpx * (yT - yB) / (2 * halfW), 380, 1400));
+    const ratio = Wpx / Hpx;
+    if (2 * halfW / (yT - yB) > ratio) yT = yB + 2 * halfW / ratio; else halfW = (yT - yB) * ratio / 2;
+    offR.setSize(Wpx, Hpx, false);
+    const back = size * 1.5, cy = (yT + yB) / 2;
+    cam = new THREE.OrthographicCamera(-halfW, halfW, (yT - yB) / 2, -(yT - yB) / 2, 1, back + size * 3);
+    cam.position.copy(W3(M[0] - n[0] * back, M[1] - n[1] * back, cy)); cam.lookAt(W3(M[0], M[1], cy)); cam.updateMatrixWorld();
+    scene.fog = new THREE.Fog('#e6edf2', back + sd.depth * 0.4, back + size * 1.6);
+    pxPerM = Wpx / (2 * halfW);
+  } else {
+    cam = new THREE.PerspectiveCamera(fov, aspect, Math.max(0.5, D / 200), D * 6 + size * 2);
+    const pitch = (mode === 'aerial' ? 30 : 6) * D2R, back = mode === 'aerial' ? D * 0.8 : D;
+    cam.position.copy(W3(M[0] - n[0] * back, M[1] - n[1] * back, gm + ztop * 0.3 + back * Math.tan(pitch)));
+    cam.lookAt(W3(M[0], M[1], gm));
+    // frame tightly: the cut face (top to base) plus the far edge of the model beyond the cut
+    const far = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sy]) => [sx * S.m.widthM / 2, sy * S.m.heightM / 2]).filter(p => dot2(p, A, n) > 1);
+    const fitPts = [[0, -baseT], [L, -baseT], [0, ztop], [L, ztop]].map(([s, yv]) => toW(s, yv));
+    for (const p of far) fitPts.push(W3(p[0], p[1], zFn(p[0], p[1]) - zmin), W3(p[0], p[1], ztop * 0.8));
+    for (let it = 0; it < 4; it++) {
+      cam.updateMatrixWorld();
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const p of fitPts) { const v = p.clone().applyMatrix4(cam.matrixWorldInverse); if (v.z > -0.1) continue; const tx = v.x / -v.z, ty = v.y / -v.z; x0 = Math.min(x0, tx); x1 = Math.max(x1, tx); y0 = Math.min(y0, ty); y1 = Math.max(y1, ty); }
+      if (!Number.isFinite(x0)) break;
+      cam.lookAt(cam.localToWorld(new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, -1)));
+      if (it === 2) { Hpx = Math.round(clamp(Wpx * (y1 - y0) / (x1 - x0) * 1.25, 560, 1500)); cam.aspect = Wpx / Hpx; offR.setSize(Wpx, Hpx, false); }
+      cam.fov = 2 * Math.atan(Math.max((y1 - y0) / 2 * 1.12, (x1 - x0) / 2 / cam.aspect * 1.1)) / D2R; cam.updateProjectionMatrix();
+    }
     cam.updateMatrixWorld();
-    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-    for (const p of fitPts) { const v = p.clone().applyMatrix4(cam.matrixWorldInverse); if (v.z > -0.1) continue; const tx = v.x / -v.z, ty = v.y / -v.z; x0 = Math.min(x0, tx); x1 = Math.max(x1, tx); y0 = Math.min(y0, ty); y1 = Math.max(y1, ty); }
-    if (!Number.isFinite(x0)) break;
-    cam.lookAt(cam.localToWorld(new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, -1)));
-    if (it === 2) { Hpx = Math.round(clamp(Wpx * (y1 - y0) / (x1 - x0) * 1.25, 560, 1500)); cam.aspect = Wpx / Hpx; offR.setSize(Wpx, Hpx, false); }
-    cam.fov = 2 * Math.atan(Math.max((y1 - y0) / 2 * 1.12, (x1 - x0) / 2 / cam.aspect * 1.1)) / D2R; cam.updateProjectionMatrix();
+    scene.fog = new THREE.Fog('#e6edf2', D * 1.05, D + size * 1.8);
   }
-  cam.updateMatrixWorld();
-  scene.fog = new THREE.Fog('#e6edf2', D * 1.05, D + size * 1.8);
   offR.render(scene, cam);
   const url = offR.domElement.toDataURL('image/png');
   scene.traverse(o => { if (o.material) [].concat(o.material).forEach(m => m.dispose()); });
   disposables.forEach(x => x.dispose());
   offR.shadowMap.enabled = false; offR.localClippingEnabled = false; offR.toneMapping = THREE.NoToneMapping;
   const project = (s, z) => { const v = toW(s, z - zmin).project(cam); return [(v.x + 1) / 2 * Wpx, (1 - v.y) / 2 * Hpx, v.z < 1]; };
-  return { url, project, sd, trees: trees.length, H: Hpx };
+  return { url, project, sd, trees: trees.length, H: Hpx, pxPerM };
 }
-async function sheetSectionView(sec, mode) {
+async function sheetSectionView(sec0, mode) {
+  const sec = mode === 'straight' ? trimSection(sec0, +$('#illLen').value || 0) : sec0;
   const W = 2400, top = 150, r = await renderSectionView(sec, mode, W, 1150), sd = r.sd, IH = r.H;
   let body = `<image x="0" y="${top}" width="${W}" height="${IH}" href="${r.url}"/>`;
   const halo = 'paint-order="stroke" stroke="#fff" stroke-width="5" stroke-linejoin="round"';
@@ -2388,15 +2412,37 @@ async function sheetSectionView(sec, mode) {
     const cx = clamp(x, 40, W - 40), cy = clamp(top + y, top + 40, top + IH - 40);
     body += `<circle cx="${r1(cx)}" cy="${r1(cy)}" r="26" fill="#e0302f" stroke="#fff" stroke-width="3"/><text x="${r1(cx)}" y="${r1(cy + 9)}" font-size="26" font-weight="700" fill="#fff" text-anchor="middle">${t}</text>`;
   }
+  let extraH = 0;
+  if (mode === 'straight') {
+    // measured annotations: distance ruler, building height dimensions, street gridlines, print scale
+    const ry = top + IH + 26, ds = niceStep(sd.L, 12);
+    body += `<line x1="${r1(r.project(0, sd.zmin)[0])}" y1="${ry}" x2="${r1(r.project(sd.L, sd.zmin)[0])}" y2="${ry}" stroke="#111" stroke-width="2"/>`;
+    for (let s = 0; s <= sd.L + 1e-6; s += ds) { const x = r.project(s, sd.zmin)[0]; body += `<line x1="${r1(x)}" y1="${ry}" x2="${r1(x)}" y2="${ry + 10}" stroke="#111" stroke-width="2"/><text x="${r1(x)}" y="${ry + 30}" font-size="16" text-anchor="middle">${fmt(s)} m</text>`; }
+    let last = -1e9;
+    for (const c of sd.cuts.slice().sort((a, b) => a.d1 - b.d1)) {
+      const [xb, yb] = r.project(c.d1, c.base), [, yt] = r.project(c.d1, c.top), x = xb + 7;
+      if ((c.d1 - c.d0) * r.pxPerM < 6 || x - last < 30 || yb - yt < 22) continue; last = x;
+      body += `<g stroke="#c0392b" stroke-width="1.4"><line x1="${r1(x)}" y1="${r1(top + yt)}" x2="${r1(x)}" y2="${r1(top + yb)}"/><line x1="${r1(x - 5)}" y1="${r1(top + yt)}" x2="${r1(x + 5)}" y2="${r1(top + yt)}"/><line x1="${r1(x - 5)}" y1="${r1(top + yb)}" x2="${r1(x + 5)}" y2="${r1(top + yb)}"/></g><text transform="translate(${r1(x + 15)},${r1(top + (yt + yb) / 2)}) rotate(-90)" font-size="14" text-anchor="middle" fill="#c0392b" paint-order="stroke" stroke="#fff" stroke-width="4">${c.known ? '' : '~'}${c.h.toFixed(1)} m</text>`;
+    }
+    for (const rd of sd.roads) {
+      const [x, y] = r.project(rd.d, sd.zAlong(rd.d)); if (x < 20 || x > W - 20) continue;
+      body += `<line x1="${r1(x)}" y1="${top + 8}" x2="${r1(x)}" y2="${r1(top + y)}" stroke="#555" stroke-width="1" stroke-dasharray="5 5"/><text transform="translate(${r1(x - 5)},${top + 14}) rotate(90)" font-size="14" fill="#333" paint-order="stroke" stroke="#fff" stroke-width="4">${esc(String(rd.name).slice(0, 30))}</text>`;
+    }
+    const nice = [100, 200, 250, 500, 1000, 1250, 2000, 2500, 5000, 10000], scaleAt = mm => { const raw = 1000 / (r.pxPerM * mm / W); return nice.find(v => v >= raw * 0.9) || Math.round(raw); };
+    const known = sd.cuts.filter(c => c.known).length;
+    body += `<text x="24" y="${ry + 140}" font-size="17">Orthographic, horizontal and vertical at the same scale (1:1) · ${fmt(r.pxPerM, 2)} px per metre · ≈ 1:${fmt(scaleAt(841))} when the sheet is printed at A1 width, ≈ 1:${fmt(scaleAt(420))} at A3.</text>`;
+    body += `<text x="24" y="${ry + 168}" font-size="16" fill="#555">Ground: DEM ${fmt(S.dem.dx, 1)} m grid (zoom ${S.dem.zoom}), smoothed σ ${fmt(+$('#smooth').value * S.dem.dx, 1)} m — typical vertical accuracy ±2–10 m. Buildings: OSM footprints; ${known} of ${sd.cuts.length} cut buildings have recorded height/levels, "~" = default ${fmt(+$('#defH').value || 9)} m. Elevations are metres above sea level.</text>`;
+    extraH = 190;
+  }
   const kp = 220;
-  body += keyPlan(W - kp - 30, top + IH + 50, kp, sec);
-  const items = [['#141414', 'Building cut (poché)'], ['url(#earthS)', 'Ground cut'], ['#e6dccb', 'Buildings beyond (OSM footprints & heights)'], ['#5e8f45', `Trees (${fmt(r.trees)})`], ['#6fa6d3', 'Water']];
+  body += keyPlan(W - kp - 30, top + IH + 50 + extraH, kp, sec);
+  const items = [['#141414', 'Building cut (poché)'], ['url(#earthS)', 'Ground cut'], ['#e6dccb', 'Buildings beyond (OSM footprints & heights)'], ['#5e8f45', mode === 'straight' ? `Trees mapped in OSM (${fmt(r.trees)})` : `Trees (${fmt(r.trees)})`], ['#6fa6d3', 'Water']];
   body += `<defs><pattern id="earthS" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(-45)"><rect width="12" height="12" fill="#4b3c2f"/><line x1="0" y1="0" x2="0" y2="12" stroke="#7a6450" stroke-width="3"/></pattern></defs>`;
-  let lx = 24;
-  body += items.map(it => { const out = `<rect x="${lx}" y="${top + IH + 26}" width="44" height="22" fill="${it[0]}" stroke="#555"/><text x="${lx + 56}" y="${top + IH + 44}" font-size="19">${esc(it[1])}</text>`; lx += 100 + it[1].length * 10.5; return out; }).join('');
-  const kind = mode === 'aerial' ? 'SECTIONAL AERIAL VIEW' : 'SECTION PERSPECTIVE';
-  return sheetSVG(W, top + IH + kp + 90, `SECTION ${sec.n}–${sec.n}' · ${kind}`,
-    `${fmt(sd.L)} m cut, looking ${sd.view} · true-scale terrain, OSM building footprints & heights, ${fmt(sd.cuts.length)} buildings cut · perspective view — use the 2D section for measured drawings`, body,
+  let lx = 24; const legY = mode === 'straight' ? top + IH + 120 : top + IH + 26;
+  body += items.map(it => { const out = `<rect x="${lx}" y="${legY}" width="44" height="22" fill="${it[0]}" stroke="#555"/><text x="${lx + 56}" y="${legY + 18}" font-size="19">${esc(it[1])}</text>`; lx += 100 + it[1].length * 10.5; return out; }).join('');
+  const kind = mode === 'straight' ? 'TRUE-SCALE SECTION ELEVATION' : mode === 'aerial' ? 'SECTIONAL AERIAL VIEW' : 'SECTION PERSPECTIVE';
+  return sheetSVG(W, top + IH + kp + 90 + extraH, `SECTION ${sec.n}–${sec.n}' · ${kind}`,
+    mode === 'straight' ? `${fmt(sd.L)} m cut, looking ${sd.view} · orthographic straight elevation, true scale 1:1 (no exaggeration) · real data only: DEM terrain, OSM buildings & mapped trees` : `${fmt(sd.L)} m cut, looking ${sd.view} · true-scale terrain, OSM building footprints & heights, ${fmt(sd.cuts.length)} buildings cut · perspective view — use the straight section for measurements`, body,
     { titleSize: 34, credit: 'Data: OpenStreetMap contributors, AWS Terrain Tiles' + ($('#secGround').value === 'satellite' ? ', imagery © Esri' : '') });
 }
 /* ───────────────────────── illustrated architectural sections ───────────────────────── */
@@ -2464,8 +2510,8 @@ function illustratedBlock(sec0, x0, y0, width, title) {
   const zBot = Math.min(zGroundMin, datum ?? zGroundMin) - (coastal ? 20 : 22);
   const zTop = Math.max(sd.zmax, ...prof.map(p => p[1])) + 6;
   const plotW = width - 120, maxH = 640;
-  let sx = plotW / L, exag = clamp(560 / ((zTop - zBot) * sx), 1, 4);
-  if ((zTop - zBot) * sx > maxH) { sx = maxH / (zTop - zBot); exag = 1; }
+  let sx = plotW / L, exag = Math.max(1, +$('#secExag').value || 1);
+  if ((zTop - zBot) * sx * exag > maxH) sx = maxH / ((zTop - zBot) * exag);
   const sz = sx * exag, dW = L * sx, X0 = x0 + 90 + (plotW - dW) / 2, X = s => X0 + s * sx;
   const labelBand = 150, plotTop = y0 + labelBand, Y = z => plotTop + (zTop - z) * sz, yBot = Y(zBot);
   let g = `<defs><clipPath id="ilc${sec.n}"><rect x="${r1(X0)}" y="${r1(plotTop - 20)}" width="${r1(dW)}" height="${r1(yBot - plotTop + 20)}"/></clipPath></defs>`;
