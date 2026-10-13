@@ -9,7 +9,8 @@ A single-page web app (`index.html`, no build step) that generates and downloads
 - **Heatmaps**: elevation, hillshade, slope, aspect, solar exposure, runoff paths (D8 flow accumulation), annual rainfall, rainfall runoff volume, temperature, flood depth, satellite
 - **Rainfall & climate**: last full year of daily rainfall, snow, temperature and evapotranspiration (CSV)
 - **Tools**: flood / water-level simulation, sun position & shadows by date and time, 2D heatmap overlay on the map
-- **Presentation sheets** (vector SVG + PNG): building heights, slope analysis, contour heat map (site and wider area), layered interpretation of terrain and urban form, 3D topography & contour model
+- **Presentation sheets** (vector SVG + PNG): building heights, figure-ground, street hierarchy, land use / green & blue, slope analysis, contour heat map (site and wider area), layered interpretation, 3D topography & contour model, sun path diagram, wind rose, climate summary
+- **Site sections**: A–A′ (west–east) and B–B′ (south–north) through the site plus any line you draw — ground poché, buildings cut and in elevation, trees, water, street names, level datums, key plan; also DXF and CSV profile
 - Automatic repair of terrain-tile dropouts, adjustable smoothing, crisp classed colour bands
 - **Download everything** as one ZIP
 
