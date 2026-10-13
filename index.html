@@ -246,6 +246,8 @@ main{position:relative;overflow:hidden;background:#06090d}
         <label class="f">Wider-area extent (× site size)<select id="wideX"><option>3</option><option selected>5</option><option>8</option><option>12</option></select></label>
         <div class="hint">Sections: A–A′ (west–east) and B–B′ (south–north) through the site are drawn automatically; add your own lines below.</div>
         <div class="row"><button id="btnSection" class="btn grow">✏️ Draw section line</button><button id="btnSectionReset" class="btn">Reset</button></div>
+        <label class="f">Section views<select id="secView"><option value="both" selected>3D section perspective + aerial + 2D drawing</option><option value="eye">3D section perspective + 2D drawing</option><option value="aerial">3D sectional aerial + 2D drawing</option><option value="2d">2D drawing only</option></select></label>
+        <label class="f">3D section ground<select id="secGround"><option value="satellite" selected>Satellite imagery</option><option value="map">Map style (roads, parks, water)</option></select></label>
         <label class="f">Section vertical exaggeration (1 = true scale)<input id="secExag" type="number" value="1" min="0.2" max="20" step="0.5"></label>
         <button id="btnSheets" class="btn primary big">Create presentation sheets</button>
         <div class="row"><button id="btnSheetsZip" class="btn grow">⬇ All sheets (.zip: SVG + PNG)</button></div>
@@ -1746,8 +1748,13 @@ function sheetList() {
   const L = [['building_heights', 'Building heights', sheetBuildings], ['figure_ground', 'Figure-ground', sheetFigureGround], ['street_hierarchy', 'Street hierarchy', sheetStreets],
     ['land_use', 'Land use, green & blue', sheetLandUse], ['slope_analysis', 'Slope analysis', sheetSlope], ['contour_site', 'Contour heat map — site', sheetContourSite],
     ['contour_wider_area', 'Contour heat map — wider area', sheetContourWide], ['layered_interpretation', 'Layered interpretation', sheetLayers], ['topography_model', 'Topography & contour model', sheetModel]];
-  for (const sc of getSections()) L.push([`section_${sc.n}`, `Section ${sc.n}–${sc.n}'`, () => sheetSection(sc),
-    [{ label: 'DXF', name: `section_${sc.n}.dxf`, make: () => sectionDXF(sc) }, { label: 'CSV', name: `section_${sc.n}_profile.csv`, make: () => sectionCSV(sc) }]]);
+  const sv = $('#secView').value;
+  for (const sc of getSections()) {
+    if (sv === 'both' || sv === 'eye') L.push([`section_${sc.n}_perspective`, `Section ${sc.n}–${sc.n}' · 3D perspective`, () => sheetSectionView(sc, 'eye')]);
+    if (sv === 'both' || sv === 'aerial') L.push([`section_${sc.n}_aerial`, `Section ${sc.n}–${sc.n}' · 3D aerial`, () => sheetSectionView(sc, 'aerial')]);
+    L.push([`section_${sc.n}`, `Section ${sc.n}–${sc.n}' · 2D drawing`, () => sheetSection(sc),
+      [{ label: 'DXF', name: `section_${sc.n}.dxf`, make: () => sectionDXF(sc) }, { label: 'CSV', name: `section_${sc.n}_profile.csv`, make: () => sectionCSV(sc) }]]);
+  }
   L.push(['sun_path', 'Sun path diagram', sheetSunPath]);
   if (S.climate && S.climate.wind) L.push(['wind_rose', 'Wind rose', sheetWindRose]);
   if (S.climate) L.push(['climate', 'Climate summary', sheetClimate]);
@@ -1762,7 +1769,7 @@ async function generateSheets(show = true) {
   for (const [i, [id, name, fn, extra]] of list.entries()) {
     if (id === 'contour_wider_area' && !S.wide) continue;
     setStatus(`Drawing ${name}…`, 0.2 + i * 0.75 / list.length); await sleep(15);
-    try { S.sheets.push({ id, name, svg: fn(), extra: extra || [] }); } catch (e) { console.error(e); log(`${name} failed: ${e.message}`); }
+    try { S.sheets.push({ id, name, svg: await fn(), extra: extra || [] }); } catch (e) { console.error(e); log(`${name} failed: ${e.message}`); }
   }
   renderGallery();
   if (show) showTab('sheets');
@@ -1773,6 +1780,7 @@ function svgToPng(svg, scale = 2) {
   return new Promise((res, rej) => {
     const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })), img = new Image();
     img.onload = async () => {
+      if (img.naturalWidth > 2000) scale = 1;
       const cv = document.createElement('canvas'); cv.width = img.naturalWidth * scale; cv.height = img.naturalHeight * scale;
       const c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height); c.drawImage(img, 0, 0, cv.width, cv.height);
       URL.revokeObjectURL(url); res(await canvasBlob(cv));
@@ -1873,7 +1881,8 @@ function sectionData(sec) {
     const ring = bd.ring.map(p => toLocal(p[0], p[1])), h = bd.h || defH;
     const iv = insideIntervals(lineCrossings(ring, A, u, n), L);
     if (iv.length) {
-      for (const [d0, d1] of iv) { const base = Math.min(zAlong(d0), zAlong(d1), zAlong((d0 + d1) / 2)); cuts.push({ d0, d1, base, top: base + h, known: !!bd.h, h, name: bd.tags.name }); }
+      const vb = Math.min(...ring.map(p => zAt(p[0], p[1])));
+      for (const [d0, d1] of iv) { const base = vb; cuts.push({ d0, d1, base, top: base + h, known: !!bd.h, h, name: bd.tags.name }); }
       continue;
     }
     let omin = Infinity, amin = Infinity, amax = -Infinity, base = Infinity;
@@ -2159,6 +2168,231 @@ function sheetClimate() {
   const sy = y0 + ch + 90;
   body += stats.map((s, k) => `<text x="${x0 + (k % 3) * 440}" y="${sy + Math.floor(k / 3) * 70}" font-size="17" fill="#777">${s[0]}</text><text x="${x0 + (k % 3) * 440}" y="${sy + 32 + Math.floor(k / 3) * 70}" font-size="26" font-weight="700">${s[1]}</text>`).join('');
   return sheetSVG(W, sy + 190, 'CLIMATE SUMMARY', `Rainfall and temperature at the site, ${c.year} (Open-Meteo ERA5, ~10–25 km resolution).`, body, { credit: 'Data: Open-Meteo ERA5 reanalysis (CC-BY 4.0)' });
+}
+/* ───────────────────────── rendered section perspectives ───────────────────────── */
+const hash01 = v => { let h = 2166136261; const s = String(v); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967295; };
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const FACADE = ['#efe9df', '#e6dccb', '#f4f1ea', '#d9d4cc', '#eadbc4', '#e9e2d6', '#dcd0bd', '#e2d6c6', '#f0e6d6'];
+const TOWER = ['#b9c7d3', '#a9b8c6', '#c9d3dc', '#9fb0bf', '#d2d9df'];
+const ROOF = ['#b8b4ad', '#a9a59f', '#c7c2b9', '#9d9993', '#bdb3a3', '#cfcac2'];
+function pointInRing(x, y, ring) { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const a = ring[i], b = ring[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; }
+let facadeTex = null, hatchTex = null;
+function getFacadeTex() {
+  if (facadeTex) return facadeTex;
+  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128; const c = cv.getContext('2d');
+  c.fillStyle = '#ffffff'; c.fillRect(0, 0, 128, 128);
+  c.fillStyle = '#d8d8d8'; c.fillRect(0, 118, 128, 10);                       // floor slab band
+  const g = c.createLinearGradient(0, 22, 0, 104); g.addColorStop(0, '#5d7286'); g.addColorStop(0.5, '#3a4a5a'); g.addColorStop(1, '#2c3844');
+  c.fillStyle = g; c.fillRect(22, 22, 84, 82);                                  // glazing
+  c.fillStyle = 'rgba(255,255,255,.18)'; c.beginPath(); c.moveTo(22, 22); c.lineTo(70, 22); c.lineTo(22, 70); c.fill(); // reflection
+  c.strokeStyle = '#9a9a9a'; c.lineWidth = 3; c.strokeRect(22, 22, 84, 82); c.beginPath(); c.moveTo(64, 22); c.lineTo(64, 104); c.stroke();
+  c.fillStyle = '#bdbdbd'; c.fillRect(18, 104, 92, 5);                           // sill
+  facadeTex = new THREE.CanvasTexture(cv); facadeTex.wrapS = facadeTex.wrapT = THREE.RepeatWrapping; facadeTex.colorSpace = THREE.SRGBColorSpace; facadeTex.anisotropy = 8;
+  return facadeTex;
+}
+function getHatchTex() {
+  if (hatchTex) return hatchTex;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64; const c = cv.getContext('2d');
+  c.fillStyle = '#4b3c2f'; c.fillRect(0, 0, 64, 64); c.strokeStyle = '#8a735d'; c.lineWidth = 7;
+  for (let k = -64; k < 128; k += 16) { c.beginPath(); c.moveTo(k, 64); c.lineTo(k + 64, 0); c.stroke(); }
+  hatchTex = new THREE.CanvasTexture(cv); hatchTex.wrapS = hatchTex.wrapT = THREE.RepeatWrapping; hatchTex.colorSpace = THREE.SRGBColorSpace;
+  return hatchTex;
+}
+/* buildings with real footprints, window-textured walls (UV in metres: 3.2 m bays × 3.5 m floors) and roofs */
+function detailedBuildings(zFn) {
+  const o = S.osm; if (!o || !o.buildings.length) return null;
+  const defH = +$('#defH').value || 9, b = S.bbox, zmin = S.dem.min, col = new THREE.Color();
+  const wp = [], wn = [], wu = [], wc = [], rp = [], rn = [], rc = [];
+  for (const bd of o.buildings) {
+    let cx = 0, cy = 0; for (const p of bd.ring) { cx += p[0]; cy += p[1]; } cx /= bd.ring.length; cy /= bd.ring.length;
+    if (cx < b.w || cx > b.e || cy < b.s || cy > b.n) continue;
+    let loc = bd.ring.slice(0, -1).map(p => toLocal(p[0], p[1]));
+    if (loc.length < 3) continue;
+    let a2 = 0; for (let k = 0; k < loc.length; k++) { const p = loc[k], q = loc[(k + 1) % loc.length]; a2 += p[0] * q[1] - q[0] * p[1]; }
+    if (Math.abs(a2) / 2 < 4) continue;
+    if (a2 < 0) loc = loc.reverse();
+    const h = bd.h || defH, base = Math.min(...loc.map(p => zFn(p[0], p[1]))), y0 = base - zmin - 0.8, y1 = base - zmin + h;
+    const r = hash01(bd.ring[0][0] * 1e7 + bd.ring[0][1]);
+    col.set(h > 40 ? TOWER[Math.floor(r * TOWER.length)] : FACADE[Math.floor(r * FACADE.length)]);
+    let per = 0;
+    for (let k = 0; k < loc.length; k++) {
+      const P = loc[k], Q = loc[(k + 1) % loc.length], dx = Q[0] - P[0], dy = Q[1] - P[1], len = Math.hypot(dx, dy);
+      if (len < 0.05) continue;
+      const nx = dy / len, nz = dx / len, u0 = per / 3.2, u1 = (per + len) / 3.2, v1 = (y1 - y0) / 3.5; per += len;
+      const V = [[P[0], y0, -P[1], u0, 0], [Q[0], y0, -Q[1], u1, 0], [Q[0], y1, -Q[1], u1, v1], [P[0], y1, -P[1], u0, v1]];
+      for (const i of [0, 1, 2, 0, 2, 3]) { wp.push(V[i][0], V[i][1], V[i][2]); wn.push(nx, 0, nz); wu.push(V[i][3], V[i][4]); wc.push(col.r, col.g, col.b); }
+    }
+    col.set(ROOF[Math.floor(hash01(r) * ROOF.length)]);
+    for (const t of THREE.ShapeUtils.triangulateShape(loc.map(p => new THREE.Vector2(p[0], p[1])), [])) {
+      let [i, j, k] = t; const A = loc[i], B = loc[j], C = loc[k];
+      if ((B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0]) < 0) [j, k] = [k, j];
+      for (const q of [i, j, k]) { rp.push(loc[q][0], y1, -loc[q][1]); rn.push(0, 1, 0); rc.push(col.r, col.g, col.b); }
+    }
+  }
+  const mk = (p, n, c, u) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(n, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(c, 3)); if (u) g.setAttribute('uv', new THREE.Float32BufferAttribute(u, 2)); return g; };
+  return wp.length ? { walls: mk(wp, wn, wc, wu), roofs: mk(rp, rn, rc) } : null;
+}
+/* OSM trees plus planted trees filling parks and woods */
+function sectionTreeList(zFn) {
+  const o = S.osm || emptyOSM(), b = S.bbox, list = [], rnd = mulberry32(1234);
+  for (const t of o.trees) { if (t.lon < b.w || t.lon > b.e || t.lat < b.s || t.lat > b.n) continue; const [x, y] = toLocal(t.lon, t.lat); list.push([x, y, parseFloat(t.tags.height) || 7 + rnd() * 5]); }
+  for (const g of o.green) {
+    const ring = g.ring.map(p => toLocal(p[0], p[1])), area = ringArea(ring);
+    const forest = g.forest, n = Math.min(forest ? 900 : 250, Math.floor(area / (forest ? 70 : 220)));
+    let xs = ring.map(p => p[0]), ys = ring.map(p => p[1]); const x0 = Math.max(Math.min(...xs), -S.m.widthM / 2), x1 = Math.min(Math.max(...xs), S.m.widthM / 2), y0 = Math.max(Math.min(...ys), -S.m.heightM / 2), y1 = Math.min(Math.max(...ys), S.m.heightM / 2);
+    for (let k = 0, tries = 0; k < n && tries < n * 4; tries++) { const x = x0 + rnd() * (x1 - x0), y = y0 + rnd() * (y1 - y0); if (pointInRing(x, y, ring)) { list.push([x, y, (forest ? 10 : 7) + rnd() * 6]); k++; } }
+    if (list.length > 6000) break;
+  }
+  return list.slice(0, 6000).map(([x, y, h]) => ({ x, y, h, z: zFn(x, y) - S.dem.min }));
+}
+async function groundTexture(style) {
+  const [TW, TH] = texSize(), cv = document.createElement('canvas'); cv.width = TW; cv.height = TH; const c = cv.getContext('2d');
+  if (style === 'satellite') {
+    try { await ensureSatellite(); } catch (e) { log('Satellite failed: ' + e.message); }
+    if (S.sat && S.sat.failed < 3) { c.drawImage(S.sat.cv, S.sat.sx, S.sat.sy, S.sat.sw, S.sat.sh, 0, 0, TW, TH); return cv; }
+    log('Satellite imagery incomplete — using map-style ground');
+  }
+  const { W, H } = S.dem, img = c.createImageData(TW, TH);
+  for (let y = 0, p = 0; y < TH; y++) for (let x = 0; x < TW; x++, p += 4) {
+    const f = 0.82 + 0.25 * bilinear(S.der.shade, W, H, x / (TW - 1) * (W - 1), y / (TH - 1) * (H - 1));
+    img.data[p] = Math.min(255, 233 * f); img.data[p + 1] = Math.min(255, 227 * f); img.data[p + 2] = Math.min(255, 216 * f); img.data[p + 3] = 255;
+  }
+  c.putImageData(img, 0, 0);
+  const b = S.bbox, o = S.osm || emptyOSM(), ppm = TW / S.m.widthM, P = (lon, lat) => [(lon - b.w) / (b.e - b.w) * TW, (b.n - lat) / (b.n - b.s) * TH];
+  const path = pts => { c.beginPath(); pts.forEach((q, i) => { const [x, y] = P(q[0], q[1]); i ? c.lineTo(x, y) : c.moveTo(x, y); }); };
+  for (const l of o.landuse) { path(l.ring); c.fillStyle = 'rgba(214,205,190,.35)'; c.fill(); }
+  for (const g of o.green) { path(g.ring); c.fillStyle = g.forest ? '#6f9a55' : '#9fc27c'; c.fill(); }
+  for (const w of o.water) { path(w.ring); c.fillStyle = '#6fa6d3'; c.fill(); }
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  for (const w of o.waterways) { path(w.pts); c.strokeStyle = '#6fa6d3'; c.lineWidth = Math.max(1, w.width * ppm); c.stroke(); }
+  const roads = o.roads.slice().sort((a, q) => a.width - q.width);
+  for (const r of roads) { path(r.pts); c.strokeStyle = r.width <= 2 ? '#d9d2c3' : '#cfcac0'; c.lineWidth = Math.max(1, (r.width + 3) * ppm); c.stroke(); }   // pavements
+  for (const r of roads) { if (r.width <= 2) continue; path(r.pts); c.strokeStyle = r.width >= 8 ? '#6f7275' : '#86898c'; c.lineWidth = Math.max(1, r.width * ppm); c.stroke(); }
+  for (const r of roads) { if (r.width < 8) continue; path(r.pts); c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = Math.max(0.6, 0.25 * ppm); c.setLineDash([3 * ppm, 3 * ppm]); c.stroke(); c.setLineDash([]); }
+  for (const r of o.rails) { path(r.pts); c.strokeStyle = '#5a534c'; c.lineWidth = Math.max(1, 3 * ppm); c.stroke(); }
+  return cv;
+}
+async function renderSectionView(sec, mode, Wpx, Hpx) {
+  const sd = sectionData(sec), sm = smoothDEM(), d = S.dem, zmin = d.min, size = Math.max(S.m.widthM, S.m.heightM);
+  const zFn = (x, y) => bilinear(sm.data, d.W, d.H, (x + S.m.widthM / 2) / d.dx, (S.m.heightM / 2 - y) / d.dy);
+  if (!offR) { offR = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); offR.outputColorSpace = THREE.SRGBColorSpace; }
+  offR.setPixelRatio(1); offR.setSize(Wpx, Hpx, false);
+  offR.shadowMap.enabled = true; offR.shadowMap.type = THREE.PCFSoftShadowMap; offR.localClippingEnabled = true;
+  offR.toneMapping = THREE.ACESFilmicToneMapping; offR.toneMappingExposure = 1.05;
+  const [A, u, n, L] = [sd.A, sd.u, sd.n, sd.L];
+  const W3 = (x, y, z) => new THREE.Vector3(x, z, -y);                                        // local metres → world
+  const plane = new THREE.Plane(new THREE.Vector3(n[0], 0, -n[1]), -(n[0] * A[0] + n[1] * A[1])); // keeps what lies beyond the cut
+  const clip = [plane], disposables = [];
+  const scene = new THREE.Scene();
+  const sky = document.createElement('canvas'); sky.width = 4; sky.height = 256; const sg = sky.getContext('2d'), gr = sg.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#8fb8df'); gr.addColorStop(0.65, '#dfe9f1'); gr.addColorStop(1, '#f3f1ec'); sg.fillStyle = gr; sg.fillRect(0, 0, 4, 256);
+  const skyTex = new THREE.CanvasTexture(sky); skyTex.colorSpace = THREE.SRGBColorSpace; scene.background = skyTex; disposables.push(skyTex);
+  scene.add(new THREE.HemisphereLight('#e4eef8', '#7a6a55', 1.25));
+  const sun = new THREE.DirectionalLight('#fff3df', 2.9); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+  const dt = $('#sunDate').valueAsDate || new Date(), hr = +$('#sunHour').value;
+  let sp = sunPosition(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()) + (hr - S.m.lon0 / 15) * 3600000, S.m.lat0, S.m.lon0);
+  if (sp.alt < 0.2) sp = { alt: 0.6, az: 225 * D2R };
+  sun.position.set(Math.sin(sp.az) * Math.cos(sp.alt), Math.sin(sp.alt), -Math.cos(sp.az) * Math.cos(sp.alt)).multiplyScalar(size * 1.5);
+  const scam = sun.shadow.camera; scam.left = scam.bottom = -size * 0.75; scam.right = scam.top = size * 0.75; scam.near = 1; scam.far = size * 4; sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.4;
+  scene.add(sun, sun.target);
+  // terrain (true scale) with draped ground texture
+  const baseT = Math.max(12, (sd.zmax - sd.zmin) * 0.35), gtex = new THREE.CanvasTexture(await groundTexture($('#secGround').value));
+  gtex.colorSpace = THREE.SRGBColorSpace; gtex.anisotropy = 16; disposables.push(gtex);
+  const tg = terrainSolid(1, baseT, { ...d, data: sm.data }); disposables.push(tg);
+  const terr = new THREE.Mesh(tg, [new THREE.MeshStandardMaterial({ map: gtex, roughness: 1, clippingPlanes: clip }), new THREE.MeshStandardMaterial({ color: '#7d6550', roughness: 1, clippingPlanes: clip })]);
+  terr.receiveShadow = true; scene.add(terr);
+  // buildings
+  const bg = detailedBuildings(zFn);
+  if (bg) {
+    const walls = new THREE.Mesh(bg.walls, new THREE.MeshStandardMaterial({ map: getFacadeTex(), vertexColors: true, roughness: 0.75, metalness: 0.05, clippingPlanes: clip }));
+    const roofs = new THREE.Mesh(bg.roofs, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, clippingPlanes: clip }));
+    for (const m of [walls, roofs]) { m.castShadow = m.receiveShadow = true; scene.add(m); }
+    disposables.push(bg.walls, bg.roofs);
+  }
+  // trees
+  const trees = sectionTreeList(zFn);
+  if (trees.length) {
+    const crownG = new THREE.IcosahedronGeometry(1, 1), trunkG = new THREE.CylinderGeometry(0.16, 0.24, 1, 6); trunkG.translate(0, 0.5, 0);
+    const crowns = new THREE.InstancedMesh(crownG, new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true, clippingPlanes: clip }), trees.length);
+    const trunks = new THREE.InstancedMesh(trunkG, new THREE.MeshStandardMaterial({ color: '#6b5641', roughness: 1, clippingPlanes: clip }), trees.length);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), c = new THREE.Color(), GREENS = ['#4f7f3a', '#5e8f45', '#6c9a4c', '#47733a', '#7aa457'];
+    trees.forEach((t, i) => {
+      const r = t.h * 0.3, rr = hash01(i * 7.13);
+      m4.compose(new THREE.Vector3(t.x, t.z + t.h * 0.64, -t.y), q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rr * 6.28), new THREE.Vector3(r, r * 1.15, r)); crowns.setMatrixAt(i, m4);
+      crowns.setColorAt(i, c.set(GREENS[Math.floor(rr * GREENS.length)]));
+      m4.compose(new THREE.Vector3(t.x, t.z - 0.3, -t.y), q.identity(), new THREE.Vector3(1, t.h * 0.5, 1)); trunks.setMatrixAt(i, m4);
+    });
+    crowns.castShadow = trunks.castShadow = true; crowns.receiveShadow = true; scene.add(crowns, trunks); disposables.push(crownG, trunkG);
+  }
+  // section cut caps (poché) — ground hatch and solid building cuts, drawn exactly in the section plane
+  const off = 0.05, toW = (s, yv) => W3(A[0] + u[0] * s - n[0] * off, A[1] + u[1] * s - n[1] * off, yv);
+  const capShape = new THREE.Shape([...sd.profile.map(p => new THREE.Vector2(p[0], p[1] - zmin)), new THREE.Vector2(L, -baseT), new THREE.Vector2(0, -baseT)]);
+  const capG = new THREE.ShapeGeometry(capShape), cp = capG.attributes.position, uv = [];
+  const hs = Math.max(2, L / 70); for (let i = 0; i < cp.count; i++) { const s = cp.getX(i), yv = cp.getY(i), w = toW(s, yv); cp.setXYZ(i, w.x, w.y, w.z); uv.push(s / hs, yv / hs); }
+  capG.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); capG.computeVertexNormals(); disposables.push(capG);
+  scene.add(new THREE.Mesh(capG, new THREE.MeshBasicMaterial({ map: getHatchTex(), side: THREE.DoubleSide })));
+  const cutPos = [];
+  for (const cu of sd.cuts) {
+    const y0 = cu.base - zmin - 0.8, y1 = cu.top - zmin, q4 = [toW(cu.d0, y0), toW(cu.d1, y0), toW(cu.d1, y1), toW(cu.d0, y1)];
+    for (const i of [0, 1, 2, 0, 2, 3]) cutPos.push(q4[i].x, q4[i].y - 0.0, q4[i].z);
+  }
+  if (cutPos.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(cutPos, 3)); disposables.push(g); scene.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: '#141414', side: THREE.DoubleSide }))); }
+  const edge = new THREE.BufferGeometry().setFromPoints(sd.profile.map(p => toW(p[0], p[1] - zmin))); disposables.push(edge);
+  scene.add(new THREE.Line(edge, new THREE.LineBasicMaterial({ color: '#111' })));
+  // camera
+  const ztop = sd.zmax - zmin, mid = L / 2, gm = sd.zAlong(mid) - zmin, aspect = Wpx / Hpx, fov = 30;
+  const hh = Math.atan(Math.tan(fov / 2 * D2R) * aspect), D = (L * 0.54) / Math.tan(hh), M = [A[0] + u[0] * mid, A[1] + u[1] * mid];
+  const cam = new THREE.PerspectiveCamera(fov, aspect, Math.max(0.5, D / 200), D * 6 + size * 2);
+  const pitch = (mode === 'aerial' ? 30 : 6) * D2R, back = mode === 'aerial' ? D * 0.8 : D;
+  cam.position.copy(W3(M[0] - n[0] * back, M[1] - n[1] * back, gm + ztop * 0.3 + back * Math.tan(pitch)));
+  cam.lookAt(W3(M[0], M[1], gm));
+  // frame tightly: the cut face (top to base) plus the far edge of the model beyond the cut
+  const far = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sy]) => [sx * S.m.widthM / 2, sy * S.m.heightM / 2]).filter(p => dot2(p, A, n) > 1);
+  const fitPts = [[0, -baseT], [L, -baseT], [0, ztop], [L, ztop]].map(([s, yv]) => toW(s, yv));
+  for (const p of far) fitPts.push(W3(p[0], p[1], zFn(p[0], p[1]) - zmin), W3(p[0], p[1], ztop * 0.8));
+  for (let it = 0; it < 4; it++) {
+    cam.updateMatrixWorld();
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const p of fitPts) { const v = p.clone().applyMatrix4(cam.matrixWorldInverse); if (v.z > -0.1) continue; const tx = v.x / -v.z, ty = v.y / -v.z; x0 = Math.min(x0, tx); x1 = Math.max(x1, tx); y0 = Math.min(y0, ty); y1 = Math.max(y1, ty); }
+    if (!Number.isFinite(x0)) break;
+    cam.lookAt(cam.localToWorld(new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, -1)));
+    if (it === 2) { Hpx = Math.round(clamp(Wpx * (y1 - y0) / (x1 - x0) * 1.25, 560, 1500)); cam.aspect = Wpx / Hpx; offR.setSize(Wpx, Hpx, false); }
+    cam.fov = 2 * Math.atan(Math.max((y1 - y0) / 2 * 1.12, (x1 - x0) / 2 / cam.aspect * 1.1)) / D2R; cam.updateProjectionMatrix();
+  }
+  cam.updateMatrixWorld();
+  scene.fog = new THREE.Fog('#e6edf2', D * 1.05, D + size * 1.8);
+  offR.render(scene, cam);
+  const url = offR.domElement.toDataURL('image/png');
+  scene.traverse(o => { if (o.material) [].concat(o.material).forEach(m => m.dispose()); });
+  disposables.forEach(x => x.dispose());
+  offR.shadowMap.enabled = false; offR.localClippingEnabled = false; offR.toneMapping = THREE.NoToneMapping;
+  const project = (s, z) => { const v = toW(s, z - zmin).project(cam); return [(v.x + 1) / 2 * Wpx, (1 - v.y) / 2 * Hpx, v.z < 1]; };
+  return { url, project, sd, trees: trees.length, H: Hpx };
+}
+async function sheetSectionView(sec, mode) {
+  const W = 2400, top = 150, r = await renderSectionView(sec, mode, W, 1150), sd = r.sd, IH = r.H;
+  let body = `<image x="0" y="${top}" width="${W}" height="${IH}" href="${r.url}"/>`;
+  const halo = 'paint-order="stroke" stroke="#fff" stroke-width="5" stroke-linejoin="round"';
+  const zs = niceStep(sd.zmax - sd.zmin + 10, 6);
+  for (let z = Math.ceil((sd.zmin - 5) / zs) * zs; z <= sd.zmax + 1e-6; z += zs) {
+    const [x, y, ok] = r.project(0, z); if (!ok || y < 10 || y > IH - 10 || x < 60) continue;
+    body += `<line x1="${r1(x - 34)}" y1="${r1(top + y)}" x2="${r1(x - 4)}" y2="${r1(top + y)}" stroke="#111" stroke-width="2"/><text x="${r1(x - 40)}" y="${r1(top + y + 7)}" font-size="20" text-anchor="end" ${halo}>${Math.abs(z) < 1e-9 ? '±0' : (z > 0 ? '+' : '') + fmt(z, zs < 1 ? 1 : 0)} m</text>`;
+  }
+  for (const [s, t] of [[0, sec.n], [sd.L, sec.n + "'"]]) {
+    const [x, y, ok] = r.project(s, sd.zAlong(s) + (sd.zmax - sd.zmin) * 0.5 + 12); if (!ok) continue;
+    const cx = clamp(x, 40, W - 40), cy = clamp(top + y, top + 40, top + IH - 40);
+    body += `<circle cx="${r1(cx)}" cy="${r1(cy)}" r="26" fill="#e0302f" stroke="#fff" stroke-width="3"/><text x="${r1(cx)}" y="${r1(cy + 9)}" font-size="26" font-weight="700" fill="#fff" text-anchor="middle">${t}</text>`;
+  }
+  const kp = 220;
+  body += keyPlan(W - kp - 30, top + IH + 50, kp, sec);
+  const items = [['#141414', 'Building cut (poché)'], ['url(#earthS)', 'Ground cut'], ['#e6dccb', 'Buildings beyond (OSM footprints & heights)'], ['#5e8f45', `Trees (${fmt(r.trees)})`], ['#6fa6d3', 'Water']];
+  body += `<defs><pattern id="earthS" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(-45)"><rect width="12" height="12" fill="#4b3c2f"/><line x1="0" y1="0" x2="0" y2="12" stroke="#7a6450" stroke-width="3"/></pattern></defs>`;
+  let lx = 24;
+  body += items.map(it => { const out = `<rect x="${lx}" y="${top + IH + 26}" width="44" height="22" fill="${it[0]}" stroke="#555"/><text x="${lx + 56}" y="${top + IH + 44}" font-size="19">${esc(it[1])}</text>`; lx += 100 + it[1].length * 10.5; return out; }).join('');
+  const kind = mode === 'aerial' ? 'SECTIONAL AERIAL VIEW' : 'SECTION PERSPECTIVE';
+  return sheetSVG(W, top + IH + kp + 90, `SECTION ${sec.n}–${sec.n}' · ${kind}`,
+    `${fmt(sd.L)} m cut, looking ${sd.view} · true-scale terrain, OSM building footprints & heights, ${fmt(sd.cuts.length)} buildings cut · perspective view — use the 2D section for measured drawings`, body,
+    { titleSize: 34, credit: 'Data: OpenStreetMap contributors, AWS Terrain Tiles' + ($('#secGround').value === 'satellite' ? ', imagery © Esri' : '') });
 }
 window.__terrakit = { S, exportOne, generate, generateSheets }; window.__svgToPng = svgToPng; window.__setBox = b => { setBBox(b); map.fitBounds(selRect.getBounds()); };
 </script>
