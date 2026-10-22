@@ -1,5 +1,5 @@
 // Studio: builds the chosen packs into true-scale sheets + files, shows them in a gallery, handles downloads.
-import { $, $$, download, esc, fmt, sleep, toast } from './util.js';
+import { $, $$, download, esc, fmt, loadScript, sleep, toast } from './util.js';
 import * as SH from './sheets.js';
 import * as EX from './export.js';
 import { laserModel } from './laser.js';
@@ -151,7 +151,9 @@ $('#btnZip').onclick = async () => {
   if (!ST) return;
   const b = $('#btnZip'); b.disabled = true; const bar = $('#studioProgress div');
   try {
-    const z = new JSZip(), total = ST.sheets.length + ST.files.length + 1; let n = 0;
+    b.textContent = 'Loading ZIP…';
+    const JSZipClass = await loadScript('vendor/jszip-3.10.1.min.js', 'JSZip');
+    const z = new JSZipClass(), total = ST.sheets.length + ST.files.length + 1; let n = 0;
     const tick = msg => { bar.style.width = `${++n / total * 100}%`; b.textContent = msg; };
     for (const s of ST.sheets) { z.file(`${s.pack}/${ST.base}_${s.id}.svg`, s.svg); if (s.dxf) z.file(`${s.pack}/${ST.base}_${s.id}.dxf`, s.dxf); tick('Sheets…'); await sleep(0); }
     for (const f of ST.files) { try { z.file(`${f.pack}/${f.name}`, await f.make()); } catch (e) { console.error(f.name, e); } tick('Files…'); await sleep(0); }

@@ -4,10 +4,13 @@ const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.p
 export const emptyOSM = () => ({ buildings: [], roads: [], rails: [], water: [], waterways: [], green: [], landuse: [], trees: [], places: [], pois: [], parcels: [] });
 const samePt = (a, b) => a[0] === b[0] && a[1] === b[1];
 
-async function overpass(q, log) {
+async function overpass(q, log, offset = 0) {
   let last;
-  for (const ep of OVERPASS) {
-    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 70000);
+  // Spread simultaneous layer requests across mirrors. Three short failovers are
+  // substantially faster than waiting more than a minute on every unhealthy host.
+  const endpoints = Array.from({ length: 3 }, (_, i) => OVERPASS[(i + offset) % OVERPASS.length]);
+  for (const ep of endpoints) {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 22000);
     try {
       const r = await fetch(ep, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal });
       if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -100,9 +103,9 @@ export async function fetchOSM(b, o, log) {
   misc += `node["place"~"^(suburb|neighbourhood|quarter|city_block|locality|island|village|town)$"](${b.s - 0.02},${b.w - 0.02},${b.n + 0.02},${b.e + 0.02});`;
   groups.push(['land', misc]);
   const all = { elements: [] }, failed = [];
-  for (const [label, q] of groups) {
-    try { const js = await overpass(`[out:json][timeout:90];(${q});out geom;`, log); all.elements.push(...(js.elements || [])); }
+  await Promise.all(groups.map(async ([label, q], i) => {
+    try { const js = await overpass(`[out:json][timeout:30];(${q});out geom;`, log, i); all.elements.push(...(js.elements || [])); }
     catch (e) { failed.push(label); log && log(`OpenStreetMap ${label} failed: ${e.message}`); }
-  }
+  }));
   return { data: parseOSM(all), failed };
 }

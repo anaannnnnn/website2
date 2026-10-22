@@ -8,6 +8,20 @@ export const fmt = (v, d = 0) => (Number.isFinite(v) ? v.toLocaleString('en-GB',
 export const niceStep = (range, maxTicks) => [0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000].find(s => range / s <= maxTicks) || 10000;
 export const canvasBlob = (cv, type = 'image/png', q) => new Promise(r => cv.toBlob(r, type, q));
 
+const SCRIPT_LOADS = new Map();
+/** Load a large optional browser library only when the feature that needs it is opened. */
+export function loadScript(src, globalName) {
+  if (globalName && globalThis[globalName]) return Promise.resolve(globalThis[globalName]);
+  if (!SCRIPT_LOADS.has(src)) SCRIPT_LOADS.set(src, new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.async = true; s.crossOrigin = 'anonymous';
+    s.onload = () => resolve(globalName ? globalThis[globalName] : true);
+    s.onerror = () => { SCRIPT_LOADS.delete(src); reject(new Error(`Could not load ${globalName || 'library'}`)); };
+    document.head.appendChild(s);
+  }));
+  return SCRIPT_LOADS.get(src);
+}
+
 export function download(data, name, type = 'application/octet-stream') {
   const blob = data instanceof Blob ? data : new Blob([data], { type });
   const a = document.createElement('a');

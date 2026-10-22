@@ -1,9 +1,8 @@
-import { $, $$, countUp, esc, fmt, sleep, toast } from './util.js';
+import { $, $$, countUp, esc, fmt, loadScript, sleep, toast } from './util.js';
 import { makeFrame, sheetLayout, SCALES, PAPER, clamp } from './geo.js';
 import { createMap } from './map.js';
 import { buildDEM, terrainSourceNote } from './data/dem.js';
 import { fetchOSM, emptyOSM } from './data/osm.js';
-import { loadOvertureBuildings } from './data/overture.js';
 import { fetchVectorTiles } from './data/vt.js';
 import { fetchClimate } from './data/climate.js';
 import { normaliseBuildings, localiseOSM, buildingBase, makeZAt, heightStats } from './site.js';
@@ -250,6 +249,11 @@ function markStale() {
   go(S.step === 'sections' || S.step === 'outputs' ? 'data' : S.step);
 }
 
+const deadline = (promise, ms, label) => new Promise((resolve, reject) => {
+  const timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)} seconds`)), ms);
+  promise.then(v => { clearTimeout(timer); resolve(v); }, e => { clearTimeout(timer); reject(e); });
+});
+
 async function loadData() {
   if (S.loading) return;
   const cfg = frameCfg(); if (!cfg) return toast('Pick a site first.', 'warn');
@@ -264,10 +268,10 @@ async function loadData() {
 
   const tTerrain = buildDEM(frame, N, p => layerState('terrain', 'loading', `Downloading terrain… ${Math.round(p * 100)}%`)).then(d => { res.dem = d; })
     .catch(e => { res.failed.push('terrain'); layerState('terrain', 'fail', `Failed: ${esc(e.message)}`); });
-  const tClimate = S.layers.climate ? fetchClimate(frame).then(c => { res.climate = c; }).catch(e => { res.failed.push('climate'); layerState('climate', 'fail', `Failed: ${esc(e.message)}`); }) : null;
-  const tOverture = S.layers.buildings ? loadOvertureBuildings(bb, { log: m => layerState('buildings', 'loading', esc(m)) }).then(r => { res.overture = r; }).catch(e => { res.overtureErr = e.message; }) : null;
-  const tOsm = (S.layers.buildings || S.layers.streets || S.layers.water || S.layers.trees) ? fetchOSM(bb, { buildings: S.layers.buildings, streets: S.layers.streets, water: S.layers.water, green: S.layers.water, trees: S.layers.trees }, log)
-    .then(r => { res.osm = r.data; res.osmFailed = r.failed; }) : null;
+  const tClimate = S.layers.climate ? deadline(fetchClimate(frame), 35000, 'Climate').then(c => { res.climate = c; }).catch(e => { res.failed.push('climate'); layerState('climate', 'fail', `Failed: ${esc(e.message)}`); }) : null;
+  const tOverture = S.layers.buildings ? deadline(import('./data/overture.js').then(({ loadOvertureBuildings }) => loadOvertureBuildings(bb, { log: m => layerState('buildings', 'loading', esc(m)) })), 35000, 'Overture').then(r => { res.overture = r; }).catch(e => { res.overtureErr = e.message; }) : null;
+  const tOsm = (S.layers.buildings || S.layers.streets || S.layers.water || S.layers.trees) ? deadline(fetchOSM(bb, { buildings: S.layers.buildings, streets: S.layers.streets, water: S.layers.water, green: S.layers.water, trees: S.layers.trees }, log), 50000, 'OpenStreetMap')
+    .then(r => { res.osm = r.data; res.osmFailed = r.failed; }).catch(e => { res.osmFailed = ['buildings', 'streets', 'land']; res.failed.push('OpenStreetMap'); log(e.message); }) : null;
   await tOverture;
   if (S.layers.buildings && !(res.overture && res.overture.buildings.length)) {
     layerState('buildings', 'loading', 'Overture unavailable — trying OpenStreetMap…');
@@ -425,8 +429,15 @@ function laserHint() {
 ['#modelScale', '#board'].forEach(id => $(id).addEventListener('input', laserHint));
 $('#btnCreate').onclick = async () => {
   if (!S.packs.size) return toast('Choose at least one pack.', 'warn');
-  const { openStudio } = await import('./studio.js');
-  openStudio(S, { frameSize, printScale, title: () => ({ project: $('#tbProject').value || 'Site analysis', author: $('#tbAuthor').value || '', place: S.site.name }), laser: () => ({ scale: +$('#modelScale').value, board: +$('#board').value, sheetW: +$('#laserW').value, sheetH: +$('#laserH').value }), depth: () => S.depth, defH });
+  const b = $('#btnCreate'); b.disabled = true; b.textContent = 'Opening studio…';
+  try {
+    const [, { openStudio }] = await Promise.all([
+      loadScript('vendor/d3-7.8.5.min.js', 'd3'),
+      import('./studio.js')
+    ]);
+    openStudio(S, { frameSize, printScale, title: () => ({ project: $('#tbProject').value || 'Site analysis', author: $('#tbAuthor').value || '', place: S.site.name }), laser: () => ({ scale: +$('#modelScale').value, board: +$('#board').value, sheetW: +$('#laserW').value, sheetH: +$('#laserH').value }), depth: () => S.depth, defH });
+  } catch (e) { console.error(e); toast('Studio libraries could not be loaded. Check your connection and retry.', 'err'); }
+  finally { b.disabled = false; b.textContent = 'Create drawings'; }
 };
 
 /* ───────────── map tools ───────────── */

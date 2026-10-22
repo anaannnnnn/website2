@@ -86,7 +86,8 @@ export async function buildDEM(frame, N, onProgress) {
   const mpp0 = 156543.034 * Math.cos(frame.lat * Math.PI / 180);
   let z = clamp(Math.ceil(Math.log2(mpp0 / Math.min(dx, dy))), 1, 15);
   const tiles = z => (Math.floor(lonToX(b.e, z) / 256) - Math.floor(lonToX(b.w, z) / 256) + 1) * (Math.floor(latToY(b.s, z) / 256) - Math.floor(latToY(b.n, z) / 256) + 1);
-  while (z > 1 && tiles(z) > 300) z--;
+  // A source mosaic much denser than the output grid adds requests, not useful detail.
+  while (z > 1 && tiles(z) > 96) z--;
   const mos = await fetchMosaic(b, z, TILE, onProgress);
   const CW = mos.cv.width, CH = mos.cv.height, px = mos.ctx.getImageData(0, 0, CW, CH).data, elev = new Float32Array(CW * CH);
   for (let k = 0, p = 0; k < elev.length; k++, p += 4) elev[k] = px[p] * 256 + px[p + 1] + px[p + 2] / 256 - 32768;

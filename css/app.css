@@ -2,12 +2,12 @@
   --bg:#f5f4f0; --paper:#fbfaf7; --panel:rgba(252,251,248,.9); --ink:#16181d; --ink-2:#3a3f48; --muted:#6b7079; --line:#e3e0d8; --line-2:#d3cfc4;
   --accent:#ff4f1a; --accent-2:#ffe2d6; --blue:#1f6feb; --ok:#1a7f4b; --warn:#b45309; --err:#c2271b;
   --r:14px; --r-sm:10px; --shadow:0 10px 40px rgba(22,24,29,.14),0 2px 8px rgba(22,24,29,.06);
-  --ease:cubic-bezier(.2,.8,.2,1); --mono:'JetBrains Mono',ui-monospace,monospace;
+  --ease:cubic-bezier(.2,.8,.2,1); --mono:ui-monospace,'SFMono-Regular',Consolas,'Liberation Mono',monospace;
   color-scheme:light;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
 button,input,select{font:inherit;color:inherit}
 svg{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .mono{font-family:var(--mono)}
