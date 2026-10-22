@@ -35,6 +35,18 @@ Everything runs in the browser — no account, no paid server. Host it free on G
    - **CAD / GIS**: DXF site model (site-aligned *and* real UTM coordinates), contour DXF/GeoJSON/KML,
      GeoTIFF (EPSG UTM with rotation), ASCII grid, XYZ points, 16-bit heightmap, OBJ, GLB, GeoJSON.
 
+6. **Advanced analysis** — the Studio’s Analyze tab adds an evidence-led comparison workspace:
+   - clipped building coverage, estimated FAR and mapped building-use/year/material completeness;
+   - mapped parcel availability, green/water ratios and amenity proximity;
+   - terrain-and-building sky-view factor and direct-sun access at the site centre;
+   - terrain viewshed, apparent-temperature comfort hours, radiation totals and a transparent road-exposure index;
+   - reusable visual palettes, an eight-card custom diagram board, JSON/CSV evidence export and a printable report;
+   - an accuracy ledger beside the results: mapped, derived, modelled and indicative values are never presented as equivalent.
+
+The 3D viewer also has an **Explode layers** control for separating terrain, buildings and vegetation into an
+axonometric layer study. Advanced results are saved into every ZIP as an evidence report with calculation
+methods, input sources and explicit unavailable-data disclosures.
+
 Every sheet is authored in millimetres and exports as **vector PDF**, SVG or PNG, with a title block
 (project, author, coordinates, UTM zone, scale bar, rotated north arrow, data sources and reliability).
 Projects are saved in the page link — share it to reopen the same site, frame and sections.
@@ -44,6 +56,10 @@ Projects are saved in the page link — share it to reopen the same site, frame 
 Nothing is invented. Buildings without a recorded height use a default height that you set, and are
 hatched / dashed / on separate CAD layers. Missing layers are reported, not filled. Where national
 open data is better than these global sources (lidar, LoD2 city models), it is worth using it alongside.
+Accordingly, TerraKit does not label a road-class proxy as measured traffic noise, regional wind as CFD,
+community-mapped boundaries as an authoritative cadastre, or building counts as population. Native SKP,
+RVT and 3DM authoring also requires the corresponding proprietary SDK or conversion service. Those results
+remain unavailable unless the required observed, statutory or licensed system exists.
 
 ## Repository
 

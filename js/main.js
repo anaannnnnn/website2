@@ -266,12 +266,12 @@ async function loadData() {
     .catch(e => { res.failed.push('terrain'); layerState('terrain', 'fail', `Failed: ${esc(e.message)}`); });
   const tClimate = S.layers.climate ? fetchClimate(frame).then(c => { res.climate = c; }).catch(e => { res.failed.push('climate'); layerState('climate', 'fail', `Failed: ${esc(e.message)}`); }) : null;
   const tOverture = S.layers.buildings ? loadOvertureBuildings(bb, { log: m => layerState('buildings', 'loading', esc(m)) }).then(r => { res.overture = r; }).catch(e => { res.overtureErr = e.message; }) : null;
-  const tOsm = (S.layers.streets || S.layers.water || S.layers.trees) ? fetchOSM(bb, { streets: S.layers.streets, water: S.layers.water, green: S.layers.water, trees: S.layers.trees }, log)
+  const tOsm = (S.layers.buildings || S.layers.streets || S.layers.water || S.layers.trees) ? fetchOSM(bb, { buildings: S.layers.buildings, streets: S.layers.streets, water: S.layers.water, green: S.layers.water, trees: S.layers.trees }, log)
     .then(r => { res.osm = r.data; res.osmFailed = r.failed; }) : null;
   await tOverture;
   if (S.layers.buildings && !(res.overture && res.overture.buildings.length)) {
     layerState('buildings', 'loading', 'Overture unavailable — trying OpenStreetMap…');
-    try { const r = await fetchOSM(bb, { buildings: true }, log); res.osmBuildings = r.data.buildings; } catch (e) { /* fall through */ }
+    try { if (tOsm) await tOsm; res.osmBuildings = res.osm.buildings; } catch (e) { /* fall through */ }
     if (!(res.osmBuildings && res.osmBuildings.length)) {
       layerState('buildings', 'loading', 'Trying OpenFreeMap tiles…');
       try { res.vt = await fetchVectorTiles(bb); } catch (e) { /* reported below */ }
@@ -293,7 +293,7 @@ function buildModel(res) {
   const { frame, dem } = res, sigma = +$('#smooth').value;
   const smooth = gaussian(dem.data, dem.W, dem.H, sigma), zAt = makeZAt(dem, frame, smooth);
   const osm = localiseOSM(frame, res.osm);
-  const nb = normaliseBuildings(frame, { overture: res.overture && res.overture.buildings, osm: res.osmBuildings, vt: res.vt && res.vt.buildings }, defH());
+  const nb = normaliseBuildings(frame, { overture: res.overture && res.overture.buildings, osm: (res.osm && res.osm.buildings) || res.osmBuildings, vt: res.vt && res.vt.buildings }, defH());
   for (const b of nb.buildings) b.base = buildingBase(b, zAt);
   const der = derive(dem, frame, smooth);
   const model = { frame, dem, smooth, zAt, der, flow: null, buildings: nb.buildings, bsource: nb.source, release: res.overture && res.overture.release, osm, climate: res.climate, terrain: terrainSourceNote(frame.lon, frame.lat), site: S.site, paper: S.paper, orient: S.orient, scale: printScale(), loadedAt: new Date() };

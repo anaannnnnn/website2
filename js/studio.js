@@ -3,12 +3,14 @@ import { $, $$, download, esc, fmt, sleep, toast } from './util.js';
 import * as SH from './sheets.js';
 import * as EX from './export.js';
 import { laserModel } from './laser.js';
+import { analyseSite } from './advanced.js';
 
 let ST = null;   // current studio run
 const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
 
 export async function openStudio(S, H) {
   const M = S.model; M.defaultH = H.defH(); M.site = S.site;
+  const analysis = analyseSite(M);
   const studio = $('#studio'); studio.classList.add('on'); studio.setAttribute('aria-hidden', 'false');
   tab('sheets');
   const t = H.title(), scale = H.printScale();
@@ -60,10 +62,12 @@ export async function openStudio(S, H) {
     file('cad', `${base}_model.glb`, '3D model (glTF binary, metres)', async () => EX_GLB(view3d, M));
   }
   if (S.packs.has('model')) file('model', `${base}_print_1to${laser.scale}.stl`, `3D-print model at 1:${fmt(laser.scale)} in millimetres (${fmt(M.frame.w * 1000 / laser.scale)} × ${fmt(M.frame.h * 1000 / laser.scale)} mm)`, async () => EX_STL(view3d, M, laser.scale), 'model/stl');
+  file('analysis', `${base}_evidence_report.json`, 'Advanced metrics, calculation methods, sources and unavailable-data disclosures', () => JSON.stringify(analysis, null, 2), 'application/json');
   file('info', 'README.txt', 'Coordinate systems, sources and reliability of every file', () => EX.readme(M), 'text/plain');
 
-  ST = { S, H, M, c, sheets: [], files, base, view3d, iv };
+  ST = { S, H, M, c, sheets: [], files, base, view3d, iv, analysis };
   renderFiles(files);
+  import('./dashboard.js').then(x => x.renderAnalysis(M, analysis)).catch(e => { console.error(e); $('#analysisWorkspace').innerHTML = `<div class="analysis-error">Advanced analysis failed: ${esc(e.message)}</div>`; });
   // gallery with skeletons
   const g = $('#gallery'); g.innerHTML = jobs.map((j, i) => `<div class="card skeleton" data-j="${i}" style="animation-delay:${i * 40}ms"><div class="thumb"></div><div class="cap"><div><strong>${esc(j.title)}</strong><small>Drawing…</small></div></div></div>`).join('');
   const bar = $('#studioProgress div'); bar.style.width = '0';
@@ -174,15 +178,16 @@ let viewer = null;
 async function show3D() {
   if (!ST) return;
   if (!viewer) { viewer = ST.view3d.createViewer($('#viewer')); if (!$('#mDate').value) $('#mDate').valueAsDate = new Date(); }
-  const o = { style: $('#mStyle').value, surface: $('#mHeat').value, exag: +$('#mExag').value, buildings: $('#mBuild').checked, base: $('#mBase').checked, iv: Math.max(ST.iv, (ST.M.dem.max - ST.M.dem.min) / 30), date: $('#mDate').valueAsDate || new Date(), hour: +$('#mTime').value, clean: $('#mClean').checked, context: Object.fromEntries($$('[data-ctx]').map(c => [c.dataset.ctx, c.checked])) };
+  const o = { style: $('#mStyle').value, surface: $('#mHeat').value, exag: +$('#mExag').value, explosion: +$('#mExplode').value, buildings: $('#mBuild').checked, base: $('#mBase').checked, iv: Math.max(ST.iv, (ST.M.dem.max - ST.M.dem.min) / 30), date: $('#mDate').valueAsDate || new Date(), hour: +$('#mTime').value, clean: $('#mClean').checked, context: Object.fromEntries($$('[data-ctx]').map(c => [c.dataset.ctx, c.checked])) };
   try {
     const lg = await viewer.show(ST.M, o);
     $('#mLegend').innerHTML = lg ? `<div class="hint">${esc(lg.label)}</div><div class="grad" style="background:linear-gradient(90deg,${lg.colors.join(',')})"></div><div class="ends"><span>${fmt(lg.lo, 1)}</span><span>${fmt(lg.hi, 1)}</span></div>` : '';
   } catch (e) { console.error(e); toast('3D failed: ' + e.message, 'err'); }
 }
-['#mStyle', '#mHeat', '#mExag', '#mBuild', '#mBase', '#mClean', '#mDate', '#mTime'].forEach(id => $(id).addEventListener('change', show3D));
+['#mStyle', '#mHeat', '#mExag', '#mExplode', '#mBuild', '#mBase', '#mClean', '#mDate', '#mTime'].forEach(id => $(id).addEventListener('change', show3D));
 $$('[data-ctx]').forEach(c => c.addEventListener('change', show3D));
 $('#mExag').addEventListener('input', () => { $('#mExagV').textContent = (+$('#mExag').value).toFixed(1) + '×'; });
+$('#mExplode').addEventListener('input', () => { $('#mExplodeV').textContent = `${+$('#mExplode').value} m`; });
 $('#mTime').addEventListener('input', () => { const h = +$('#mTime').value; $('#mTimeV').textContent = `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round(h % 1 * 60)).padStart(2, '0')}`; });
 $$('.model-panel [data-m]').forEach(b => b.onclick = async () => {
   if (!viewer || !viewer.root) return;

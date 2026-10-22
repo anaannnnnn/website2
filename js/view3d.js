@@ -120,11 +120,12 @@ export function buildScene(M, o, tex) {
   else if (o.style === 'blocks') terrain = new THREE.Mesh(blocks(M, exag, base, 90), clay);
   else { const t = new THREE.CanvasTexture(tex.canvas); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; terrain = new THREE.Mesh(terrainSolid(M, exag, base), [new THREE.MeshStandardMaterial({ map: t, roughness: 0.95 }), side]); }
   terrain.name = 'terrain'; terrain.castShadow = terrain.receiveShadow = true; root.add(terrain);
+  const explode = Math.max(0, o.explosion || 0);
   if (o.buildings) {
     const known = buildingGeometry(M, exag, true), unknown = buildingGeometry(M, exag, false);
-    if (known) { const m = new THREE.Mesh(known, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.8 })); m.name = 'buildings'; m.castShadow = m.receiveShadow = true; root.add(m); }
-    if (unknown) { const m = new THREE.Mesh(unknown, new THREE.MeshStandardMaterial({ color: '#e4e0d8', roughness: 0.9 })); m.name = 'buildings_height_unknown'; m.castShadow = m.receiveShadow = true; root.add(m); }
-    const tg = treeGeometry(M, exag); if (tg) { const m = new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ color: '#e9e6df', roughness: 1, flatShading: true })); m.name = 'trees'; m.castShadow = true; root.add(m); }
+    if (known) { const m = new THREE.Mesh(known, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.8 })); m.name = 'buildings'; m.position.y = explode; m.castShadow = m.receiveShadow = true; root.add(m); }
+    if (unknown) { const m = new THREE.Mesh(unknown, new THREE.MeshStandardMaterial({ color: '#e4e0d8', roughness: 0.9 })); m.name = 'buildings_height_unknown'; m.position.y = explode; m.castShadow = m.receiveShadow = true; root.add(m); }
+    const tg = treeGeometry(M, exag); if (tg) { const m = new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ color: '#e9e6df', roughness: 1, flatShading: true })); m.name = 'trees'; m.position.y = explode * 1.65; m.castShadow = true; root.add(m); }
   }
   return { root, size, base, exag };
 }

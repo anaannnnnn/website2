@@ -110,7 +110,7 @@ export function contoursKML(M, iv) {
 }
 export function featuresGeoJSON(M) {
   const F = [];
-  for (const b of M.buildings) F.push({ type: 'Feature', properties: { layer: 'building', height_m: +b.h.toFixed(2), height_source: b.known ? b.how : 'unknown (default used)', base_elevation_m: +b.base.toFixed(2), name: b.name || null, class: b.cls || null, source: b.src }, geometry: { type: 'Polygon', coordinates: b.rings } });
+  for (const b of M.buildings) F.push({ type: 'Feature', properties: { layer: 'building', height_m: +b.h.toFixed(2), height_source: b.known ? b.how : 'unknown (default used)', floors: b.floors || null, use: b.use || null, construction_year: b.year || null, material: b.material || null, metadata_source: b.metadataSource || null, base_elevation_m: +b.base.toFixed(2), name: b.name || null, class: b.cls || null, source: b.src }, geometry: { type: 'Polygon', coordinates: b.rings } });
   for (const r of M.osm.roads) F.push({ type: 'Feature', properties: { layer: 'road', ...r.tags }, geometry: { type: 'LineString', coordinates: r.pts } });
   for (const r of M.osm.rails) F.push({ type: 'Feature', properties: { layer: 'railway', ...r.tags }, geometry: { type: 'LineString', coordinates: r.pts } });
   for (const w of M.osm.water) F.push({ type: 'Feature', properties: { layer: 'water', ...w.tags }, geometry: { type: 'Polygon', coordinates: [w.ring] } });

@@ -177,7 +177,7 @@
   <div class="studio" id="studio" aria-hidden="true">
     <div class="studio-bar">
       <button class="btn ghost" id="studioBack"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Map</button>
-      <div class="tabs" id="studioTabs"><button data-t="sheets" class="on">Sheets</button><button data-t="model">3D model</button><button data-t="files">Files</button></div>
+      <div class="tabs" id="studioTabs"><button data-t="sheets" class="on">Sheets</button><button data-t="analysis">Analyze</button><button data-t="model">3D model</button><button data-t="files">Files</button></div>
       <div class="studio-actions">
         <button class="btn ghost" id="btnPdfAll">PDF set</button>
         <button class="btn primary" id="btnZip">Download all</button>
@@ -186,6 +186,7 @@
     <div class="studio-progress" id="studioProgress"><div></div></div>
     <div class="studio-body">
       <div class="tabpane on" data-t="sheets"><div class="gallery" id="gallery"></div></div>
+      <div class="tabpane" data-t="analysis"><div class="analysis-workspace" id="analysisWorkspace"></div></div>
       <div class="tabpane" data-t="model">
         <div class="model-wrap">
           <div id="viewer"></div>
@@ -193,6 +194,7 @@
             <label class="f">Model<select id="mStyle"><option value="smooth">Terrain (smooth)</option><option value="terraced">Contour layers (like a laser-cut model)</option><option value="blocks">Terrain blocks</option></select></label>
             <label class="f">Surface<select id="mHeat"><option value="clay">White clay</option><option value="elevation">Elevation bands</option><option value="slope">Slope</option><option value="aspect">Aspect</option><option value="solar">Solar exposure</option><option value="flow">Runoff paths</option><option value="satellite">Satellite photo (view only)</option></select></label>
             <label class="f">Vertical exaggeration <span class="mono" id="mExagV">1.0×</span><input type="range" id="mExag" min="1" max="5" step="0.5" value="1"></label>
+            <label class="f">Explode layers <span class="mono" id="mExplodeV">0 m</span><input type="range" id="mExplode" min="0" max="250" step="5" value="0"></label>
             <label class="f">Sun — date<input type="date" id="mDate"></label>
             <label class="f">Sun — time (local solar) <span class="mono" id="mTimeV">14:00</span><input type="range" id="mTime" min="5" max="20" step="0.25" value="14"></label>
             <div class="checks"><label><input type="checkbox" id="mBuild" checked> Buildings</label><label><input type="checkbox" id="mBase" checked> Solid base</label><label><input type="checkbox" id="mClean" checked> White presentation background</label></div>
