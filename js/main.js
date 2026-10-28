@@ -5,6 +5,7 @@ import { buildDEM, terrainSourceNote } from './data/dem.js';
 import { fetchOSM, emptyOSM } from './data/osm.js';
 import { fetchVectorTiles } from './data/vt.js';
 import { fetchClimate } from './data/climate.js';
+import { fetchAirQuality, fetchSolarResource } from './data/environment.js';
 import { normaliseBuildings, localiseOSM, buildingBase, makeZAt, heightStats } from './site.js';
 import { derive, flowAccumulation, gaussian } from './analysis.js';
 import { computeSection, profileSVG } from './sections.js';
@@ -13,7 +14,7 @@ import { computeSection, profileSVG } from './sections.js';
 const STEPS = ['site', 'frame', 'data', 'sections', 'outputs'];
 const S = {
   step: 'site', site: null, paper: 'A1', orient: 'landscape', scale: 500, custom: null, bearing: 0, center: null,
-  layers: { terrain: true, buildings: true, streets: true, water: true, trees: true, climate: true },
+  layers: { terrain: true, buildings: true, streets: true, water: true, trees: true, climate: true, solarResource: true, airQuality: true },
   model: null, stale: false, loading: false, sections: [], selSec: null, depth: 300, packs: new Set(['plans', 'sections', 'terrain', 'climate', 'model', 'cad'])
 };
 window.TK = S;  // handy for debugging / tests
@@ -211,7 +212,9 @@ const ICON = {
   streets: '<svg viewBox="0 0 24 24"><path d="M5 21 9 3M19 21 15 3M12 6v2M12 11v2M12 16v2"/></svg>',
   water: '<svg viewBox="0 0 24 24"><path d="M3 14c2 0 2-1.5 4.5-1.5S10 14 12 14s2.5-1.5 4.5-1.5S19 14 21 14M3 19c2 0 2-1.5 4.5-1.5S10 19 12 19s2.5-1.5 4.5-1.5S19 19 21 19M12 3s-4 4.5-4 7a4 4 0 0 0 8 0c0-2.5-4-7-4-7z"/></svg>',
   trees: '<svg viewBox="0 0 24 24"><path d="M12 22v-6M7 16h10l-2.5-4H16l-4-7-4 7h1.5z"/></svg>',
-  climate: '<svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M17 21H9a4 4 0 0 1 0-8 5 5 0 0 1 9.6 1.4A3.3 3.3 0 0 1 17 21z"/></svg>'
+  climate: '<svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M17 21H9a4 4 0 0 1 0-8 5 5 0 0 1 9.6 1.4A3.3 3.3 0 0 1 17 21z"/></svg>',
+  solarResource: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3M4.2 4.2l2.1 2.1m11.4 11.4 2.1 2.1m0-15.6-2.1 2.1M6.3 17.7l-2.1 2.1"/></svg>',
+  airQuality: '<svg viewBox="0 0 24 24"><path d="M3 8h12a3 3 0 1 0-3-3M2 12h17a2 2 0 1 1-2 2M4 16h10a3 3 0 1 1-3 3"/></svg>'
 };
 const LAYERS = [
   ['terrain', 'Terrain', 'Elevation model on a metric grid aligned to your frame'],
@@ -219,7 +222,9 @@ const LAYERS = [
   ['streets', 'Streets & paths', 'Road network with names and classes'],
   ['water', 'Water & land use', 'Rivers, lakes, sea, parks, land use'],
   ['trees', 'Mapped trees', 'Individual trees surveyed in OpenStreetMap'],
-  ['climate', 'Climate & wind', 'Rainfall, temperature and hourly wind for last year']
+  ['climate', 'Climate & wind', 'Rainfall, temperature and hourly wind for last year'],
+  ['solarResource', 'Solar resource', 'Long-term PV yield and solar irradiance (PVGIS)'],
+  ['airQuality', 'Air quality', 'PM₂.₅, PM₁₀, NO₂, ozone and AQI forecast (CAMS)']
 ];
 function renderLayers() {
   $('#layers').innerHTML = LAYERS.map(([id, t, d], i) => `<div class="layer${S.layers[id] ? '' : ' off'}" id="ly-${id}" style="animation-delay:${i * 50}ms">
@@ -262,13 +267,15 @@ async function loadData() {
   const frame = makeFrame(cfg), bb = frame.bbox(80), log = m => status(m);
   const long = Math.max(cfg.w, cfg.h), gridSel = $('#gridRes').value;
   const N = gridSel === 'auto' ? clamp(Math.round(long / Math.max(1.5, long / 640)), 160, 768) : +gridSel;
-  const res = { frame, osm: emptyOSM(), overture: null, osmBuildings: null, vt: null, climate: null, failed: [] };
+  const res = { frame, osm: emptyOSM(), overture: null, osmBuildings: null, vt: null, climate: null, solarResource: null, airQuality: null, failed: [] };
   for (const [id] of LAYERS) if (S.layers[id]) layerState(id, 'loading', 'Fetching…'); else layerState(id, null);
   status('Loading site data…');
 
   const tTerrain = buildDEM(frame, N, p => layerState('terrain', 'loading', `Downloading terrain… ${Math.round(p * 100)}%`)).then(d => { res.dem = d; })
     .catch(e => { res.failed.push('terrain'); layerState('terrain', 'fail', `Failed: ${esc(e.message)}`); });
   const tClimate = S.layers.climate ? deadline(fetchClimate(frame), 35000, 'Climate').then(c => { res.climate = c; }).catch(e => { res.failed.push('climate'); layerState('climate', 'fail', `Failed: ${esc(e.message)}`); }) : null;
+  const tSolar = S.layers.solarResource ? deadline(fetchSolarResource(frame.lat, frame.lon), 30000, 'PVGIS').then(v => { res.solarResource = v; }).catch(e => { res.failed.push('solarResource'); layerState('solarResource', 'fail', `Failed: ${esc(e.message)}`); }) : null;
+  const tAir = S.layers.airQuality ? deadline(fetchAirQuality(frame.lat, frame.lon), 30000, 'Air quality').then(v => { res.airQuality = v; }).catch(e => { res.failed.push('airQuality'); layerState('airQuality', 'fail', `Failed: ${esc(e.message)}`); }) : null;
   const tOverture = S.layers.buildings ? deadline(import('./data/overture.js').then(({ loadOvertureBuildings }) => loadOvertureBuildings(bb, { log: m => layerState('buildings', 'loading', esc(m)) })), 35000, 'Overture').then(r => { res.overture = r; }).catch(e => { res.overtureErr = e.message; }) : null;
   const tOsm = (S.layers.buildings || S.layers.streets || S.layers.water || S.layers.trees) ? deadline(fetchOSM(bb, { buildings: S.layers.buildings, streets: S.layers.streets, water: S.layers.water, green: S.layers.water, trees: S.layers.trees }, log), 50000, 'OpenStreetMap')
     .then(r => { res.osm = r.data; res.osmFailed = r.failed; }).catch(e => { res.osmFailed = ['buildings', 'streets', 'land']; res.failed.push('OpenStreetMap'); log(e.message); }) : null;
@@ -281,7 +288,7 @@ async function loadData() {
       try { res.vt = await fetchVectorTiles(bb); } catch (e) { /* reported below */ }
     }
   }
-  await Promise.all([tTerrain, tClimate, tOsm]);
+  await Promise.all([tTerrain, tClimate, tSolar, tAir, tOsm]);
   // the sea is not an OSM polygon — add OpenFreeMap ocean/sea polygons when water is wanted
   if (S.layers.water && frame.lat > -85) { try { if (!res.vt) res.vt = await fetchVectorTiles(bb); res.osm.water.push(...res.vt.water.filter(w => /ocean|sea/.test(w.tags.water))); } catch (e) { /* optional */ } }
 
@@ -300,7 +307,7 @@ function buildModel(res) {
   const nb = normaliseBuildings(frame, { overture: res.overture && res.overture.buildings, osm: (res.osm && res.osm.buildings) || res.osmBuildings, vt: res.vt && res.vt.buildings }, defH());
   for (const b of nb.buildings) b.base = buildingBase(b, zAt);
   const der = derive(dem, frame, smooth);
-  const model = { frame, dem, smooth, zAt, der, flow: null, buildings: nb.buildings, bsource: nb.source, release: res.overture && res.overture.release, osm, climate: res.climate, terrain: terrainSourceNote(frame.lon, frame.lat), site: S.site, paper: S.paper, orient: S.orient, scale: printScale(), loadedAt: new Date() };
+  const model = { frame, dem, smooth, zAt, der, flow: null, buildings: nb.buildings, bsource: nb.source, release: res.overture && res.overture.release, osm, climate: res.climate, solarResource: res.solarResource, airQuality: res.airQuality, layers: { ...S.layers }, terrain: terrainSourceNote(frame.lon, frame.lat), site: S.site, paper: S.paper, orient: S.orient, scale: printScale(), loadedAt: new Date() };
   model.flowArr = () => (model.flow ||= flowAccumulation({ ...dem, data: smooth }));
   S.model = model;
   // layer cards
@@ -330,6 +337,8 @@ function buildModel(res) {
   }
   if (S.layers.trees && !failed('land')) layerState('trees', 'ok', `<b>${fmt(osm.trees.length)}</b> mapped trees · ${fmt(osm.trees.filter(t => t.h).length)} with recorded height`, 'OpenStreetMap — only trees someone has surveyed; many areas have few', osm.trees.length > 20 ? 'fair' : 'limited');
   if (S.layers.climate && res.climate) { const c = res.climate; layerState('climate', 'ok', `<b>${fmt(c.annual)} mm</b> rain/yr · <b>${fmt(c.temp, 1)} °C</b> mean · ${c.wind ? 'hourly wind ✓' : 'no wind data'} (${c.year})`, 'Open-Meteo ERA5 reanalysis — regional (≈10–25 km), not site-specific', 'fair'); }
+  if (S.layers.solarResource && res.solarResource) { const p = res.solarResource, yieldText = p.annualPVYieldKWhPerKwp == null ? '—' : `${fmt(p.annualPVYieldKWhPerKwp, 0)} kWh/kWp/yr`, irradianceText = p.annualPlaneIrradianceKWhM2 == null ? '—' : `${fmt(p.annualPlaneIrradianceKWhM2, 0)} kWh/m²/yr`; layerState('solarResource', 'ok', `<b>${yieldText}</b> modeled PV yield · ${irradianceText} at optimum tilt`, `${esc(p.source)} · typical long-term model; ${p.years?.join('–') || 'period in source response'} · 1 kWp reference system, 14% assumed losses`, 'fair'); }
+  if (S.layers.airQuality && res.airQuality) { const a = res.airQuality, v = a.values, show = n => v[n] == null ? '—' : `${fmt(v[n], 1)} μg/m³`, aqi = v.european_aqi == null ? '—' : fmt(v.european_aqi, 0); layerState('airQuality', 'ok', `PM₂.₅ <b>${show('pm2_5')}</b> · PM₁₀ <b>${show('pm10')}</b> · NO₂ ${show('nitrogen_dioxide')} · O₃ ${show('ozone')} · AQI ${aqi} · ${a.time ? new Date(a.time).toLocaleString() : 'forecast unavailable'}`, `${esc(a.source)} · ${esc(a.resolutionNote)}`, 'limited'); }
   // map preview of the buildings actually used
   M.setBuildings({ type: 'FeatureCollection', features: model.buildings.map(b => ({ type: 'Feature', properties: { h: b.h, how: b.known ? b.how : 'unknown' }, geometry: { type: 'Polygon', coordinates: b.rings } })) });
   $('#tData').hidden = !model.buildings.length;

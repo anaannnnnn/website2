@@ -41,6 +41,7 @@ export async function openStudio(S, H) {
     if (M.buildings.length) add('climate', 'Shadow study', () => SH.shadowStudy(c));
     if (M.climate && M.climate.wind) add('climate', 'Wind rose', () => SH.windRoseSheet(c));
     if (M.climate) add('climate', 'Climate summary', () => SH.climateSheet(c));
+    if (M.solarResource) add('climate', 'PVGIS solar resource', () => SH.solarResourceSheet(c));
   }
   if (S.packs.has('model')) add('model', 'Laser-cut boards', () => laserModel(M, laser), 'laser');
 

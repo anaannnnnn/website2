@@ -223,13 +223,17 @@ export function analyseSite(M) {
       solar,
       comfort,
       roadExposureIndex: roadExposure / Math.max(1, siteArea) * 1000,
-      access
+      access,
+      solarResource: M.solarResource || null,
+      airQuality: M.airQuality || null
     },
     evidence: {
       buildings: M.bsource,
       terrain: M.terrain?.name || 'terrain model',
       context: 'OpenStreetMap live data',
       climate: M.climate ? `Open-Meteo ERA5 ${M.climate.year}` : null,
+      solarResource: M.solarResource?.source || null,
+      airQuality: M.airQuality?.source || null,
       methods: {
         coverage: 'Mapped polygons clipped exactly to the rectangular project frame.',
         floorArea: 'Footprint × recorded floors; recorded height ÷ 3.5 m only where floors are absent. Unknown-height buildings excluded.',
@@ -238,12 +242,18 @@ export function analyseSite(M) {
         viewshed: 'Terrain-only line-of-sight sample from 1.6 m eye height over a 27×27 grid.',
         access: 'Straight-line proximity to mapped OpenStreetMap amenities; not a pedestrian-network travel-time result.',
         roadExposure: 'Relative road-class/length exposure index; not a measured or predicted decibel level.',
-        comfort: 'Open-Meteo apparent temperature; comfort band 18–26 °C. This is not a CFD or UTCI simulation.'
+        comfort: 'Open-Meteo apparent temperature; comfort band 18–26 °C. This is not a CFD or UTCI simulation.',
+        solarResource: 'JRC PVGIS long-term typical-year calculation at the site coordinate; 1 kWp fixed system, optimum tilt, 14% assumed system losses. It is not a roof-specific shading or structural assessment.',
+        airQuality: 'First available hourly CAMS forecast value from the nearest Open-Meteo grid cell. Forecast resolution is about 11 km in Europe and 45 km globally; it is not an observation from a local monitoring station.'
       }
     },
     unavailable: [
       !M.osm.parcels.length && 'Authoritative cadastral parcels are not globally open; no parcel result is shown where OSM has no explicit parcel boundaries.',
       !M.climate?.hourly && 'Hourly comfort and radiation data were unavailable from Open-Meteo.',
+      M.layers?.solarResource === false && 'Long-term solar resource was not requested.',
+      M.layers?.solarResource !== false && !M.solarResource && 'Long-term PV yield and optimum-plane solar resource were unavailable from JRC PVGIS.',
+      M.layers?.airQuality === false && 'Air quality was not requested.',
+      M.layers?.airQuality !== false && !M.airQuality && 'Air quality is unavailable when the CAMS/Open-Meteo forecast has no result for this location.',
       !M.osm.pois.length && 'No mapped amenities were returned, so accessibility is unavailable.',
       'Population and demographic outputs require an authoritative census or licensed gridded-population source; no population values are inferred from buildings.',
       'Traffic noise in dB requires observed traffic counts, speed, pavement and barrier data; TerraKit reports a transparent relative road-exposure index instead.',

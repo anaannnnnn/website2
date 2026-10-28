@@ -356,6 +356,16 @@ export function climateSheet(c) {
   return sheet({ ...c, k: 0 }, { title: 'Climate summary', subtitle: `Monthly rainfall (bars, mm) and temperature (line = mean, band = min–max, °C), ${cl.year}.`, body: b, north: false, scaleLabel: null, legend: [{ fill: '#4a90d9', label: 'Rainfall (mm / month)' }, { line: true, stroke: '#b2182b', w: PEN.h, label: 'Mean temperature' }, { fill: '#f4a582', label: 'Min–max temperature' }], notes: ['Climate: Open-Meteo ERA5 reanalysis (≈10–25 km grid) — regional values for the year shown.'] });
 }
 
+export function solarResourceSheet(c) {
+  const p = c.M.solarResource, L = c.L, fs = c.fs, x0 = L.vx + 22 * fs, y0 = L.vy + 18 * fs, cw = L.vw - 44 * fs, ch = L.vh * 0.55;
+  const vals = p.monthly.map(m => m.planeIrradianceKWhM2 || 0), max = Math.max(...vals, 1), step = niceStep(max, 6), hi = Math.max(step, Math.ceil(max / step) * step), bw = cw / 12, y = v => y0 + ch - v / hi * ch, months = 'JFMAMJJASOND';
+  let body = '';
+  for (let v = 0; v <= hi + 1e-9; v += step) body += `<line x1="${r2(x0)}" x2="${r2(x0 + cw)}" y1="${r2(y(v))}" y2="${r2(y(v))}" stroke="#e5e5e5" stroke-width="${PEN.xf}"/>${T(x0 - 2 * fs, y(v) + 0.8 * fs, 2.4 * fs, fmt(v), 'text-anchor="end" fill="#b66a18"')}`;
+  body += vals.map((v, k) => `<rect x="${r2(x0 + bw * k + bw * 0.2)}" y="${r2(y(v))}" width="${r2(bw * 0.6)}" height="${r2(y(0) - y(v))}" fill="#e69a42"/>${T(x0 + bw * (k + 0.5), y0 + ch + 5 * fs, 2.8 * fs, months[k], 'text-anchor="middle"')}${T(x0 + bw * (k + 0.5), y(v) - 1.2 * fs, 2 * fs, fmt(v), 'text-anchor="middle" fill="#8a4b08"')}`).join('');
+  body += `<line x1="${r2(x0)}" x2="${r2(x0 + cw)}" y1="${r2(y0 + ch)}" y2="${r2(y0 + ch)}" stroke="#000" stroke-width="${PEN.m}"/>`;
+  return sheet({ ...c, k: 0 }, { title: 'Solar resource — PVGIS', subtitle: 'Monthly solar irradiation on the optimum fixed-panel plane (kWh/m²). Long-term typical-year model, not site-specific roof shading.', body, north: false, scaleLabel: null, legend: [{ fill: '#e69a42', label: 'Monthly irradiation at optimum tilt (kWh/m²)' }], notes: [`Annual modeled PV yield: ${fmt(p.annualPVYieldKWhPerKwp, 0)} kWh per kWp. Reference system: 1 kWp, 14% assumed system losses. Data: European Commission Joint Research Centre PVGIS 5.3${p.years?.[0] && p.years?.[1] ? `, ${p.years[0]}–${p.years[1]}` : ''}.`] });
+}
+
 /** an image sheet (3D render) */
 export function imageSheet(c, { title, subtitle, url, iw, ih, legend = [], notes = [] }) {
   const L = c.L, s = Math.min(L.vw / iw, L.vh / ih), w = iw * s, h = ih * s, x = L.vx + (L.vw - w) / 2, y = L.vy + (L.vh - h) / 2;

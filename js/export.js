@@ -136,6 +136,8 @@ Data sources and reliability
 - Buildings: ${M.bsource}${M.release ? ' release ' + M.release : ''}. Each building carries height_source: "recorded height", "floors × 3.5 m" or "unknown (default used)". Unknown heights are on separate CAD layers.
 - Streets, water, land use, trees, places: © OpenStreetMap contributors, ODbL 1.0 (attribution required; share-alike for derived databases).
 - Climate: Open-Meteo ERA5 reanalysis (CC-BY 4.0), regional ≈10–25 km.
+- Solar resource: European Commission Joint Research Centre PVGIS 5.3; long-term modeled yield for a 1 kWp fixed system at optimum tilt with 14% assumed losses. Not a roof-specific shading or engineering assessment.
+- Air quality: Copernicus Atmosphere Monitoring Service (CAMS) forecast via Open-Meteo (CC-BY 4.0); grid cell ≈11 km in Europe / ≈45 km globally. Forecast values are not local sensor observations. Cite both CAMS ENSEMBLE and Open-Meteo.
 Nothing in these files is invented: missing data is reported, not filled.
 `;
 }

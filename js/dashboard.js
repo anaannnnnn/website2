@@ -3,6 +3,7 @@ import { $, $$, download, esc, fmt, toast } from './util.js';
 
 const pct = v => v == null ? 'Unavailable' : `${fmt(v, 1)}%`;
 const metres = v => v == null ? 'Unavailable' : v >= 1000 ? `${fmt(v / 1000, 2)} km` : `${fmt(v, 0)} m`;
+const value = (v, digits = 1) => v == null || !Number.isFinite(+v) ? 'Unavailable' : fmt(+v, digits);
 const metric = (id, label, value, note, quality = 'modelled') => ({ id, label, value, note, quality });
 
 function flatten(A) {
@@ -20,6 +21,8 @@ function flatten(A) {
     metric('comfort', 'Comfortable hours', c ? pct(c.comfortablePct) : 'Unavailable', c ? `Open-Meteo apparent temperature, 18–26 °C · P05 ${fmt(c.p05, 1)}° / P95 ${fmt(c.p95, 1)}°` : 'Hourly climate unavailable', 'modelled'),
     metric('heat', 'Heat-stress hours', c ? pct(c.heatStressPct) : 'Unavailable', 'Apparent temperature ≥32 °C', 'modelled'),
     metric('solar_energy', 'Annual shortwave', c ? `${fmt(c.solarKWhM2, 0)} kWh/m²` : 'Unavailable', 'Horizontal reanalysis radiation at the site coordinate', 'modelled'),
+    metric('pvgis_yield', 'PVGIS annual yield', e.solarResource?.annualPVYieldKWhPerKwp == null ? 'Unavailable' : `${value(e.solarResource.annualPVYieldKWhPerKwp, 0)} kWh/kWp`, e.solarResource ? `JRC PVGIS typical-year estimate · ${value(e.solarResource.annualPlaneIrradianceKWhM2, 0)} kWh/m² optimum-plane irradiation · 1 kWp, 14% assumed losses` : 'Long-term solar resource unavailable', 'modelled'),
+    metric('air_quality', 'Air-quality forecast', e.airQuality?.values?.pm2_5 == null ? 'Unavailable' : `${value(e.airQuality.values.pm2_5)} μg/m³ PM₂.₅`, e.airQuality ? `PM₁₀ ${value(e.airQuality.values.pm10)} · NO₂ ${value(e.airQuality.values.nitrogen_dioxide)} · O₃ ${value(e.airQuality.values.ozone)} μg/m³ · ${e.airQuality.values.european_aqi == null ? 'AQI unavailable' : `European AQI ${value(e.airQuality.values.european_aqi, 0)}`} · CAMS grid forecast, not a local monitor` : 'CAMS forecast unavailable', 'indicative'),
     metric('parcels', 'Mapped parcels', String(u.parcels.count), u.parcels.count ? `${pct(u.parcels.coveragePct)} frame coverage` : 'No explicit OSM parcel boundaries here', 'mapped'),
     metric('year', 'Building year coverage', pct(u.yearKnownPct), u.yearMedian ? `Median mapped year ${u.yearMedian}` : 'No construction-year records', 'mapped')
   ];

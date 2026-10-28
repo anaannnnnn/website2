@@ -21,6 +21,8 @@ Everything runs in the browser — no account, no paid server. Host it free on G
      OpenFreeMap tiles.
    - **Streets, water, land use, trees, places**: live OpenStreetMap (Overpass, 4 mirrors) + sea polygons.
    - **Climate & wind**: Open-Meteo ERA5 (last full year).
+   - **Solar resource**: European Commission JRC PVGIS typical-year yield and plane-of-array irradiation (1 kWp reference system, 14% assumed losses).
+   - **Air quality**: CAMS forecast via Open-Meteo (PM₂.₅, PM₁₀, NO₂, ozone and European AQI at the nearest model grid cell).
 4. **Sections** — A–A′ and B–B′ are added along the frame axes; draw more on the map (snapping to the
    frame axes), drag the ends and watch the live profile.
 5. **Drawings** — choose packs:
@@ -60,6 +62,8 @@ Accordingly, TerraKit does not label a road-class proxy as measured traffic nois
 community-mapped boundaries as an authoritative cadastre, or building counts as population. Native SKP,
 RVT and 3DM authoring also requires the corresponding proprietary SDK or conversion service. Those results
 remain unavailable unless the required observed, statutory or licensed system exists.
+PVGIS yield is a long-term model result for a reference PV system, not a roof-specific shading or
+engineering estimate. CAMS air-quality values are regional grid-cell forecasts, not local monitor readings.
 
 ## Repository
 
@@ -69,4 +73,5 @@ remain unavailable unless the required observed, statutory or licensed system ex
 - `legacy/` — the previous single-file version.
 
 Data © OpenStreetMap contributors (ODbL), Overture Maps Foundation (CDLA-Permissive / ODbL),
-AWS Terrain Tiles / Mapzen, Open-Meteo (CC-BY 4.0), OpenFreeMap, Esri (imagery, view only).
+AWS Terrain Tiles / Mapzen, Open-Meteo (CC-BY 4.0), CAMS ENSEMBLE, JRC PVGIS, OpenFreeMap,
+Esri (imagery, view only).
