@@ -131,7 +131,7 @@ export default {
             headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'TerraKit/1.0 (https://minhafathimapk.art)' },
             body: `data=${encodeURIComponent(query)}`,
           });
-          if (![502, 503, 504].includes(upstreamResponse.status)) break;
+          if (upstreamResponse.status < 500 || upstreamResponse.status > 599) break;
         } catch {
           upstreamResponse = null;
         }
