@@ -178,8 +178,48 @@ function tab(t) { $$('#studioTabs button').forEach(b => b.classList.toggle('on',
 $$('#studioTabs button').forEach(b => b.onclick = () => tab(b.dataset.t));
 $('#studioBack').onclick = () => { $('#studio').classList.remove('on'); $('#studio').setAttribute('aria-hidden', 'true'); };
 let viewer = null;
+let modelMode = 'site', cesiumViewer = null, cesiumTokenUsed = '';
+function setModelMode(mode) {
+  modelMode = mode;
+  const global = mode === 'global';
+  $('#viewer').hidden = global; $('#cesiumViewer').hidden = !global;
+  $('#modelLocalControls').hidden = global; $('#modelGlobalControls').hidden = !global;
+  $('#btnSite3d').classList.toggle('on', !global); $('#btnGlobal3d').classList.toggle('on', global);
+  if (global && cesiumViewer) requestAnimationFrame(() => cesiumViewer.resize());
+  if (!global) requestAnimationFrame(() => viewer?.resize());
+}
+$('#btnSite3d').onclick = () => setModelMode('site');
+$('#btnGlobal3d').onclick = () => setModelMode('global');
+async function loadCesiumContext() {
+  const token = $('#mCesiumToken').value.trim();
+  if (!token) { toast('Paste a Cesium ion public token to load the global 3D view.', 'warn'); $('#mCesiumToken').focus(); return; }
+  const b = $('#btnLoadCesium'); b.disabled = true; b.textContent = 'Loading Cesium…';
+  try {
+    if (!document.querySelector('link[data-cesium-css]')) {
+      const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = 'https://cesium.com/downloads/cesiumjs/releases/1.146/Build/Cesium/Widgets/widgets.css'; link.dataset.cesiumCss = 'true'; document.head.appendChild(link);
+    }
+    const C = await loadScript('https://cesium.com/downloads/cesiumjs/releases/1.146/Build/Cesium/Cesium.js', 'Cesium');
+    if (cesiumViewer && cesiumTokenUsed !== token) { cesiumViewer.destroy(); cesiumViewer = null; }
+    if (!cesiumViewer) {
+      C.Ion.defaultAccessToken = token;
+      cesiumViewer = new C.Viewer('cesiumViewer', { terrain: C.Terrain.fromWorldTerrain(), animation: false, timeline: false, baseLayerPicker: false, geocoder: false, sceneModePicker: false, navigationHelpButton: false, homeButton: false, fullscreenButton: false, infoBox: false, selectionIndicator: false });
+      cesiumTokenUsed = token;
+      const tiles = await C.createOsmBuildingsAsync(); cesiumViewer.scene.primitives.add(tiles);
+    }
+    const M = ST.M, f = M.frame, span = Math.max(f.w, f.h);
+    const cornerDegrees = [[-f.w / 2, -f.h / 2], [f.w / 2, -f.h / 2], [f.w / 2, f.h / 2], [-f.w / 2, f.h / 2]].flatMap(p => f.toLonLat(...p));
+    cesiumViewer.entities.removeById('terrakit-site-frame');
+    cesiumViewer.entities.add({ id: 'terrakit-site-frame', name: 'TerraKit site frame', polygon: { hierarchy: C.Cartesian3.fromDegreesArray(cornerDegrees), material: C.Color.fromCssColorString('#ff4f1a').withAlpha(0.12), outline: true, outlineColor: C.Color.fromCssColorString('#ff4f1a'), outlineWidth: 3, height: 0 } });
+    cesiumViewer.camera.flyTo({ destination: C.Cartesian3.fromDegrees(f.lon, f.lat, Math.max(500, span * 2.1)), orientation: { heading: C.Math.toRadians(0), pitch: C.Math.toRadians(-38), roll: 0 }, duration: 1.2 });
+    requestAnimationFrame(() => cesiumViewer.resize());
+    setModelMode('global');
+  } catch (e) { console.error(e); toast(`Cesium could not load: ${e.message}. Check the token, allowed domain and ion quota.`, 'err', 7000); }
+  finally { b.disabled = false; b.textContent = 'Load global 3D'; }
+}
+$('#btnLoadCesium').onclick = loadCesiumContext;
 async function show3D() {
   if (!ST) return;
+  if (modelMode !== 'site') return;
   if (!viewer) { viewer = ST.view3d.createViewer($('#viewer')); if (!$('#mDate').value) $('#mDate').valueAsDate = new Date(); }
   const o = { style: $('#mStyle').value, surface: $('#mHeat').value, exag: +$('#mExag').value, explosion: +$('#mExplode').value, buildings: $('#mBuild').checked, base: $('#mBase').checked, iv: Math.max(ST.iv, (ST.M.dem.max - ST.M.dem.min) / 30), date: $('#mDate').valueAsDate || new Date(), hour: +$('#mTime').value, clean: $('#mClean').checked, context: Object.fromEntries($$('[data-ctx]').map(c => [c.dataset.ctx, c.checked])) };
   try {

@@ -186,8 +186,18 @@
       <div class="tabpane" data-t="analysis"><div class="analysis-workspace" id="analysisWorkspace"></div></div>
       <div class="tabpane" data-t="model">
         <div class="model-wrap">
-          <div id="viewer"></div>
+          <div class="model-stage"><div id="viewer"></div><div id="cesiumViewer" hidden></div></div>
           <div class="model-panel">
+            <div class="model-switch"><button class="on" id="btnSite3d">TerraKit site</button><button id="btnGlobal3d">Global 3D</button></div>
+            <div id="modelGlobalControls" hidden>
+              <h3>Global 3D context</h3>
+              <p class="hint">Stream Cesium’s global terrain, imagery and OpenStreetMap buildings around this site. This is a context view; it does not change TerraKit exports.</p>
+              <label class="f">Cesium ion public access token<input id="mCesiumToken" type="password" autocomplete="off" placeholder="Paste a restricted public token"></label>
+              <button class="btn primary" id="btnLoadCesium">Load global 3D</button>
+              <p class="hint">Create a token at <a href="https://ion.cesium.com/tokens" target="_blank" rel="noreferrer">Cesium ion</a>. Use public <code>assets:read</code> and restrict it to your TerraKit domain. The free Community plan is for personal, non-commercial use and has monthly quotas. The token stays in this page session and is sent directly to Cesium.</p>
+              <div class="legend"><span>Basemap colors: water · green space · roads · buildings</span><div class="scene-swatches"><i></i><i></i><i></i><i></i></div></div>
+            </div>
+            <div id="modelLocalControls">
             <label class="f">Model<select id="mStyle"><option value="smooth">Terrain (smooth)</option><option value="terraced">Contour layers (like a laser-cut model)</option><option value="blocks">Terrain blocks</option></select></label>
             <label class="f">Surface<select id="mHeat"><option value="clay">White clay</option><option value="elevation">Elevation bands</option><option value="slope">Slope</option><option value="aspect">Aspect</option><option value="solar">Solar exposure</option><option value="flow">Runoff paths</option><option value="satellite">Satellite photo (view only)</option></select></label>
             <label class="f">Vertical exaggeration <span class="mono" id="mExagV">1.0×</span><input type="range" id="mExag" min="1" max="5" step="0.5" value="1"></label>
@@ -211,6 +221,7 @@
             <div class="legend" id="mLegend"></div>
             <div class="dl">
               <button class="btn ghost" data-m="stl">STL</button><button class="btn ghost" data-m="obj">OBJ</button><button class="btn ghost" data-m="glb">GLB</button><button class="btn ghost" data-m="png">PNG</button><button class="btn primary" data-m="sheet">Presentation sheet</button>
+            </div>
             </div>
           </div>
         </div>

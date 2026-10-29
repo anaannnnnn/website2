@@ -219,10 +219,25 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
 .card .acts .btn{padding:5px 9px;font-size:12px;border-radius:8px}
 .card.skeleton .thumb{background:linear-gradient(90deg,#f0eee9 25%,#f8f7f3 37%,#f0eee9 63%);background-size:400% 100%;animation:shimmer 1.3s infinite}
 .model-wrap{position:absolute;inset:0;display:grid;grid-template-columns:1fr 300px}
-#viewer{position:relative;background:linear-gradient(#e9eef3,#f6f4ef)}
+.model-stage{position:relative;min-width:0;min-height:0;overflow:hidden;background:linear-gradient(#e9eef3,#f6f4ef)}
+.model-stage>div{position:absolute;inset:0}
+.model-stage>div[hidden]{display:none!important}
+#viewer{position:absolute;inset:0;background:linear-gradient(#e9eef3,#f6f4ef)}
 #viewer canvas{display:block;width:100%;height:100%}
+#cesiumViewer{overflow:hidden;background:#d9e5ec}
+#cesiumViewer .cesium-widget,#cesiumViewer .cesium-widget canvas{width:100%;height:100%}
 .model-panel{border-left:1px solid var(--line);background:var(--paper);padding:16px;overflow:auto}
 .model-panel .dl{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:14px}
+.model-switch{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:0 0 14px;padding:3px;border-radius:10px;background:#ecebe7}
+.model-switch button{border:0;border-radius:8px;padding:8px 6px;background:transparent;color:#5b5b57;font:650 11px var(--sans);cursor:pointer}
+.model-switch button.on{background:#fff;color:#151515;box-shadow:0 1px 4px #0002}
+#modelGlobalControls h3{margin:5px 0 8px;font-size:15px}
+#modelGlobalControls .hint{font-size:11px;line-height:1.5;color:#676762}
+#modelGlobalControls a{color:#1762a8;font-weight:650}
+#modelGlobalControls input{width:100%;margin-top:5px;padding:9px;border:1px solid var(--line);border-radius:8px;background:#fff;font:12px var(--mono)}
+#modelGlobalControls .btn{width:100%;margin:8px 0}
+.scene-swatches{display:flex;height:11px;margin-top:6px;border-radius:99px;overflow:hidden}
+.scene-swatches i{flex:1}.scene-swatches i:nth-child(1){background:#9fcce1}.scene-swatches i:nth-child(2){background:#b8d1a8}.scene-swatches i:nth-child(3){background:#c8a47a}.scene-swatches i:nth-child(4){background:#c8c4bc}
 .checks{display:flex;gap:14px;margin:10px 0;font-size:13px}
 .checks label{display:flex;gap:6px;align-items:center}
 .legend .grad{height:10px;border-radius:4px;margin:4px 0}

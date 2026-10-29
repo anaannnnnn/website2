@@ -61,6 +61,20 @@ export function buildingGeometry(M, exag, onlyKnown = null) {
   return buildingModelGeometry(M, exag, onlyKnown).walls;
 }
 const roofColor = (value, fallback) => { try { return new THREE.Color(value || fallback); } catch { return new THREE.Color(fallback); } };
+function materialColor(value, fallback, kind) {
+  const s = String(value || '').toLowerCase();
+  if (/glass|glazing/.test(s)) return '#9ebfcb';
+  if (/brick/.test(s)) return kind === 'roof' ? '#a45f4a' : '#ad7767';
+  if (/tile|terracotta/.test(s)) return '#a96750';
+  if (/metal|steel|alumin/.test(s)) return '#89959a';
+  if (/wood|timber/.test(s)) return '#a1815d';
+  if (/stone|masonry/.test(s)) return '#b6afa2';
+  if (/concrete|cement/.test(s)) return '#aaa9a4';
+  if (/slate/.test(s)) return '#656e74';
+  if (/thatch/.test(s)) return '#c4a65e';
+  if (/plaster|stucco/.test(s)) return '#e0d8ca';
+  return fallback;
+}
 function addVertexColor(g, color) {
   const c = color.isColor ? color : roofColor(color, '#ffffff'), n = g.attributes.position.count, a = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; }
@@ -167,9 +181,9 @@ function buildingModelGeometry(M, exag, onlyKnown = null) {
     for (const h of b.loc.slice(1)) sh.holes.push(new THREE.Path(h.slice(0, -1).map(p => new THREE.Vector2(p[0], p[1]))));
     const lift = (b.base - M.dem.min) * exag + (b.minHeight || 0) - 0.2;
     const wall = new THREE.ExtrudeGeometry(sh, { depth: wallH, bevelEnabled: false, curveSegments: 1 });
-    wall.rotateX(-Math.PI / 2); wall.translate(0, lift, 0); addVertexColor(wall, b.facadeColor || (b.known ? '#e8e5df' : '#d7d2ca')); walls.push(wall);
+    wall.rotateX(-Math.PI / 2); wall.translate(0, lift, 0); addVertexColor(wall, b.facadeColor || materialColor(b.facadeMaterial, b.known ? '#e8e5df' : '#d7d2ca', 'facade')); walls.push(wall);
     const roof = roofSurface(shape === b.roofShape ? b : { ...b, roofShape: shape }, wallH, roofH, M.frame);
-    if (roof) { roof.translate(0, lift, 0); addVertexColor(roof, b.roofColor || (b.known ? '#bdb4a8' : '#cbc5bb')); roofs.push(roof); }
+    if (roof) { roof.translate(0, lift, 0); addVertexColor(roof, b.roofColor || materialColor(b.roofMaterial, b.known ? '#bdb4a8' : '#cbc5bb', 'roof')); roofs.push(roof); }
   }
   return { walls: walls.length ? mergeGeometries(walls) : null, roofs: roofs.length ? mergeGeometries(roofs) : null };
 }
@@ -177,6 +191,56 @@ function treeGeometry(M, exag) {
   const proto = mergeGeometries([new THREE.SphereGeometry(1, 8, 6).toNonIndexed(), new THREE.CylinderGeometry(0.12, 0.15, 1, 6).translate(0, -0.9, 0).toNonIndexed()]), geos = [];
   for (const t of M.osm.trees) { if (!M.frame.inside(...t.loc)) continue; const h = t.h || 8, r = h * 0.3, g = proto.clone(); g.scale(r, r, r); g.translate(t.loc[0], (M.zAt(...t.loc) - M.dem.min) * exag + h * 0.65, -t.loc[1]); geos.push(g); }
   return geos.length ? mergeGeometries(geos) : null;
+}
+const LAND_COLORS = { residential: '#eadcc7', commercial: '#e9c9be', retail: '#efcedd', industrial: '#d9d1e3', farmland: '#e8e6bf', forest: '#b8cfaa', meadow: '#d9e5c1', grass: '#d1e2b8', recreation_ground: '#c3dfb4', cemetery: '#c7d8c2', quarry: '#d2c9bb', construction: '#d8c8b0' };
+function polygonContextGeometry(features, colorOf, M, exag, lift) {
+  const geos = [];
+  for (const feature of features || []) {
+    const ring = feature.loc?.length && Array.isArray(feature.loc[0]) && Array.isArray(feature.loc[0][0]) ? feature.loc[0] : feature.loc;
+    if (!ring || ring.length < 4) continue;
+    const sh = new THREE.Shape(ring.slice(0, -1).map(p => new THREE.Vector2(p[0], p[1])));
+    const g = new THREE.ShapeGeometry(sh, 1).toNonIndexed(), pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i);
+      pos.setXYZ(i, x, (M.zAt(x, y) - M.dem.min) * exag + lift, -y);
+    }
+    g.computeVertexNormals(); addVertexColor(g, colorOf(feature)); geos.push(g);
+  }
+  return geos.length ? mergeGeometries(geos) : null;
+}
+function lineContextGeometry(features, colorOf, M, exag, defaultWidth, lift) {
+  const batches = new Map();
+  for (const feature of features || []) {
+    const pts = feature.loc || feature.pts || []; if (pts.length < 2) continue;
+    const color = colorOf(feature), positions = batches.get(color) || [];
+    const width = Math.max(0.7, Number(feature.width) || defaultWidth);
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i], dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy); if (len < 0.05) continue;
+      const ox = -dy / len * width / 2, oy = dx / len * width / 2;
+      const corners = [[a[0] + ox, a[1] + oy], [b[0] + ox, b[1] + oy], [b[0] - ox, b[1] - oy], [a[0] - ox, a[1] - oy]];
+      const v = corners.map(([x, y]) => [x, (M.zAt(x, y) - M.dem.min) * exag + lift, -y]);
+      positions.push(...v[0], ...v[1], ...v[2], ...v[0], ...v[2], ...v[3]);
+    }
+    batches.set(color, positions);
+  }
+  const geos = [];
+  for (const [color, data] of batches) if (data.length) {
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(data, 3)); g.computeVertexNormals(); addVertexColor(g, color); geos.push(g);
+  }
+  return geos.length ? mergeGeometries(geos) : null;
+}
+function addContextMap(root, M, exag) {
+  const o = M.osm || {}, add = (geometry, name, roughness = 1) => {
+    if (!geometry) return;
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness, side: THREE.DoubleSide }));
+    mesh.name = name; mesh.receiveShadow = true; mesh.renderOrder = 1; root.add(mesh);
+  };
+  add(polygonContextGeometry(o.landuse, f => LAND_COLORS[f.tags?.landuse] || (f.tags?.amenity ? '#e7dccb' : '#e4decf'), M, exag, 0.08), 'context_landuse');
+  add(polygonContextGeometry(o.green, f => f.forest ? '#b2cda2' : f.tags?.leisure === 'pitch' ? '#b7d5a0' : '#c8dfb6', M, exag, 0.14), 'context_green');
+  add(polygonContextGeometry(o.water.map(w => ({ ...w, loc: [w.loc] })), () => '#9fcce1', M, exag, 0.21), 'context_water', 0.45);
+  const roadColor = f => /^(motorway|trunk)/.test(f.tags?.highway || '') ? '#c87955' : /^(primary|secondary)/.test(f.tags?.highway || '') ? '#d7a46d' : /^(path|footway|cycleway|steps|pedestrian)$/.test(f.tags?.highway || '') ? '#b5a78b' : '#aaa9a3';
+  add(lineContextGeometry(o.roads, roadColor, M, exag, 4, 0.28), 'context_roads');
+  add(lineContextGeometry(o.waterways, () => '#8fc4df', M, exag, 2.5, 0.3), 'context_waterways', 0.5);
 }
 
 /* surface textures (crisp per-texel sampling) */
@@ -224,6 +288,7 @@ export function buildScene(M, o, tex) {
   else if (o.style === 'blocks') terrain = new THREE.Mesh(blocks(M, exag, base, 90), clay);
   else { const t = new THREE.CanvasTexture(tex.canvas); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; terrain = new THREE.Mesh(terrainSolid(M, exag, base), [new THREE.MeshStandardMaterial({ map: t, roughness: 0.95 }), side]); }
   terrain.name = 'terrain'; terrain.castShadow = terrain.receiveShadow = true; root.add(terrain);
+  addContextMap(root, M, exag);
   const explode = Math.max(0, o.explosion || 0);
   if (o.buildings) {
     const known = buildingModelGeometry(M, exag, true), unknown = buildingModelGeometry(M, exag, false);
@@ -273,6 +338,7 @@ export function createViewer(host) {
       return tex && tex.legend;
     },
     get root() { return model && model.root; },
+    resize,
     renderer, scene, camera,
     png() { renderer.render(scene, camera); return new Promise(r => renderer.domElement.toBlob(r)); }
   };

@@ -45,8 +45,11 @@ Everything runs in the browser — no account, no paid server. Host it free on G
    - reusable visual palettes, an eight-card custom diagram board, JSON/CSV evidence export and a printable report;
    - an accuracy ledger beside the results: mapped, derived, modelled and indicative values are never presented as equivalent.
 
-The 3D viewer also has an **Explode layers** control for separating terrain, buildings and vegetation into an
-axonometric layer study. Advanced results are saved into every ZIP as an evidence report with calculation
+The 3D viewer colors mapped land use, green areas, water, waterways and road classes over the terrain, and
+has an **Explode layers** control for separating terrain, buildings and vegetation into an axonometric study.
+Its optional **Global 3D** view streams Cesium World Terrain, imagery and Cesium OSM Buildings around the
+current site. It needs the user's own restricted Cesium ion public token and is for visual context; it does not
+replace TerraKit's local analysis model or exports. Advanced results are saved into every ZIP as an evidence report with calculation
 methods, input sources and explicit unavailable-data disclosures.
 
 Where sources provide building parts, roof shape, roof height, colors or materials, the 3D model uses those
