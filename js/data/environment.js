@@ -16,10 +16,12 @@ const json = async (url, label) => {
   } finally { clearTimeout(timer); }
 };
 
+const DATA_PROXY = 'https://data.desiregroup.ae';
+
 /** Long-term, modelled solar resource and fixed-panel yield from JRC PVGIS. */
 export async function fetchSolarResource(lat, lon) {
   const q = new URLSearchParams({ lat: String(lat), lon: String(lon), peakpower: '1', loss: '14', optimalangles: '1', outputformat: 'json' });
-  const data = await json(`https://re.jrc.ec.europa.eu/api/v5_3/PVcalc?${q}`, 'PVGIS');
+  const data = await json(`${DATA_PROXY}/pvgis?${q}`, 'PVGIS');
   const monthly = data.outputs?.monthly?.fixed;
   const annual = data.outputs?.totals?.fixed;
   if (!Array.isArray(monthly) || !annual) throw new Error('PVGIS did not return solar resource values');
@@ -41,7 +43,7 @@ export async function fetchAirQuality(lat, lon) {
     latitude: String(lat), longitude: String(lon), domains: 'auto', forecast_days: '5',
     hourly: 'pm2_5,pm10,nitrogen_dioxide,ozone,european_aqi'
   });
-  const data = await json(`https://air-quality-api.open-meteo.com/v1/air-quality?${q}`, 'Air quality');
+  const data = await json(`${DATA_PROXY}/air-quality?${q}`, 'Air quality');
   const h = data.hourly;
   if (!Array.isArray(h?.time) || !h.time.length) throw new Error('Air-quality forecast returned no hourly values');
   const latest = {};

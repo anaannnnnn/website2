@@ -1,5 +1,5 @@
 // Live OpenStreetMap data via the Overpass API (several public mirrors), fetched in small groups.
-const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+const OVERPASS = ['https://data.desiregroup.ae/overpass'];
 
 export const emptyOSM = () => ({ buildings: [], roads: [], rails: [], water: [], waterways: [], green: [], landuse: [], trees: [], places: [], pois: [], parcels: [] });
 const samePt = (a, b) => a[0] === b[0] && a[1] === b[1];

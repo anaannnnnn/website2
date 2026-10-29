@@ -1,0 +1,16 @@
+{
+  "$schema": "https://developers.cloudflare.com/workers/wrangler/schema.json",
+  "name": "terrakit",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-29",
+  "ratelimits": [
+    {
+      "name": "TERRAKIT_LIMITER",
+      "namespace_id": "729145601",
+      "simple": { "limit": 120, "period": 60 }
+    }
+  ],
+  "routes": [
+    { "pattern": "data.desiregroup.ae", "custom_domain": true }
+  ]
+}

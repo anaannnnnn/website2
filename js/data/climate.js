@@ -3,7 +3,7 @@
 export async function fetchClimate(frame) {
   const b = frame.bbox(), G = 4, lats = [], lons = [];
   for (let j = 0; j < G; j++) for (let i = 0; i < G; i++) { lats.push((b.s + (b.n - b.s) * j / (G - 1)).toFixed(4)); lons.push((b.w + (b.e - b.w) * i / (G - 1)).toFixed(4)); }
-  const year = new Date().getUTCFullYear() - 1, base = 'https://archive-api.open-meteo.com/v1/archive';
+  const year = new Date().getUTCFullYear() - 1, base = 'https://data.desiregroup.ae/climate';
   const dailyUrl = `${base}?latitude=${lats.join(',')}&longitude=${lons.join(',')}&start_date=${year}-01-01&end_date=${year}-12-31&daily=precipitation_sum,snowfall_sum,temperature_2m_mean,temperature_2m_max,temperature_2m_min,et0_fao_evapotranspiration&timezone=GMT`;
   const hourlyUrl = `${base}?latitude=${frame.lat.toFixed(4)}&longitude=${frame.lon.toFixed(4)}&start_date=${year}-01-01&end_date=${year}-12-31&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,shortwave_radiation,wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&timezone=GMT`;
   // These datasets are independent; downloading them together nearly halves the
