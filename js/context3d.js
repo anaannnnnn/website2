@@ -31,7 +31,7 @@ export function windStats(wind, months = null) {
 export function buildContext(M, o) {
   const g = new THREE.Group(), f = M.frame, d = M.dem, size = Math.max(f.w, f.h), exag = o.exag || 1, on = o.context || {};
   const hAt = (x, y) => (M.zAt(x, y) - d.min) * exag, top = hAt(0, 0), relief = (d.max - d.min) * exag, R = size * 0.62;
-  const topAbove = Math.max(relief, ...M.buildings.filter(b => b.inFrame).map(b => (b.base - d.min) * exag + b.h)) || size * 0.1;
+  const topAbove = Math.max(relief, ...[...M.buildings, ...(M.buildingParts || [])].filter(b => b.inFrame).map(b => (b.base - d.min) * exag + (b.minHeight || 0) + b.h)) || size * 0.1;
   const ground = relief * 0.5 + 0.0, fs = size * 0.028;
 
   if (on.outline) {

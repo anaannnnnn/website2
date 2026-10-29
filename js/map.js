@@ -33,7 +33,7 @@ export function createMap(container, cb) {
     if (!map.getSource('tk-dem')) map.addSource('tk-dem', DEM_SRC);
     if (st.three) map.setTerrain({ source: 'tk-dem', exaggeration: 1 });
     const add = (id, src, layer, before) => { if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data: src }); for (const l of [].concat(layer)) if (!map.getLayer(l.id)) map.addLayer({ ...l, source: id }, before); };
-    add('tk-bld', st.buildings, [{ id: 'tk-bld', type: 'fill-extrusion', layout: { visibility: st.showBuildings ? 'visible' : 'none' }, paint: { 'fill-extrusion-color': ['match', ['get', 'how'], 'recorded height', '#1f6feb', 'floors × 3.5 m', '#7c9cc9', '#c9c4bb'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': 0.9 } }]);
+    add('tk-bld', st.buildings, [{ id: 'tk-bld', type: 'fill-extrusion', layout: { visibility: st.showBuildings ? 'visible' : 'none' }, paint: { 'fill-extrusion-color': ['match', ['get', 'how'], 'recorded height', '#1f6feb', 'floors × 3 m', '#7c9cc9', '#c9c4bb'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': 0.9 } }]);
     add('tk-frame', EMPTY, [
       { id: 'tk-frame-fill', type: 'fill', paint: { 'fill-color': '#ff4f1a', 'fill-opacity': 0.06 } },
       { id: 'tk-frame-line', type: 'line', paint: { 'line-color': '#16181d', 'line-width': 2.2, 'line-dasharray': [3, 1.5] } }

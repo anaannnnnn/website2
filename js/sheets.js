@@ -73,7 +73,7 @@ export function sheet(c, { title, subtitle = '', body, legend = [], notes = [], 
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${L.W}mm" height="${L.H}mm" viewBox="0 0 ${L.W} ${L.H}" font-family="${FONT}"><defs>${defs}</defs><rect width="${L.W}" height="${L.H}" fill="#fff"/>${body}${border}${tb}</svg>`;
 }
 function dataNotes(M) {
-  const t = M.terrain, hs = M.buildings.length ? M.buildings.filter(b => b.how === 'recorded height' || b.how === 'floors × 3.5 m').length / M.buildings.length * 100 : 0;
+  const t = M.terrain, hs = M.buildings.length ? M.buildings.filter(b => b.how === 'recorded height' || b.how === 'floors × 3 m').length / M.buildings.length * 100 : 0;
   return [
     `Terrain: ${t.name} via AWS Terrain Tiles; ${t.res}, ${t.acc}.`,
     `Buildings: ${M.bsource}${M.release ? ' ' + M.release : ''}; ${fmt(hs, 0)}% with recorded height or floors, others ${fmt(M.defaultH || 9)} m (marked ~ / dashed).`,
@@ -175,7 +175,7 @@ const H_CLASSES = [[6, '< 6 m', '#fde0d2'], [12, '6–12 m', '#fbb497'], [24, '1
 export function buildingHeights(c) {
   const M = c.M, kn = M.buildings.filter(b => b.known);
   const layers = roadsSVG(c, { casing: '#bbb', fill: '#fff' }) + buildingsSVG(c, b => b.known ? `fill="${H_CLASSES.find(h => b.h < h[0])[2]}" stroke="#000" stroke-width="${PEN.f}"` : 'fill="url(#hU2)" stroke="#555" stroke-width="' + PEN.f + '"');
-  return planSheet(c, { title: 'Building heights', subtitle: `${fmt(kn.length)} of ${fmt(M.buildings.length)} buildings have a recorded height or floor count (floors × 3.5 m). The rest are hatched — unknown, not guessed.`, layers, defs: HATCH('hU2', '#888', '#ececec'),
+  return planSheet(c, { title: 'Building heights', subtitle: `${fmt(kn.length)} of ${fmt(M.buildings.length)} buildings have a recorded height or floor count (floors × 3 m). The rest are hatched — unknown, not guessed.`, layers, defs: HATCH('hU2', '#888', '#ececec'),
     legend: [...H_CLASSES.map(h => ({ fill: h[2], label: h[1] })), { fill: 'url(#hU2)', label: 'Height not recorded' }] });
 }
 const STREET = [[/^(motorway|trunk)(_link)?$/, 'Motorway / trunk', '#b2182b', 1.6], [/^primary(_link)?$/, 'Primary', '#ef6548', 1.3], [/^secondary(_link)?$/, 'Secondary', '#f4a442', 1.05], [/^tertiary(_link)?$/, 'Tertiary', '#555', 0.8], [/^(residential|unclassified|living_street)$/, 'Local', '#999', 0.55], [/^(service|track)$/, 'Service', '#bbb', 0.35], [/^(footway|path|pedestrian|steps|cycleway|bridleway|corridor)$/, 'Pedestrian / cycle', '#2f7fd0', 0.3]];

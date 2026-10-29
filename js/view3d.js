@@ -58,16 +58,120 @@ function blocks(M, exag, base, cols) {
   return mergeGeometries(geos);
 }
 export function buildingGeometry(M, exag, onlyKnown = null) {
-  const geos = [];
-  for (const b of M.buildings) {
-    if (!b.inFrame || (onlyKnown !== null && b.known !== onlyKnown)) continue;
-    const sh = new THREE.Shape(b.loc[0].slice(0, -1).map(p => new THREE.Vector2(p[0], p[1])));
-    for (const h of b.loc.slice(1)) sh.holes.push(new THREE.Path(h.slice(0, -1).map(p => new THREE.Vector2(p[0], p[1]))));
-    const g = new THREE.ExtrudeGeometry(sh, { depth: b.h, bevelEnabled: false, curveSegments: 1 });
-    g.rotateX(-Math.PI / 2); g.translate(0, (b.base - M.dem.min) * exag + (b.minHeight || 0) - 0.2, 0);
-    g.deleteAttribute('uv'); geos.push(g);
+  return buildingModelGeometry(M, exag, onlyKnown).walls;
+}
+const roofColor = (value, fallback) => { try { return new THREE.Color(value || fallback); } catch { return new THREE.Color(fallback); } };
+function addVertexColor(g, color) {
+  const c = color.isColor ? color : roofColor(color, '#ffffff'), n = g.attributes.position.count, a = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(a, 3));
+  g.deleteAttribute('uv');
+  return g;
+}
+function convex(ring) {
+  let sign = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i], b = ring[(i + 1) % ring.length], c = ring[(i + 2) % ring.length];
+    const z = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+    if (Math.abs(z) < 1e-6) continue;
+    const s = Math.sign(z); if (sign && s !== sign) return false; sign = s;
   }
-  return geos.length ? mergeGeometries(geos) : null;
+  return !!sign;
+}
+function roofAxis(points, b, frame) {
+  if (Number.isFinite(b.roofDirection)) {
+    const r = b.roofDirection * Math.PI / 180, v = frame.enToFrame(Math.sin(r), Math.cos(r)), n = Math.hypot(...v) || 1;
+    return [v[0] / n, v[1] / n];
+  }
+  const c = points.reduce((a, p) => [a[0] + p[0] / points.length, a[1] + p[1] / points.length], [0, 0]);
+  let xx = 0, yy = 0, xy = 0;
+  for (const p of points) { const x = p[0] - c[0], y = p[1] - c[1]; xx += x * x; yy += y * y; xy += x * y; }
+  let a = Math.atan2(2 * xy, xx - yy) / 2, axis = [Math.cos(a), Math.sin(a)];
+  if (b.roofOrientation === 'across') axis = [-axis[1], axis[0]];
+  return axis;
+}
+function roofTriangles(ring, height, zAt) {
+  const verts = ring.map(p => new THREE.Vector2(p[0], p[1]));
+  const faces = THREE.ShapeUtils.triangulateShape(verts, []), pos = [];
+  for (const face of faces) for (const i of face) { const p = ring[i]; pos.push(p[0], zAt(p), -p[1]); }
+  if (!pos.length) return null;
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+  return g;
+}
+function flatRoof(rings, y) {
+  const outer = rings[0].slice(0, -1).map(p => new THREE.Vector2(p[0], p[1]));
+  const holes = rings.slice(1).map(r => r.slice(0, -1).map(p => new THREE.Vector2(p[0], p[1])));
+  const vertices = [...outer, ...holes.flat()], faces = THREE.ShapeUtils.triangulateShape(outer, holes), pos = [];
+  for (const face of faces) for (const i of face) { const p = vertices[i]; pos.push(p.x, y, -p.y); }
+  if (!pos.length) return null;
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); return g;
+}
+function clipRoofHalf(ring, axis, mid, high) {
+  const value = p => p[0] * axis[0] + p[1] * axis[1], out = [];
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i], b = ring[(i + 1) % ring.length], va = value(a), vb = value(b), ia = high ? va >= mid - 1e-7 : va <= mid + 1e-7, ib = high ? vb >= mid - 1e-7 : vb <= mid + 1e-7;
+    if (ia) out.push(a);
+    if (ia !== ib && Math.abs(vb - va) > 1e-8) { const t = (mid - va) / (vb - va); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); }
+  }
+  return out.filter((p, i) => !i || Math.hypot(p[0] - out[i - 1][0], p[1] - out[i - 1][1]) > 1e-5);
+}
+function roofSurface(b, wallHeight, roofHeight, frame) {
+  const ring = b.loc?.[0]?.slice(0, -1); if (!ring || ring.length < 3) return null;
+  const shape = String(b.roofShape || '').toLowerCase().replaceAll('-', '_');
+  if (shape === 'flat' || !shape || roofHeight <= 0) return flatRoof(b.loc, wallHeight + 0.015);
+  if (b.loc.length > 1 || !convex(ring)) return null;
+  const axis = roofAxis(ring, b, frame), cross = [-axis[1], axis[0]], proj = p => p[0] * cross[0] + p[1] * cross[1];
+  const vals = ring.map(proj), lo = Math.min(...vals), hi = Math.max(...vals), mid = (lo + hi) / 2, span = Math.max(0.1, (hi - lo) / 2);
+  const baseY = wallHeight + 0.015;
+  if (['gabled', 'saltbox', 'gambrel', 'half_hipped', 'mansard'].includes(shape)) {
+    const roofs = [clipRoofHalf(ring, cross, mid, false), clipRoofHalf(ring, cross, mid, true)].filter(r => r.length >= 3);
+    const gs = roofs.map(r => roofTriangles(r, roofHeight, p => baseY + roofHeight * Math.max(0, 1 - Math.abs(proj(p) - mid) / span))).filter(Boolean);
+    return gs.length ? mergeGeometries(gs) : null;
+  }
+  if (shape === 'skillion' || shape === 'sawtooth') {
+    return roofTriangles(ring, roofHeight, p => baseY + roofHeight * clamp((proj(p) - lo) / Math.max(0.1, hi - lo), 0, 1));
+  }
+  if (['dome', 'round', 'spherical', 'onion'].includes(shape)) {
+    const c = ring.reduce((a, p) => [a[0] + p[0] / ring.length, a[1] + p[1] / ring.length], [0, 0]), bands = 5, pos = [];
+    const point = (i, k) => { const p = ring[i], t = k / bands, f = 1 - t, y = baseY + roofHeight * Math.sin(t * Math.PI / 2); return [c[0] + (p[0] - c[0]) * f, y, -(c[1] + (p[1] - c[1]) * f)]; };
+    for (let k = 0; k < bands; k++) for (let i = 0; i < ring.length; i++) {
+      const j = (i + 1) % ring.length, a = point(i, k), b0 = point(j, k), d = point(i, k + 1), e = point(j, k + 1);
+      pos.push(...a, ...d, ...b0, ...b0, ...d, ...e);
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); return g;
+  }
+  // Hipped, pyramidal and unknown complex roof families get a faceted hip cap.
+  const center = ring.reduce((a, p) => [a[0] + p[0] / ring.length, a[1] + p[1] / ring.length], [0, 0]), pos = [];
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i], b0 = ring[(i + 1) % ring.length];
+    pos.push(a[0], baseY, -a[1], center[0], baseY + roofHeight, -center[1], b0[0], baseY, -b0[1]);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); return g;
+}
+function buildingModelGeometry(M, exag, onlyKnown = null) {
+  const walls = [], roofs = [], childIds = new Set((M.buildingParts || []).map(p => p.buildingId).filter(Boolean));
+  const records = [...M.buildings.filter(b => !(b.hasParts && childIds.has(b.id))), ...(M.buildingParts || [])];
+  for (const b of records) {
+    if (!b.loc?.[0] || (!b.isPart && !b.inFrame) || (onlyKnown !== null && b.known !== onlyKnown)) continue;
+    let shape = String(b.roofShape || '').toLowerCase().replaceAll('-', '_');
+    let inferred = false;
+    if (!shape && b.known && b.h <= 16) {
+      const ring = b.loc[0].slice(0, -1), xs = ring.map(p => p[0]), ys = ring.map(p => p[1]);
+      const aspect = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / Math.max(1, Math.min(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)));
+      shape = aspect > 1.45 ? 'gabled' : 'hipped'; inferred = true;
+    }
+    let roofH = Number.isFinite(b.roofHeight) && b.roofHeight > 0 ? b.roofHeight : 0;
+    if (!roofH && shape && shape !== 'flat' && b.known) roofH = Math.min(b.h * 0.3, inferred ? Math.max(1.2, b.h * 0.2) : Math.max(1.2, b.h * (b.floors > 3 ? 0.12 : 0.24)));
+    roofH = Math.min(roofH, Math.max(0, b.h - 0.5));
+    const wallH = Math.max(0.2, b.h - roofH), sh = new THREE.Shape(b.loc[0].slice(0, -1).map(p => new THREE.Vector2(p[0], p[1])));
+    for (const h of b.loc.slice(1)) sh.holes.push(new THREE.Path(h.slice(0, -1).map(p => new THREE.Vector2(p[0], p[1]))));
+    const lift = (b.base - M.dem.min) * exag + (b.minHeight || 0) - 0.2;
+    const wall = new THREE.ExtrudeGeometry(sh, { depth: wallH, bevelEnabled: false, curveSegments: 1 });
+    wall.rotateX(-Math.PI / 2); wall.translate(0, lift, 0); addVertexColor(wall, b.facadeColor || (b.known ? '#e8e5df' : '#d7d2ca')); walls.push(wall);
+    const roof = roofSurface(shape === b.roofShape ? b : { ...b, roofShape: shape }, wallH, roofH, M.frame);
+    if (roof) { roof.translate(0, lift, 0); addVertexColor(roof, b.roofColor || (b.known ? '#bdb4a8' : '#cbc5bb')); roofs.push(roof); }
+  }
+  return { walls: walls.length ? mergeGeometries(walls) : null, roofs: roofs.length ? mergeGeometries(roofs) : null };
 }
 function treeGeometry(M, exag) {
   const proto = mergeGeometries([new THREE.SphereGeometry(1, 8, 6).toNonIndexed(), new THREE.CylinderGeometry(0.12, 0.15, 1, 6).translate(0, -0.9, 0).toNonIndexed()]), geos = [];
@@ -122,9 +226,13 @@ export function buildScene(M, o, tex) {
   terrain.name = 'terrain'; terrain.castShadow = terrain.receiveShadow = true; root.add(terrain);
   const explode = Math.max(0, o.explosion || 0);
   if (o.buildings) {
-    const known = buildingGeometry(M, exag, true), unknown = buildingGeometry(M, exag, false);
-    if (known) { const m = new THREE.Mesh(known, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.8 })); m.name = 'buildings'; m.position.y = explode; m.castShadow = m.receiveShadow = true; root.add(m); }
-    if (unknown) { const m = new THREE.Mesh(unknown, new THREE.MeshStandardMaterial({ color: '#e4e0d8', roughness: 0.9 })); m.name = 'buildings_height_unknown'; m.position.y = explode; m.castShadow = m.receiveShadow = true; root.add(m); }
+    const known = buildingModelGeometry(M, exag, true), unknown = buildingModelGeometry(M, exag, false);
+    for (const [group, name, fallback, roughness] of [[known, 'buildings', '#ffffff', 0.8], [unknown, 'buildings_height_unknown', '#ffffff', 0.9]]) {
+      for (const [key, suffix, color] of [['walls', '', fallback], ['roofs', '_roofs', '#ffffff']]) if (group[key]) {
+        const m = new THREE.Mesh(group[key], new THREE.MeshStandardMaterial({ color, vertexColors: true, roughness }));
+        m.name = name + suffix; m.position.y = explode; m.castShadow = m.receiveShadow = true; root.add(m);
+      }
+    }
     const tg = treeGeometry(M, exag); if (tg) { const m = new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ color: '#e9e6df', roughness: 1, flatShading: true })); m.name = 'trees'; m.position.y = explode * 1.65; m.castShadow = true; root.add(m); }
   }
   return { root, size, base, exag };

@@ -111,6 +111,7 @@ export function contoursKML(M, iv) {
 export function featuresGeoJSON(M) {
   const F = [];
   for (const b of M.buildings) F.push({ type: 'Feature', properties: { layer: 'building', height_m: +b.h.toFixed(2), height_source: b.known ? b.how : 'unknown (default used)', floors: b.floors || null, use: b.use || null, construction_year: b.year || null, material: b.material || null, metadata_source: b.metadataSource || null, base_elevation_m: +b.base.toFixed(2), name: b.name || null, class: b.cls || null, source: b.src }, geometry: { type: 'Polygon', coordinates: b.rings } });
+  for (const b of M.buildingParts || []) F.push({ type: 'Feature', properties: { layer: 'building_part', parent_id: b.buildingId || null, height_m: +b.h.toFixed(2), min_height_m: b.minHeight || 0, roof_shape: b.roofShape || null, roof_height_m: b.roofHeight || null, roof_color: b.roofColor || null, facade_color: b.facadeColor || null, source: 'Overture Maps building_part' }, geometry: { type: 'Polygon', coordinates: b.rings } });
   for (const r of M.osm.roads) F.push({ type: 'Feature', properties: { layer: 'road', ...r.tags }, geometry: { type: 'LineString', coordinates: r.pts } });
   for (const r of M.osm.rails) F.push({ type: 'Feature', properties: { layer: 'railway', ...r.tags }, geometry: { type: 'LineString', coordinates: r.pts } });
   for (const w of M.osm.water) F.push({ type: 'Feature', properties: { layer: 'water', ...w.tags }, geometry: { type: 'Polygon', coordinates: [w.ring] } });
@@ -133,12 +134,12 @@ Elevations are metres above sea level (EGM96-based terrain tiles).
 
 Data sources and reliability
 - Terrain: ${M.terrain.name} via AWS Terrain Tiles; ${M.terrain.res}, ${M.terrain.acc}.
-- Buildings: ${M.bsource}${M.release ? ' release ' + M.release : ''}. Each building carries height_source: "recorded height", "floors × 3.5 m" or "unknown (default used)". Unknown heights are on separate CAD layers.
+- Buildings: ${M.bsource}${M.release ? ' release ' + M.release : ''}. 3D building parts are exported as separate GeoJSON features. Simple low-rise roof shapes may be inferred where source roof tags are absent; unknown heights use the configured default.
 - Streets, water, land use, trees, places: © OpenStreetMap contributors, ODbL 1.0 (attribution required; share-alike for derived databases).
 - Climate: Open-Meteo ERA5 reanalysis (CC-BY 4.0), regional ≈10–25 km.
 - Solar resource: European Commission Joint Research Centre PVGIS 5.3; long-term modeled yield for a 1 kWp fixed system at optimum tilt with 14% assumed losses. Not a roof-specific shading or engineering assessment.
 - Air quality: Copernicus Atmosphere Monitoring Service (CAMS) forecast via Open-Meteo (CC-BY 4.0); grid cell ≈11 km in Europe / ≈45 km globally. Forecast values are not local sensor observations. Cite both CAMS ENSEMBLE and Open-Meteo.
-Nothing in these files is invented: missing data is reported, not filled.
+Roof shapes may be inferred for known low-rise buildings when sources provide no roof shape; those are visual estimates, not surveyed geometry. Buildings with unknown heights use the configured default and are identified as approximate.
 `;
 }
 

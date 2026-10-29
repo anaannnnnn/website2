@@ -279,16 +279,11 @@ async function loadData() {
   const tOverture = S.layers.buildings ? deadline(import('./data/overture.js').then(({ loadOvertureBuildings }) => loadOvertureBuildings(bb, { log: m => layerState('buildings', 'loading', esc(m)) })), 35000, 'Overture').then(r => { res.overture = r; }).catch(e => { res.overtureErr = e.message; }) : null;
   const tOsm = (S.layers.buildings || S.layers.streets || S.layers.water || S.layers.trees) ? deadline(fetchOSM(bb, { buildings: S.layers.buildings, streets: S.layers.streets, water: S.layers.water, green: S.layers.water, trees: S.layers.trees }, log), 50000, 'OpenStreetMap')
     .then(r => { res.osm = r.data; res.osmFailed = r.failed; }).catch(e => { res.osmFailed = ['buildings', 'streets', 'land']; res.failed.push('OpenStreetMap'); log(e.message); }) : null;
-  await tOverture;
-  if (S.layers.buildings && !(res.overture && res.overture.buildings.length)) {
-    layerState('buildings', 'loading', 'Overture unavailable — trying OpenStreetMap…');
-    try { if (tOsm) await tOsm; res.osmBuildings = res.osm.buildings; } catch (e) { /* fall through */ }
-    if (!(res.osmBuildings && res.osmBuildings.length)) {
-      layerState('buildings', 'loading', 'Trying OpenFreeMap tiles…');
-      try { res.vt = await fetchVectorTiles(bb); } catch (e) { /* reported below */ }
-    }
-  }
-  await Promise.all([tTerrain, tClimate, tSolar, tAir, tOsm]);
+  const tVt = (S.layers.buildings || S.layers.water) ? deadline(fetchVectorTiles(bb), 30000, 'OpenFreeMap').then(v => { res.vt = v; }).catch(e => { res.vtErr = e.message; }) : null;
+  // Read all footprint sources: Overture is rich and global, OSM adds recent
+  // survey detail, and OpenFreeMap fills remaining holes. Geometry fusion
+  // deduplicates overlap in the model step below.
+  await Promise.all([tTerrain, tClimate, tSolar, tAir, tOverture, tOsm, tVt]);
   // the sea is not an OSM polygon — add OpenFreeMap ocean/sea polygons when water is wanted
   if (S.layers.water && frame.lat > -85) { try { if (!res.vt) res.vt = await fetchVectorTiles(bb); res.osm.water.push(...res.vt.water.filter(w => /ocean|sea/.test(w.tags.water))); } catch (e) { /* optional */ } }
 
@@ -304,10 +299,11 @@ function buildModel(res) {
   const { frame, dem } = res, sigma = +$('#smooth').value;
   const smooth = gaussian(dem.data, dem.W, dem.H, sigma), zAt = makeZAt(dem, frame, smooth);
   const osm = localiseOSM(frame, res.osm);
-  const nb = normaliseBuildings(frame, { overture: res.overture && res.overture.buildings, osm: (res.osm && res.osm.buildings) || res.osmBuildings, vt: res.vt && res.vt.buildings }, defH());
+  const nb = normaliseBuildings(frame, { overture: res.overture?.buildings, parts: res.overture?.parts, osm: res.osm?.buildings, vt: res.vt?.buildings }, defH());
   for (const b of nb.buildings) b.base = buildingBase(b, zAt);
+  for (const b of nb.parts) b.base = buildingBase(b, zAt);
   const der = derive(dem, frame, smooth);
-  const model = { frame, dem, smooth, zAt, der, flow: null, buildings: nb.buildings, bsource: nb.source, release: res.overture && res.overture.release, osm, climate: res.climate, solarResource: res.solarResource, airQuality: res.airQuality, layers: { ...S.layers }, terrain: terrainSourceNote(frame.lon, frame.lat), site: S.site, paper: S.paper, orient: S.orient, scale: printScale(), loadedAt: new Date() };
+  const model = { frame, dem, smooth, zAt, der, flow: null, buildings: nb.buildings, buildingParts: nb.parts, bsource: nb.source, release: res.overture && res.overture.release, osm, climate: res.climate, solarResource: res.solarResource, airQuality: res.airQuality, layers: { ...S.layers }, terrain: terrainSourceNote(frame.lon, frame.lat), site: S.site, paper: S.paper, orient: S.orient, scale: printScale(), loadedAt: new Date() };
   model.flowArr = () => (model.flow ||= flowAccumulation({ ...dem, data: smooth }));
   S.model = model;
   // layer cards
@@ -316,11 +312,12 @@ function buildModel(res) {
     `${esc(t.name)} · resolution ${t.res} · accuracy ${t.acc} · AWS Terrain Tiles z${dem.zoom} (${fmt(gres, 1)} m pixels)`, /≈(2|3|8|10) m/.test(t.res) ? 'good' : /30|25|15/.test(t.res) ? 'fair' : 'limited');
   if (S.layers.buildings) {
     const hs = heightStats(model.buildings), srcs = {};
+      const inferredRoofs = model.buildings.filter(b => !b.roofShape && b.known && b.h <= 16).length;
     for (const b of model.buildings) for (const s of String(b.src).split(', ')) srcs[s] = (srcs[s] || 0) + 1;
     const srcTxt = Object.entries(srcs).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${esc(k)} ${Math.round(v / Math.max(1, model.buildings.length) * 100)}%`).join(', ');
     if (!model.buildings.length) layerState('buildings', 'fail', 'No buildings found here (or all servers failed). Retry, or this area may simply have none mapped.');
     else {
-      layerState('buildings', 'ok', `<b data-c="${hs.n}">0</b> buildings · <b>${fmt(hs.pct, 0)}%</b> with real heights (${fmt(hs.recorded)} recorded, ${fmt(hs.floors)} from floors) · others use ${defH()} m, marked “~”`,
+      layerState('buildings', 'ok', `<b data-c="${hs.n}">0</b> footprints · <b>${fmt(hs.pct, 0)}%</b> with recorded height/floors (${fmt(hs.recorded)} heights, ${fmt(hs.floors)} floor-derived) · ${fmt(model.buildingParts.length)} detailed 3D parts · ${fmt(inferredRoofs)} inferred low-rise roofs · other heights use ${defH()} m, marked “~”`,
         `${esc(model.bsource)}${model.release ? ' ' + esc(model.release) : ''}${srcTxt ? ' — ' + srcTxt : ''}`, hs.pct >= 60 ? 'good' : hs.pct >= 25 ? 'fair' : 'limited');
       const el = $('#ly-buildings [data-c]'); if (el) countUp(el, hs.n);
       const bar = document.createElement('div'); bar.className = 'bar'; bar.innerHTML = '<i></i>'; $('#ly-buildings').appendChild(bar); requestAnimationFrame(() => bar.firstChild.style.width = `${hs.pct}%`);

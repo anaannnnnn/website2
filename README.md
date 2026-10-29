@@ -16,9 +16,9 @@ Everything runs in the browser — no account, no paid server. Host it free on G
 3. **Data** — fetched live, each layer with its source and a reliability badge:
    - **Terrain**: AWS Terrain Tiles (SRTM, USGS 3DEP, UK EA LIDAR, EU-DEM, LINZ … depending on region),
      resampled onto a frame-aligned UTM grid, dropouts repaired.
-   - **Buildings**: **Overture Maps** (OpenStreetMap + Microsoft + Google + Esri footprints, heights, floors)
-     read directly from Overture's public GeoParquet files; fallback to live OpenStreetMap, then
-     OpenFreeMap tiles.
+   - **Buildings**: **Overture Maps** footprints, heights, floors, materials and roof fields, including
+     Overture's separate OSM-derived `building_part` features for detailed 3D massing; live OpenStreetMap
+     and OpenFreeMap footprints are merged in to fill gaps rather than discarded when Overture has data.
    - **Streets, water, land use, trees, places**: live OpenStreetMap (Overpass, 4 mirrors) + sea polygons.
    - **Climate & wind**: Open-Meteo ERA5 (last full year).
    - **Solar resource**: European Commission JRC PVGIS typical-year yield and plane-of-array irradiation (1 kWp reference system, 14% assumed losses).
@@ -49,14 +49,21 @@ The 3D viewer also has an **Explode layers** control for separating terrain, bui
 axonometric layer study. Advanced results are saved into every ZIP as an evidence report with calculation
 methods, input sources and explicit unavailable-data disclosures.
 
+Where sources provide building parts, roof shape, roof height, colors or materials, the 3D model uses those
+attributes. For known low-rise heights without a mapped roof shape, TerraKit infers a simple gabled or hipped
+roof from the footprint; this is a visual estimate, not surveyed roof geometry. Unknown building heights still
+use the configured default and are marked as approximate.
+
 Every sheet is authored in millimetres and exports as **vector PDF**, SVG or PNG, with a title block
 (project, author, coordinates, UTM zone, scale bar, rotated north arrow, data sources and reliability).
 Projects are saved in the page link — share it to reopen the same site, frame and sections.
 
 ## Honest data
 
-Nothing is invented. Buildings without a recorded height use a default height that you set, and are
-hatched / dashed / on separate CAD layers. Missing layers are reported, not filled. Where national
+Building heights are sourced or explicitly marked as defaults. The 3D viewer infers simple roofs only
+when a low-rise has a known height but no roof-shape tag; that visual estimate is identified in the data
+card. Buildings without a recorded height use a default height that you set, and are hatched / dashed /
+on separate CAD layers. Missing layers are reported, not filled. Where national
 open data is better than these global sources (lidar, LoD2 city models), it is worth using it alongside.
 Accordingly, TerraKit does not label a road-class proxy as measured traffic noise, regional wind as CFD,
 community-mapped boundaries as an authoritative cadastre, or building counts as population. Native SKP,
@@ -68,7 +75,7 @@ engineering estimate. CAMS air-quality values are regional grid-cell forecasts, 
 ## Repository
 
 - `index.html`, `css/`, `js/` — the app (plain ES modules, no build step).
-- `data/overture-index.json` — bounding box of each Overture building file; refreshed weekly by
+- `data/overture-index.json` — bounding boxes for Overture building and building-part files; refreshed weekly by
   `.github/workflows/overture-index.yml` running `tools/build-overture-index.mjs`.
 - `legacy/` — the previous single-file version.
 
