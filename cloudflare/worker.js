@@ -22,6 +22,16 @@ const ROUTES = {
   },
 };
 
+// Keep the same public Overpass mirrors TerraKit used before proxying. Fail over
+// only when an instance reports a server-side outage; pass quota and policy
+// responses through unchanged.
+const OVERPASS_UPSTREAMS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+];
+
 function corsHeaders(origin) {
   const h = new Headers({
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -107,17 +117,26 @@ export default {
       const body = await request.text();
       if (body.length > 24000) return jsonError('Query too large', 413, cors);
       const query = new URLSearchParams(body).get('data') || '';
-      if (!query.startsWith('[out:json][timeout:30];(') || !query.endsWith(');out geom;')) return jsonError('Unsupported Overpass query', 400, cors);
+      if (!query.startsWith('[out:json][timeout:30];(') || !/(?:;)?\);out geom;$/.test(query)) return jsonError('Unsupported Overpass query', 400, cors);
 
       const key = await cacheKey('/overpass', query);
       const cached = await caches.default.match(key);
       if (cached) return new Response(cached.body, { status: cached.status, headers: new Headers([...cached.headers, ...cors]) });
 
-      const upstreamResponse = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'TerraKit/1.0 (environmental site analysis)' },
-        body: `data=${encodeURIComponent(query)}`,
-      });
+      let upstreamResponse;
+      for (const endpoint of OVERPASS_UPSTREAMS) {
+        try {
+          upstreamResponse = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'TerraKit/1.0 (https://minhafathimapk.art)' },
+            body: `data=${encodeURIComponent(query)}`,
+          });
+          if (![502, 503, 504].includes(upstreamResponse.status)) break;
+        } catch {
+          upstreamResponse = null;
+        }
+      }
+      if (!upstreamResponse) return jsonError('Overpass providers unavailable', 502, cors);
       const headers = new Headers({
         'Content-Type': upstreamResponse.headers.get('Content-Type') || 'application/json',
         'Cache-Control': 'public, max-age=300',
